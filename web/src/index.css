@@ -2,26 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-canvas: #F6F8FA;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #EDF1F5;
+  --ink-primary: #111827;
+  --ink-secondary: #4B5563;
+  --ink-muted: #6B7280;
+  --border-hairline: #DCE2EA;
+  --accent-navy: #0F4C81;
+  --accent-forest: #166534;
+}
+
 @layer base {
-  html {
+  html, body {
     font-size: 16px;
     line-height: 1.5;
-    scroll-behavior: smooth;
+    overflow-x: clip;
+    background-color: var(--bg-canvas);
+    color: var(--ink-primary);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   }
 }
 
-/* Custom subtle scrollbars */
+.tabular-data {
+  font-variant-numeric: tabular-nums;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0d1117;
+  background: #EDF1F5;
 }
 ::-webkit-scrollbar-thumb {
-  background: #30363d;
-  border-radius: 4px;
+  background: #C4CDD8;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #484f58;
+  background: #9AA5B4;
 }

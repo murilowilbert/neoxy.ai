@@ -6,22 +6,8 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        brand: {
-          50: '#ECFDF5',
-          100: '#D1FAE5',
-          500: '#10B981',
-          600: '#059669',
-          700: '#047857',
-        },
-        surface: {
-          900: '#0D1117',
-          800: '#161B22',
-          700: '#21262D',
-        }
-      },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['"IBM Plex Sans"', 'system-ui', '-apple-system', 'sans-serif'],
       }
     },
   },

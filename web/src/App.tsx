@@ -35,8 +35,8 @@ export function App() {
 
   if (initializing) {
     return (
-      <div className="min-h-screen bg-[#0D1117] text-slate-300 flex items-center justify-center text-sm font-medium">
-        Carregando plataforma Neoxy.ai...
+      <div className="min-h-screen bg-[#FAF8F5] text-[#57554F] flex items-center justify-center text-sm font-medium">
+        Carregando ambiente operacional Neoxy.ai...
       </div>
     );
   }

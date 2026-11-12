@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
 import {
-  Bot,
-  MessageSquare,
   Store,
   Stethoscope,
   Briefcase,
-  CheckCircle2,
-  ArrowRight,
-  ShieldCheck,
-  Zap,
-  Sparkles,
   Clock,
   FileText,
   Calendar,
   PackageSearch,
-  Lock
+  Lock,
+  MessageSquare,
+  Sliders
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -27,36 +22,36 @@ export function LandingPage({ onGoToLogin, onGoToRegister }: LandingPageProps) {
 
   const nicheExamples = {
     RETAIL: {
-      badge: 'Varejo, Ferragens & Materiais de Construção',
-      title: 'Consulta de 8.000+ itens em segundos e identificação de peças por foto',
-      description: 'Ideal para lojas como a Ferragens Marlene: o cliente manda foto de um reparo ou pergunta por uma ducha, a IA consulta a planilha ou banco em tempo real, responde em linguagem de balcão e separa o pedido.',
-      modules: ['Catálogo de Produtos & Preços', 'Sincronização Google Sheets / CSV', 'Visão Computacional de Peças', 'Relatório de Demanda Perdida'],
+      company: 'Ferragens Marlene — Igrejinha, RS',
+      profileLabel: 'Comércio & Estoque',
+      summary: 'Integra planilhas com milhares de itens (Google Sheets ou banco local), responde preços exatos em linguagem de balcão e separa mercadorias para retirada.',
+      activeModules: ['Catálogo & Estoque (8.004 itens)', 'Leitura de Peças por Foto', 'Registro de Demanda Perdida', 'Transbordo para Balcão'],
       chatSample: [
-        { role: 'client', text: 'Bom dia! Vocês têm ducha Lorenzetti 220V?' },
-        { role: 'bot', text: 'Bom dia! Tudo bem? Temos sim! Aqui na loja trabalhamos com a *Ducha Elétrica Lorenzetti Advanced Multitemperaturas 220V* por *R$ 159,90* à vista.' },
-        { role: 'bot', text: 'Quer que eu já peça pro pessoal separar uma no balcão pra você retirar?' }
+        { role: 'client', time: '09:14', text: 'Bom dia, vocês têm ducha Lorenzetti 220V à pronta entrega?' },
+        { role: 'bot', time: '09:14', text: 'Bom dia! Tudo bem? Temos sim. Aqui na loja trabalhamos com a *Ducha Elétrica Lorenzetti Advanced Multitemperaturas 220V* por *R$ 159,90*.' },
+        { role: 'bot', time: '09:15', text: 'Quer que eu peça pro pessoal separar uma no balcão pra você passar retirar?' }
       ]
     },
     SERVICES: {
-      badge: 'Clínicas, Pet Shops, Estética & Salões',
-      title: 'Catálogo de serviços com duração e agendamento automático pelo WhatsApp',
-      description: 'Ideal para Pet Shops, Clínicas e Barbearias: a IA apresenta os serviços, tira dúvidas sobre procedimentos, consulta a agenda do estabelecimento e confirma o horário do cliente 24h por dia.',
-      modules: ['Catálogo de Serviços & Duração', 'Agenda Inteligente Integrada', 'Confirmação e Lembretes', 'Venda Casada de Produtos'],
+      company: 'Pet Shop Amigo Fiel — Centro',
+      profileLabel: 'Serviços & Clínica',
+      summary: 'Apresenta procedimentos com tempo de duração, consulta horários vagos na agenda do estabelecimento e confirma marcações sem intervenção manual.',
+      activeModules: ['Catálogo de Procedimentos & Tempo', 'Agenda de Horários Integrada', 'Estoque de Produtos Pet', 'Pausa Automática para Veterinário'],
       chatSample: [
-        { role: 'client', text: 'Oi! Queria marcar um banho e tosa pro meu Golden amanhã à tarde.' },
-        { role: 'bot', text: 'Olá! Que alegria atender você e seu Golden! 🐾 O nosso *Banho & Tosa Higiênica* tem duração média de 60 min.' },
-        { role: 'bot', text: 'Para amanhã temos horário livre às *14:30* ou às *16:00*. Qual fica melhor para vocês?' }
+        { role: 'client', time: '14:20', text: 'Oi, queria marcar um banho e tosa pro meu Golden amanhã de tarde.' },
+        { role: 'bot', time: '14:20', text: 'Olá! Claro, vamos agendar. O nosso *Banho & Tosa Higiênica* tem duração média de 60 minutos e custa *R$ 75,00*.' },
+        { role: 'bot', time: '14:21', text: 'Para amanhã temos horário livre às *14:30* ou às *16:00*. Qual fica melhor para você?' }
       ]
     },
     OFFICE: {
-      badge: 'Escritórios Contábeis, Jurídicos & Consultorias',
-      title: 'Recebimento inteligente de contas/boletos, triagem e marcação de reuniões',
-      description: 'Ideal para escritórios: quando o cliente envia um boleto, nota fiscal ou comprovante no WhatsApp, a IA lê o documento, extrai vencimento e valor, organiza no painel financeiro e agenda reuniões.',
-      modules: ['Recebimento de Boletos & Notas Fiscais', 'Leitura Automática por IA (Valor/Vencimento)', 'Agendamento de Reuniões', 'Triagem por Setor (Fiscal/RH/Societário)'],
+      company: 'Prime Contabilidade & Consultoria',
+      profileLabel: 'Escritório & Contas',
+      summary: 'Recebe boletos, notas fiscais e comprovantes enviados pelos clientes no WhatsApp, extrai vencimento e valor automaticamente e organiza no painel financeiro.',
+      activeModules: ['Protocolo de Boletos & Notas Fiscais', 'Extração de Vencimento e Valor', 'Agenda de Reuniões Executivas', 'Triagem Societária e Fiscal'],
       chatSample: [
-        { role: 'client', text: '[Foto de Boleto] Segue a conta de energia da matriz para conciliação.' },
-        { role: 'bot', text: 'Perfeito, Roberto! Recebi o *Boleto de Energia Elétrica* com vencimento em *20/11/2026* no valor de *R$ 1.485,40*.' },
-        { role: 'bot', text: 'Já protocolei no nosso setor financeiro para baixa e conciliação. Precisa de mais alguma guia hoje?' }
+        { role: 'client', time: '16:02', text: '[Arquivo enviado] Segue o boleto de energia elétrica da matriz para conciliação.' },
+        { role: 'bot', time: '16:02', text: 'Recebido, Roberto! Identifiquei o *Boleto de Energia Elétrica* com vencimento em *20/11/2026* no valor de *R$ 1.485,40*.' },
+        { role: 'bot', time: '16:03', text: 'Já protocolei no nosso controle financeiro para conferência e baixa. Precisa de mais alguma guia hoje?' }
       ]
     }
   };
@@ -64,328 +59,341 @@ export function LandingPage({ onGoToLogin, onGoToRegister }: LandingPageProps) {
   const currentNiche = nicheExamples[activeNiche];
 
   return (
-    <div className="min-h-screen bg-[#0D1117] text-slate-100 flex flex-col">
-      {/* Header / Navbar */}
-      <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-[#0D1117]/90 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Bot className="w-6 h-6 text-slate-950" />
-            </div>
-            <div>
-              <span className="text-xl font-extrabold tracking-tight text-white">neoxy<span className="text-emerald-400">.ai</span></span>
-              <span className="hidden sm:inline-block ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Multi-Tenant SaaS
+    <div className="min-h-screen bg-[#F6F8FA] text-[#111827] flex flex-col">
+      {/* Top Header — Solid surface, crisp 1px border */}
+      <header className="sticky top-0 z-30 bg-white border-b border-[#DCE2EA]">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-7">
+            <a href="#" className="flex items-baseline gap-1.5">
+              <span className="text-xl font-bold tracking-tight text-[#111827]">neoxy</span>
+              <span className="text-xs font-semibold text-[#0F4C81] bg-[#0F4C81]/10 px-1.5 py-0.5 rounded">
+                .ai
               </span>
-            </div>
+            </a>
+            <nav className="hidden md:flex items-center gap-6 text-sm text-[#4B5563]">
+              <a href="#operacao" className="hover:text-[#111827] transition-colors">Arquitetura operacional</a>
+              <a href="#acesso-demo" className="hover:text-[#111827] transition-colors">Contas demonstrativas</a>
+            </nav>
           </div>
-
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#nichos" className="hover:text-emerald-400 transition-colors">Para cada Negócio</a>
-            <a href="#arquitetura" className="hover:text-emerald-400 transition-colors">Arquitetura Plástica</a>
-            <a href="#demo-logins" className="hover:text-emerald-400 transition-colors">Acesso Rápido Demo</a>
-          </nav>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => onGoToLogin()}
-              className="min-h-[44px] px-4 py-2 rounded-lg text-sm font-semibold text-slate-200 hover:text-white hover:bg-slate-800/70 transition-all"
+              className="min-h-[40px] px-4 py-2 text-sm font-medium text-[#111827] hover:bg-[#EDF1F5] rounded transition-colors"
             >
-              Entrar no Sistema
+              Entrar
             </button>
             <button
               onClick={onGoToRegister}
-              className="min-h-[44px] px-5 py-2.5 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
+              className="min-h-[40px] px-4 py-2 text-sm font-semibold bg-[#0F4C81] hover:bg-[#0B3961] text-white rounded transition-colors"
             >
-              Criar Conta Empresa
-              <ArrowRight className="w-4 h-4" />
+              Cadastrar empresa
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-16 lg:py-24 border-b border-slate-800/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold mb-6">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-              IA Ultra-Humanizada ("Zero-Robô") + Painel Adaptativo por Ramo de Atividade
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15]">
-              Um único cérebro no WhatsApp que se molda ao{' '}
-              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                seu tipo de negócio
-              </span>
-            </h1>
-
-            <p className="mt-6 text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-              De lojas de ferragens com 8.000 itens no estoque a clínicas com agendamento ou escritórios que recebem boletos e documentos. O <strong>Neoxy.ai</strong> libera automaticamente as ferramentas certas para cada empresa.
-            </p>
-
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <button
-                onClick={onGoToRegister}
-                className="min-h-[48px] px-7 py-3.5 rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/20 transition-all flex items-center gap-2 text-base"
-              >
-                Cadastrar Meu Estabelecimento
-                <ArrowRight className="w-5 h-5" />
-              </button>
-              <a
-                href="#demo-logins"
-                className="min-h-[48px] px-7 py-3.5 rounded-xl font-semibold bg-slate-800/80 hover:bg-slate-800 text-slate-100 border border-slate-700 transition-all flex items-center gap-2 text-base"
-              >
-                Testar Perfis Prontos (1 Clique)
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive Niche Selector */}
-      <section id="nichos" className="py-16 lg:py-24 bg-[#161B22]/50 border-b border-slate-800/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl font-bold text-white">Interface Plástica: Módulos sob Medida</h2>
-            <p className="mt-3 text-slate-400">
-              Clique em cada perfil abaixo para ver como a plataforma adapta o menu, o banco de dados e o comportamento da IA:
-            </p>
-          </div>
-
-          {/* Niche Tabs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-10">
-            <button
-              onClick={() => setActiveNiche('RETAIL')}
-              className={`min-h-[56px] p-4 rounded-xl border text-left transition-all flex items-center gap-3 ${
-                activeNiche === 'RETAIL'
-                  ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
-                  : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Store className={`w-6 h-6 ${activeNiche === 'RETAIL' ? 'text-emerald-400' : 'text-slate-500'}`} />
-              <div>
-                <div className="font-bold text-sm">Comércio & Varejo</div>
-                <div className="text-xs opacity-75">Ex: Ferragens Marlene</div>
+      {/* Hero Section — Asymmetric 12-column Workbench Layout */}
+      <section className="border-b border-[#DCE2EA] py-12 lg:py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
+            {/* Left Column (6 cols): Editorial Statement & Actions */}
+            <div className="lg:col-span-6 space-y-6 pt-2">
+              <div className="inline-flex items-center gap-2 text-xs font-medium text-[#4B5563] bg-[#F6F8FA] border border-[#DCE2EA] px-3 py-1 rounded">
+                <span className="w-2 h-2 rounded-full bg-[#166534]" />
+                <span>Sistema multi-empresa para operação via WhatsApp</span>
               </div>
-            </button>
 
-            <button
-              onClick={() => setActiveNiche('SERVICES')}
-              className={`min-h-[56px] p-4 rounded-xl border text-left transition-all flex items-center gap-3 ${
-                activeNiche === 'SERVICES'
-                  ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
-                  : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Stethoscope className={`w-6 h-6 ${activeNiche === 'SERVICES' ? 'text-emerald-400' : 'text-slate-500'}`} />
-              <div>
-                <div className="font-bold text-sm">Serviços & Clínicas</div>
-                <div className="text-xs opacity-75">Ex: Pet Shop Amigo Fiel</div>
-              </div>
-            </button>
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-[#111827] leading-[1.12]">
+                Atendimento de balcão, agenda e contas que se adapta à realidade da sua empresa.
+              </h1>
 
-            <button
-              onClick={() => setActiveNiche('OFFICE')}
-              className={`min-h-[56px] p-4 rounded-xl border text-left transition-all flex items-center gap-3 ${
-                activeNiche === 'OFFICE'
-                  ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
-                  : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Briefcase className={`w-6 h-6 ${activeNiche === 'OFFICE' ? 'text-emerald-400' : 'text-slate-500'}`} />
-              <div>
-                <div className="font-bold text-sm">Escritórios & Contábil</div>
-                <div className="text-xs opacity-75">Ex: Prime Contabilidade</div>
-              </div>
-            </button>
-          </div>
-
-          {/* Niche Showcase Card */}
-          <div className="bg-[#0D1117] border border-slate-800 rounded-2xl p-6 sm:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-7 space-y-5">
-              <span className="inline-block text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                {currentNiche.badge}
-              </span>
-              <h3 className="text-2xl sm:text-3xl font-bold text-white leading-snug">
-                {currentNiche.title}
-              </h3>
-              <p className="text-slate-300 leading-relaxed">
-                {currentNiche.description}
+              <p className="text-base sm:text-lg text-[#4B5563] leading-relaxed">
+                Uma loja de ferragens precisa consultar 8.000 itens na planilha. Uma clínica precisa marcar horários. Um escritório contábil precisa receber boletos e notas fiscais. O Neoxy.ai libera exatamente as ferramentas que o seu ramo exige.
               </p>
 
-              <div className="pt-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-                  Módulos Liberados Automaticamente no Painel:
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={onGoToRegister}
+                  className="min-h-[46px] px-6 py-3 rounded bg-[#0F4C81] hover:bg-[#0B3961] text-white font-semibold text-sm transition-colors"
+                >
+                  Criar conta para minha empresa
+                </button>
+                <a
+                  href="#acesso-demo"
+                  className="min-h-[46px] px-5 py-3 rounded bg-[#F6F8FA] hover:bg-[#EDF1F5] text-[#111827] border border-[#DCE2EA] font-medium text-sm transition-colors inline-flex items-center"
+                >
+                  Testar contas demonstrativas
+                </a>
+              </div>
+
+              {/* Operational Facts Strip */}
+              <div className="pt-6 border-t border-[#DCE2EA] grid grid-cols-3 gap-4">
+                <div>
+                  <div className="tabular-data text-xl font-bold text-[#111827]">4,5 seg</div>
+                  <div className="text-xs text-[#4B5563] mt-0.5">Janela de agrupamento de mensagens</div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {currentNiche.modules.map((mod, idx) => (
-                    <div key={idx} className="flex items-center gap-2.5 bg-slate-900/90 border border-slate-800 px-3.5 py-2.5 rounded-lg text-sm text-slate-200">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div>
+                  <div className="tabular-data text-xl font-bold text-[#111827]">8.004</div>
+                  <div className="text-xs text-[#4B5563] mt-0.5">Produtos indexados na loja piloto</div>
+                </div>
+                <div>
+                  <div className="tabular-data text-xl font-bold text-[#111827]">Multi-Loja</div>
+                  <div className="text-xs text-[#4B5563] mt-0.5">Isolamento de dados por empresa</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column (6 cols): Interactive Workbench Artifact */}
+            <div className="lg:col-span-6 bg-white border border-[#C4CDD8] rounded overflow-hidden">
+              {/* Niche Switcher Bar */}
+              <div className="bg-[#EDF1F5] border-b border-[#DCE2EA] p-2 grid grid-cols-3 gap-1.5">
+                <button
+                  onClick={() => setActiveNiche('RETAIL')}
+                  className={`min-h-[40px] px-3 py-2 rounded text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${
+                    activeNiche === 'RETAIL'
+                      ? 'bg-white text-[#111827] border border-[#C4CDD8]'
+                      : 'text-[#4B5563] hover:text-[#111827]'
+                  }`}
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Varejo & Estoque</span>
+                </button>
+                <button
+                  onClick={() => setActiveNiche('SERVICES')}
+                  className={`min-h-[40px] px-3 py-2 rounded text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${
+                    activeNiche === 'SERVICES'
+                      ? 'bg-white text-[#111827] border border-[#C4CDD8]'
+                      : 'text-[#4B5563] hover:text-[#111827]'
+                  }`}
+                >
+                  <Stethoscope className="w-3.5 h-3.5" />
+                  <span>Serviços & Agenda</span>
+                </button>
+                <button
+                  onClick={() => setActiveNiche('OFFICE')}
+                  className={`min-h-[40px] px-3 py-2 rounded text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${
+                    activeNiche === 'OFFICE'
+                      ? 'bg-white text-[#111827] border border-[#C4CDD8]'
+                      : 'text-[#4B5563] hover:text-[#111827]'
+                  }`}
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Escritório & Contas</span>
+                </button>
+              </div>
+
+              {/* Active Niche Header */}
+              <div className="p-5 border-b border-[#DCE2EA] flex items-center justify-between bg-[#F6F8FA]">
+                <div>
+                  <div className="text-xs text-[#4B5563]">Estabelecimento em foco</div>
+                  <div className="text-base font-bold text-[#111827]">{currentNiche.company}</div>
+                </div>
+                <span className="text-xs px-2.5 py-1 rounded bg-[#0F4C81]/10 text-[#0F4C81] font-semibold">
+                  {currentNiche.profileLabel}
+                </span>
+              </div>
+
+              {/* Simulated Conversation Transcript */}
+              <div className="p-5 space-y-3 bg-[#F6F8FA]/50">
+                {currentNiche.chatSample.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`p-3.5 rounded text-sm leading-relaxed border ${
+                      msg.role === 'client'
+                        ? 'bg-white border-[#DCE2EA] text-[#111827] mr-10'
+                        : 'bg-[#EBF5EE] border-[#BBDAC4] text-[#112A1A] ml-10'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[11px] text-[#4B5563] mb-1">
+                      <span className="font-semibold">
+                        {msg.role === 'client' ? 'Cliente no WhatsApp' : 'Atendimento Neoxy.ai'}
+                      </span>
+                      <span className="tabular-data">{msg.time}</span>
+                    </div>
+                    <div>{msg.text}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Enabled Modules Footer inside Artifact */}
+              <div className="p-5 bg-white border-t border-[#DCE2EA]">
+                <div className="text-xs font-semibold text-[#4B5563] mb-2.5">
+                  Funções habilitadas automaticamente no painel para este perfil:
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {currentNiche.activeModules.map((mod, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs text-[#111827] bg-[#F6F8FA] border border-[#DCE2EA] px-3 py-2 rounded">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#166534] shrink-0" />
                       <span>{mod}</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
 
-            {/* Simulated WhatsApp Preview */}
-            <div className="lg:col-span-5 bg-[#161B22] border border-slate-800 rounded-xl p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      {/* Section 2: Instant Demo Access Table / Ledger */}
+      <section id="acesso-demo" className="py-16 border-b border-[#DCE2EA] bg-[#F6F8FA]">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+          <div className="max-w-2xl mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#111827]">
+              Experimente os perfis de empresas configurados
+            </h2>
+            <p className="mt-2 text-sm sm:text-base text-[#4B5563]">
+              Selecione qualquer uma das quatro contas abaixo para entrar no sistema e verificar como a barra lateral e as telas se adaptam a cada ramo de atividade.
+            </p>
+          </div>
+
+          <div className="border border-[#C4CDD8] rounded divide-y divide-[#DCE2EA] bg-white">
+            {/* Row 1: Super Admin */}
+            <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1 max-w-xl">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-semibold text-slate-300">Simulação WhatsApp — Zero-Robô</span>
+                  <Lock className="w-4 h-4 text-[#0F4C81]" />
+                  <h3 className="font-bold text-base text-[#111827]">Painel Master — Administração Global (Você)</h3>
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#0F4C81]/10 text-[#0F4C81] font-semibold">
+                    SUPER_ADMIN
+                  </span>
                 </div>
-                <span className="text-[11px] text-slate-400">Debounce 4.5s Ativo</span>
+                <p className="text-sm text-[#4B5563]">
+                  Gerencia todas as empresas cadastradas e permite ligar ou desligar módulos (Estoque, Serviços, Agenda, Contas) individualmente para qualquer cliente.
+                </p>
+                <div className="text-xs text-[#6B7280]">Acesso: admin@neoxy.ai</div>
               </div>
-              <div className="space-y-3">
-                {currentNiche.chatSample.map((msg, i) => (
-                  <div
-                    key={i}
-                    className={`p-3.5 rounded-xl text-sm leading-relaxed ${
-                      msg.role === 'client'
-                        ? 'bg-slate-800 text-slate-200 mr-8 rounded-tl-none'
-                        : 'bg-emerald-950/80 border border-emerald-500/30 text-emerald-100 ml-8 rounded-tr-none'
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-                ))}
+              <button
+                onClick={() => onGoToLogin('admin@neoxy.ai')}
+                className="min-h-[42px] px-5 py-2.5 rounded bg-[#0F4C81] hover:bg-[#0B3961] text-white font-semibold text-sm shrink-0 transition-colors"
+              >
+                Entrar como Administrador
+              </button>
+            </div>
+
+            {/* Row 2: Ferragens Marlene */}
+            <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#F6F8FA]/50">
+              <div className="space-y-1 max-w-xl">
+                <div className="flex items-center gap-2.5">
+                  <PackageSearch className="w-4 h-4 text-[#166534]" />
+                  <h3 className="font-bold text-base text-[#111827]">Ferragens Marlene (Piloto)</h3>
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#166534]/10 text-[#166534] font-semibold">
+                    VAREJO / ESTOQUE
+                  </span>
+                </div>
+                <p className="text-sm text-[#4B5563]">
+                  Painel voltado para comércio: cadastro de itens específicos, sincronização com planilha Google Sheets de 8.004 produtos e relatório de demandas perdidas.
+                </p>
+                <div className="text-xs text-[#6B7280]">Acesso: contato@ferragensmarlene.com.br</div>
               </div>
+              <button
+                onClick={() => onGoToLogin('contato@ferragensmarlene.com.br')}
+                className="min-h-[42px] px-5 py-2.5 rounded bg-white hover:bg-[#EDF1F5] text-[#111827] border border-[#C4CDD8] font-semibold text-sm shrink-0 transition-colors"
+              >
+                Abrir painel Ferragens
+              </button>
+            </div>
+
+            {/* Row 3: Pet Shop */}
+            <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1 max-w-xl">
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="w-4 h-4 text-[#166534]" />
+                  <h3 className="font-bold text-base text-[#111827]">Pet Shop Amigo Fiel</h3>
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#166534]/10 text-[#166534] font-semibold">
+                    SERVIÇOS & AGENDA
+                  </span>
+                </div>
+                <p className="text-sm text-[#4B5563]">
+                  Habilita catálogo de serviços (Banho & Tosa, Consultas Veterinárias com tempo de duração), agenda de compromissos e produtos pet.
+                </p>
+                <div className="text-xs text-[#6B7280]">Acesso: contato@petshopamigofiel.com.br</div>
+              </div>
+              <button
+                onClick={() => onGoToLogin('contato@petshopamigofiel.com.br')}
+                className="min-h-[42px] px-5 py-2.5 rounded bg-white hover:bg-[#EDF1F5] text-[#111827] border border-[#C4CDD8] font-semibold text-sm shrink-0 transition-colors"
+              >
+                Abrir painel Pet Shop
+              </button>
+            </div>
+
+            {/* Row 4: Escritório Contábil */}
+            <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#F6F8FA]/50">
+              <div className="space-y-1 max-w-xl">
+                <div className="flex items-center gap-2.5">
+                  <FileText className="w-4 h-4 text-[#166534]" />
+                  <h3 className="font-bold text-base text-[#111827]">Prime Contabilidade & Consultoria</h3>
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#166534]/10 text-[#166534] font-semibold">
+                    ESCRITÓRIO & CONTAS
+                  </span>
+                </div>
+                <p className="text-sm text-[#4B5563]">
+                  Habilita protocolo de boletos, contas a pagar, notas fiscais e comprovantes recebidos no WhatsApp, além de agenda de reuniões.
+                </p>
+                <div className="text-xs text-[#6B7280]">Acesso: contato@primecontabil.com.br</div>
+              </div>
+              <button
+                onClick={() => onGoToLogin('contato@primecontabil.com.br')}
+                className="min-h-[42px] px-5 py-2.5 rounded bg-white hover:bg-[#EDF1F5] text-[#111827] border border-[#C4CDD8] font-semibold text-sm shrink-0 transition-colors"
+              >
+                Abrir painel Escritório
+              </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Instant Demo Credentials Section */}
-      <section id="demo-logins" className="py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <h2 className="text-3xl font-bold text-white">Experimente Agora com 1 Clique</h2>
-          <p className="mt-3 text-slate-400">
-            Já deixamos 4 contas pré-configuradas no banco de dados para você entrar e ver como a interface muda para cada realidade:
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {/* Card 1: Super Admin */}
-          <div className="bg-[#161B22] border border-emerald-500/40 rounded-xl p-6 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-2.5 py-1 text-xs font-bold rounded bg-emerald-500/20 text-emerald-300">
-                  SUPER ADMIN
-                </span>
-                <Lock className="w-5 h-5 text-emerald-400" />
-              </div>
-              <h3 className="text-lg font-bold text-white">Painel Master (Você)</h3>
-              <p className="text-sm text-slate-400 mt-2">
-                Visão global de todas as empresas. Libere ou bloqueie módulos (Estoque, Agenda, Contas) em tempo real para qualquer cliente.
-              </p>
-            </div>
-            <button
-              onClick={() => onGoToLogin('admin@neoxy.ai')}
-              className="mt-6 w-full min-h-[44px] py-2.5 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition-all"
-            >
-              Entrar como Super Admin
-            </button>
+      {/* Section 3: Technical Architecture & Operational Guarantees */}
+      <section id="operacao" className="py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8">
+          <div className="max-w-2xl mb-10">
+            <h2 className="text-2xl font-bold text-[#111827]">
+              Engenharia pensada para operação real no dia a dia
+            </h2>
+            <p className="mt-2 text-sm text-[#4B5563]">
+              Construído sobre Node.js, Evolution API v2, fila com janela de agrupamento e Gemini 2.5 Flash para manter custo de servidor baixo e resposta imediata.
+            </p>
           </div>
 
-          {/* Card 2: Ferragens Marlene */}
-          <div className="bg-[#161B22] border border-slate-800 rounded-xl p-6 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-2.5 py-1 text-xs font-bold rounded bg-amber-500/20 text-amber-300">
-                  PERFIL COMÉRCIO
-                </span>
-                <PackageSearch className="w-5 h-5 text-amber-400" />
+          <div className="grid grid-cols-1 md:grid-cols-3 border border-[#C4CDD8] rounded bg-[#F6F8FA] divide-y md:divide-y-0 md:divide-x divide-[#DCE2EA]">
+            <div className="p-6 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+                <MessageSquare className="w-4 h-4 text-[#0F4C81]" />
+                <span>Agrupamento de mensagens (Debounce)</span>
               </div>
-              <h3 className="text-lg font-bold text-white">Ferragens Marlene</h3>
-              <p className="text-sm text-slate-400 mt-2">
-                Painel focado em Catálogo de Produtos, sincronização com planilha Google Sheets (8.004 itens), estoque e demandas perdidas.
+              <p className="text-sm text-[#4B5563] leading-relaxed">
+                Clientes no WhatsApp costumam mandar três ou quatro frases seguidas. O sistema aguarda 4,5 segundos, junta tudo em um único raciocínio e responde de uma só vez.
               </p>
             </div>
-            <button
-              onClick={() => onGoToLogin('contato@ferragensmarlene.com.br')}
-              className="mt-6 w-full min-h-[44px] py-2.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm border border-slate-700 transition-all"
-            >
-              Entrar como Ferragens
-            </button>
-          </div>
 
-          {/* Card 3: Pet Shop */}
-          <div className="bg-[#161B22] border border-slate-800 rounded-xl p-6 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-2.5 py-1 text-xs font-bold rounded bg-cyan-500/20 text-cyan-300">
-                  PERFIL SERVIÇOS
-                </span>
-                <Calendar className="w-5 h-5 text-cyan-400" />
+            <div className="p-6 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+                <Clock className="w-4 h-4 text-[#0F4C81]" />
+                <span>Horário comercial e feriados por loja</span>
               </div>
-              <h3 className="text-lg font-bold text-white">Pet Shop Amigo Fiel</h3>
-              <p className="text-sm text-slate-400 mt-2">
-                Habilita Catálogo de Serviços (Banho & Tosa, Consultas) + Agenda de Horários + Produtos Pet.
+              <p className="text-sm text-[#4B5563] leading-relaxed">
+                Cada empresa configura seu expediente de segunda a domingo e datas de feriado. A IA sabe se a loja está aberta ou fechada no exato minuto da conversa.
               </p>
             </div>
-            <button
-              onClick={() => onGoToLogin('contato@petshopamigofiel.com.br')}
-              className="mt-6 w-full min-h-[44px] py-2.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm border border-slate-700 transition-all"
-            >
-              Entrar como Pet Shop
-            </button>
-          </div>
 
-          {/* Card 4: Escritório Contábil */}
-          <div className="bg-[#161B22] border border-slate-800 rounded-xl p-6 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-2.5 py-1 text-xs font-bold rounded bg-purple-500/20 text-purple-300">
-                  PERFIL ESCRITÓRIO
-                </span>
-                <FileText className="w-5 h-5 text-purple-400" />
+            <div className="p-6 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+                <Sliders className="w-4 h-4 text-[#0F4C81]" />
+                <span>Transbordo humano sem atrito</span>
               </div>
-              <h3 className="text-lg font-bold text-white">Prime Contabilidade</h3>
-              <p className="text-sm text-slate-400 mt-2">
-                Habilita Recebimento de Contas/Boletos e Notas Fiscais pelo WhatsApp + Agenda de Reuniões Executivas.
+              <p className="text-sm text-[#4B5563] leading-relaxed">
+                Quando o cliente pede desconto especial, encomenda ou quer fechar pedido no balcão, a IA transfere a conversa e fica em silêncio enquanto sua equipe atende.
               </p>
             </div>
-            <button
-              onClick={() => onGoToLogin('contato@primecontabil.com.br')}
-              className="mt-6 w-full min-h-[44px] py-2.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm border border-slate-700 transition-all"
-            >
-              Entrar como Escritório
-            </button>
           </div>
         </div>
       </section>
 
-      {/* Architecture Highlights */}
-      <section id="arquitetura" className="py-16 border-t border-slate-800/60 bg-[#161B22]/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-xl bg-[#0D1117] border border-slate-800">
-            <Zap className="w-7 h-7 text-emerald-400 mb-3" />
-            <h4 className="font-bold text-white text-lg">Alta Concorrência & Debounce</h4>
-            <p className="text-sm text-slate-400 mt-2">
-              Agrupa rajadas de mensagens picadas do cliente em uma janela inteligente de 4.5s antes de acionar o Gemini 2.5 Flash.
-            </p>
-          </div>
-          <div className="p-6 rounded-xl bg-[#0D1117] border border-slate-800">
-            <Clock className="w-7 h-7 text-emerald-400 mb-3" />
-            <h4 className="font-bold text-white text-lg">Horários & Feriados por Loja</h4>
-            <p className="text-sm text-slate-400 mt-2">
-              Cálculo automático de fuso horário, intervalos de almoço e feriados locais. O bot sabe exatamente se a loja está aberta ou fechada.
-            </p>
-          </div>
-          <div className="p-6 rounded-xl bg-[#0D1117] border border-slate-800">
-            <ShieldCheck className="w-7 h-7 text-emerald-400 mb-3" />
-            <h4 className="font-bold text-white text-lg">Isolamento Multi-Tenant</h4>
-            <p className="text-sm text-slate-400 mt-2">
-              Cada empresa possui seu próprio catálogo, sessão da Evolution API, regras de desconto e módulos liberados sob medida.
-            </p>
-          </div>
+      <footer className="mt-auto py-8 border-t border-[#DCE2EA] bg-[#F6F8FA]">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#4B5563]">
+          <div>Neoxy.ai — Plataforma Multi-Tenant de Atendimento e Gestão Operacional</div>
+          <div>Evolution API v2 + Gemini 2.5 Flash</div>
         </div>
-      </section>
-
-      <footer className="mt-auto py-8 border-t border-slate-800/80 text-center text-xs text-slate-500">
-        Neoxy.ai SaaS Platform © 2026 — Arquitetura Multi-Tenant Escalável com Gemini 2.5 Flash & Evolution API
       </footer>
     </div>
   );

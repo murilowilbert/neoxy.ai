@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowLeft, Lock, Mail, Building2, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Lock, Mail, Building2, User, AlertCircle } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 
 interface AuthPageProps {
@@ -76,60 +76,65 @@ export function AuthPage({
   }
 
   return (
-    <div className="min-h-screen bg-[#0D1117] text-slate-100 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen bg-[#F6F8FA] text-[#111827] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-lg">
         <button
           onClick={onBackToLanding}
-          className="min-h-[44px] inline-flex items-center gap-2 text-sm text-slate-400 hover:text-emerald-400 mb-6 transition-colors"
+          className="min-h-[40px] inline-flex items-center gap-2 text-sm text-[#4B5563] hover:text-[#111827] mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Voltar para a página inicial
+          <span>Voltar para a apresentação</span>
         </button>
 
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <Bot className="w-6 h-6 text-slate-950" />
+        <div className="mb-6">
+          <div className="flex items-baseline gap-1.5 mb-2">
+            <span className="text-2xl font-bold tracking-tight text-[#111827]">neoxy</span>
+            <span className="text-xs font-semibold text-[#0F4C81] bg-[#0F4C81]/10 px-1.5 py-0.5 rounded">
+              .ai
+            </span>
           </div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-white">
-              {mode === 'login' ? 'Acessar Painel Neoxy.ai' : 'Criar Conta Empresarial'}
-            </h1>
-            <p className="text-xs text-slate-400">
-              {mode === 'login'
-                ? 'Entre para gerenciar seu atendimento, estoque, agenda ou documentos.'
-                : 'Configure sua empresa e libere os módulos ideais para o seu negócio.'}
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-[#111827]">
+            {mode === 'login' ? 'Entrar no painel operacional' : 'Cadastrar nova empresa'}
+          </h1>
+          <p className="text-sm text-[#4B5563] mt-1">
+            {mode === 'login'
+              ? 'Gerencie horários, catálogo, agenda, documentos e conversas do WhatsApp.'
+              : 'Escolha o ramo da empresa para habilitar os módulos correspondentes.'}
+          </p>
         </div>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-[#161B22] border border-slate-800 py-8 px-6 shadow-2xl rounded-2xl sm:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-lg">
+        <div className="bg-white border border-[#C4CDD8] p-6 sm:p-8 rounded">
           {/* Mode Switcher */}
-          <div className="grid grid-cols-2 gap-2 p-1 bg-[#0D1117] rounded-xl border border-slate-800 mb-6">
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#EDF1F5] rounded border border-[#DCE2EA] mb-6">
             <button
               type="button"
               onClick={() => { setMode('login'); setError(''); }}
-              className={`min-h-[40px] text-sm font-semibold rounded-lg transition-all ${
-                mode === 'login' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'
+              className={`min-h-[38px] text-sm font-semibold rounded transition-colors ${
+                mode === 'login'
+                  ? 'bg-white text-[#111827] border border-[#C4CDD8]'
+                  : 'text-[#4B5563] hover:text-[#111827]'
               }`}
             >
-              Já tenho conta
+              Acessar conta existente
             </button>
             <button
               type="button"
               onClick={() => { setMode('register'); setError(''); }}
-              className={`min-h-[40px] text-sm font-semibold rounded-lg transition-all ${
-                mode === 'register' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'
+              className={`min-h-[38px] text-sm font-semibold rounded transition-colors ${
+                mode === 'register'
+                  ? 'bg-white text-[#111827] border border-[#C4CDD8]'
+                  : 'text-[#4B5563] hover:text-[#111827]'
               }`}
             >
-              Cadastrar Empresa
+              Criar conta empresarial
             </button>
           </div>
 
           {error && (
-            <div className="mb-6 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2.5 text-sm text-red-300">
-              <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            <div className="mb-6 p-3.5 rounded bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-800">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
@@ -138,65 +143,65 @@ export function AuthPage({
             {mode === 'register' && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Seu Nome Completo
+                  <label className="block text-sm font-medium text-[#111827] mb-1.5">
+                    Nome do responsável
                   </label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                    <User className="w-4 h-4 text-[#6B7280] absolute left-3.5 top-3.5" />
                     <input
                       type="text"
                       required
                       value={userName}
                       onChange={e => setUserName(e.target.value)}
                       placeholder="Ex: Murilo Wilbert"
-                      className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-[#0D1117] border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full min-h-[42px] pl-10 pr-4 py-2 bg-[#F6F8FA] border border-[#C4CDD8] rounded text-sm text-[#111827] focus:outline-none focus:border-[#0F4C81]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Nome do Estabelecimento / Empresa
+                  <label className="block text-sm font-medium text-[#111827] mb-1.5">
+                    Nome comercial do estabelecimento
                   </label>
                   <div className="relative">
-                    <Building2 className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                    <Building2 className="w-4 h-4 text-[#6B7280] absolute left-3.5 top-3.5" />
                     <input
                       type="text"
                       required
                       value={companyName}
                       onChange={e => setCompanyName(e.target.value)}
-                      placeholder="Ex: Ótica Visão Clara ou Clínica Sorriso"
-                      className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-[#0D1117] border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                      placeholder="Ex: Ferragens Central ou Clínica Vida"
+                      className="w-full min-h-[42px] pl-10 pr-4 py-2 bg-[#F6F8FA] border border-[#C4CDD8] rounded text-sm text-[#111827] focus:outline-none focus:border-[#0F4C81]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Perfil de Negócio (Define os Módulos do Sistema)
+                  <label className="block text-sm font-medium text-[#111827] mb-1.5">
+                    Perfil de operação (define os módulos do painel)
                   </label>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
-                      { id: 'RETAIL', label: 'Comércio & Estoque', desc: 'Produtos, Planilha, Preços' },
-                      { id: 'SERVICES', label: 'Serviços & Agenda', desc: 'Serviços, Horários, Clínica' },
-                      { id: 'OFFICE', label: 'Escritório & Contas', desc: 'Boletos, Docs, Reuniões' },
-                      { id: 'HYBRID', label: 'Completo (Híbrido)', desc: 'Todos os Módulos Ativos' }
+                      { id: 'RETAIL', label: 'Comércio & Estoque', desc: 'Produtos, planilha e preços' },
+                      { id: 'SERVICES', label: 'Serviços & Agenda', desc: 'Procedimentos e horários' },
+                      { id: 'OFFICE', label: 'Escritório & Contas', desc: 'Boletos, notas e reuniões' },
+                      { id: 'HYBRID', label: 'Operação Completa', desc: 'Todos os módulos habilitados' }
                     ].map(type => (
                       <button
                         key={type.id}
                         type="button"
                         onClick={() => setBusinessType(type.id as any)}
-                        className={`p-3 rounded-xl border text-left transition-all ${
+                        className={`p-3 rounded border text-left transition-colors ${
                           businessType === type.id
-                            ? 'bg-emerald-500/15 border-emerald-500 text-white'
-                            : 'bg-[#0D1117] border-slate-800 text-slate-400 hover:text-slate-200'
+                            ? 'bg-[#0F4C81]/10 border-[#0F4C81] text-[#111827]'
+                            : 'bg-[#F6F8FA] border-[#DCE2EA] text-[#4B5563] hover:text-[#111827]'
                         }`}
                       >
                         <div className="text-xs font-bold flex items-center justify-between">
-                          {type.label}
-                          {businessType === type.id && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                          <span>{type.label}</span>
+                          {businessType === type.id && <span className="w-2 h-2 rounded-full bg-[#0F4C81]" />}
                         </div>
-                        <div className="text-[11px] opacity-75 mt-0.5">{type.desc}</div>
+                        <div className="text-[11px] text-[#4B5563] mt-0.5">{type.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -205,35 +210,35 @@ export function AuthPage({
             )}
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                E-mail Corporativo
+              <label className="block text-sm font-medium text-[#111827] mb-1.5">
+                E-mail de acesso
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                <Mail className="w-4 h-4 text-[#6B7280] absolute left-3.5 top-3.5" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="seu@email.com.br"
-                  className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-[#0D1117] border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="contato@empresa.com.br"
+                  className="w-full min-h-[42px] pl-10 pr-4 py-2 bg-[#F6F8FA] border border-[#C4CDD8] rounded text-sm text-[#111827] focus:outline-none focus:border-[#0F4C81]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                Senha de Acesso
+              <label className="block text-sm font-medium text-[#111827] mb-1.5">
+                Senha
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                <Lock className="w-4 h-4 text-[#6B7280] absolute left-3.5 top-3.5" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-[#0D1117] border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full min-h-[42px] pl-10 pr-4 py-2 bg-[#F6F8FA] border border-[#C4CDD8] rounded text-sm text-[#111827] focus:outline-none focus:border-[#0F4C81]"
                 />
               </div>
             </div>
@@ -241,50 +246,54 @@ export function AuthPage({
             <button
               type="submit"
               disabled={loading}
-              className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all"
+              className="w-full min-h-[44px] py-2.5 px-4 rounded bg-[#0F4C81] hover:bg-[#0B3961] disabled:opacity-50 text-white font-semibold text-sm transition-colors"
             >
               {loading
-                ? 'Autenticando...'
+                ? 'Validando credenciais...'
                 : mode === 'login'
-                ? 'Entrar no Sistema'
-                : 'Criar Minha Conta e Acessar Painel'}
+                ? 'Entrar no painel'
+                : 'Concluir cadastro e abrir painel'}
             </button>
           </form>
 
-          {/* Quick Demo Logins */}
+          {/* Quick Demo Credentials List */}
           {mode === 'login' && (
-            <div className="mt-6 pt-6 border-t border-slate-800">
-              <div className="text-xs font-semibold text-slate-400 mb-3">
-                ⚡ Preenchimento Rápido de Demonstração (Senha: <code className="text-emerald-400">neoxy123</code>):
+            <div className="mt-6 pt-6 border-t border-[#DCE2EA]">
+              <div className="text-xs font-medium text-[#4B5563] mb-3">
+                Contas demonstrativas pré-configuradas (senha padrão: <strong className="text-[#111827]">neoxy123</strong>):
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => quickFill('admin@neoxy.ai')}
-                  className="px-3 py-2 text-xs font-medium rounded-lg bg-[#0D1117] hover:bg-slate-800 border border-emerald-500/30 text-emerald-300 text-left"
+                  className="px-3 py-2 text-xs rounded border border-[#C4CDD8] bg-[#F6F8FA] hover:bg-[#EDF1F5] text-left transition-colors"
                 >
-                  👑 Super Admin (Master)
+                  <div className="font-bold text-[#111827]">Painel Master (Super Admin)</div>
+                  <div className="text-[11px] text-[#4B5563]">admin@neoxy.ai</div>
                 </button>
                 <button
                   type="button"
                   onClick={() => quickFill('contato@ferragensmarlene.com.br')}
-                  className="px-3 py-2 text-xs font-medium rounded-lg bg-[#0D1117] hover:bg-slate-800 border border-slate-800 text-slate-300 text-left"
+                  className="px-3 py-2 text-xs rounded border border-[#DCE2EA] bg-[#F6F8FA] hover:bg-[#EDF1F5] text-left transition-colors"
                 >
-                  🛠️ Ferragens Marlene
+                  <div className="font-bold text-[#111827]">Ferragens Marlene (Varejo)</div>
+                  <div className="text-[11px] text-[#4B5563]">contato@ferragensmarlene.com.br</div>
                 </button>
                 <button
                   type="button"
                   onClick={() => quickFill('contato@petshopamigofiel.com.br')}
-                  className="px-3 py-2 text-xs font-medium rounded-lg bg-[#0D1117] hover:bg-slate-800 border border-slate-800 text-slate-300 text-left"
+                  className="px-3 py-2 text-xs rounded border border-[#DCE2EA] bg-[#F6F8FA] hover:bg-[#EDF1F5] text-left transition-colors"
                 >
-                  🐾 Pet Shop (Serviços)
+                  <div className="font-bold text-[#111827]">Pet Shop Amigo Fiel (Serviços)</div>
+                  <div className="text-[11px] text-[#4B5563]">contato@petshopamigofiel.com.br</div>
                 </button>
                 <button
                   type="button"
                   onClick={() => quickFill('contato@primecontabil.com.br')}
-                  className="px-3 py-2 text-xs font-medium rounded-lg bg-[#0D1117] hover:bg-slate-800 border border-slate-800 text-slate-300 text-left"
+                  className="px-3 py-2 text-xs rounded border border-[#DCE2EA] bg-[#F6F8FA] hover:bg-[#EDF1F5] text-left transition-colors"
                 >
-                  📄 Escritório Contábil
+                  <div className="font-bold text-[#111827]">Prime Contabilidade (Escritório)</div>
+                  <div className="text-[11px] text-[#4B5563]">contato@primecontabil.com.br</div>
                 </button>
               </div>
             </div>

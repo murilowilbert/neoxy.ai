@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Bot,
   LayoutDashboard,
   MessageSquare,
   PackageSearch,
   Calendar,
   FileText,
   Clock,
-  Sparkles,
-  ShieldAlert,
   LogOut,
   Plus,
   Send,
-  CheckCircle2,
   QrCode,
   UserCheck,
   Building2,
   Trash2,
   Save,
   RefreshCw,
-  Sliders
+  Sliders,
+  Layers,
+  Terminal
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 
@@ -49,7 +47,6 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
   const [appointments, setAppointments] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [inboxSessions, setInboxSessions] = useState<any[]>([]);
-  const [loadingData, setLoadingData] = useState(false);
   const [toast, setToast] = useState<string>('');
 
   // Simulator State
@@ -115,7 +112,6 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
   }, [activeTab]);
 
   async function loadTenantTabContent(slug: string, tab: string) {
-    setLoadingData(true);
     try {
       if (tab === 'overview') {
         const res = await apiFetch(`/api/tenants/${slug}/metrics`);
@@ -138,8 +134,6 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoadingData(false);
     }
   }
 
@@ -181,7 +175,7 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
         })
       });
       await onRefreshSession();
-      showNotification('✅ Configurações, horários e diretrizes da IA salvos com sucesso!');
+      showNotification('Configurações, horários e diretrizes salvos.');
     } catch (err: any) {
       alert(err.message);
     }
@@ -196,7 +190,7 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
       });
       setNewProduct({ code: '', name: '', price: '', stockQty: '', category: '' });
       loadTenantTabContent(currentTenant.slug, 'stock');
-      showNotification('📦 Produto cadastrado/atualizado no catálogo!');
+      showNotification('Produto registrado no catálogo.');
     } catch (err: any) {
       alert(err.message);
     }
@@ -216,7 +210,7 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
       });
       setNewService({ name: '', durationMinutes: '45', price: '', description: '' });
       loadTenantTabContent(currentTenant.slug, 'services');
-      showNotification('✨ Serviço adicionado com sucesso!');
+      showNotification('Serviço adicionado ao catálogo.');
     } catch (err: any) {
       alert(err.message);
     }
@@ -231,7 +225,7 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
       });
       setNewAppointment({ customerName: '', customerPhone: '', scheduledAt: '', notes: '' });
       loadTenantTabContent(currentTenant.slug, 'appointments');
-      showNotification('📅 Horário agendado com sucesso!');
+      showNotification('Horário agendado.');
     } catch (err: any) {
       alert(err.message);
     }
@@ -246,7 +240,7 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
       });
       setNewDoc({ title: '', docType: 'BOLETO', customerName: '', customerPhone: '', amount: '', dueDate: '', aiSummary: '' });
       loadTenantTabContent(currentTenant.slug, 'documents');
-      showNotification('📄 Conta/Documento protocolado com sucesso!');
+      showNotification('Documento protocolado.');
     } catch (err: any) {
       alert(err.message);
     }
@@ -258,7 +252,7 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
       body: JSON.stringify({ ...doc, status })
     });
     loadTenantTabContent(currentTenant.slug, 'documents');
-    showNotification(`Status atualizado para ${status}`);
+    showNotification(`Status alterado para ${status}`);
   }
 
   async function handleToggleModuleForTenant(targetTenant: any, moduleName: string) {
@@ -272,7 +266,7 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
       body: JSON.stringify({ enabledModules: updatedMods })
     });
     await onRefreshSession();
-    showNotification(`🔧 Módulo "${moduleName}" atualizado para ${targetTenant.name}!`);
+    showNotification(`Módulo "${moduleName}" atualizado para ${targetTenant.name}.`);
   }
 
   async function handleSendTestChat(e: React.FormEvent) {
@@ -302,48 +296,46 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
 
   // Dynamic Sidebar Navigation Items based on tenant's enabledModules
   const navItems = [
-    { id: 'overview', label: 'Visão Geral', icon: LayoutDashboard, visible: true },
-    { id: 'inbox', label: 'Conversas & Handoff', icon: MessageSquare, visible: true },
-    { id: 'stock', label: 'Produtos & Estoque', icon: PackageSearch, visible: enabledModules.includes('stock') },
-    { id: 'services', label: 'Catálogo de Serviços', icon: Sparkles, visible: enabledModules.includes('services') },
-    { id: 'appointments', label: 'Agenda & Horários', icon: Calendar, visible: enabledModules.includes('appointments') },
-    { id: 'documents', label: 'Contas & Documentos', icon: FileText, visible: enabledModules.includes('documents') },
-    { id: 'hours', label: 'Horários & Dados da Empresa', icon: Clock, visible: true },
-    { id: 'ai-brain', label: 'Personalidade & Simulador IA', icon: Bot, visible: true },
-    { id: 'whatsapp', label: 'Conexão WhatsApp (QR)', icon: QrCode, visible: true },
-    { id: 'super-admin', label: 'Painel Master (Liberar Funções)', icon: Sliders, visible: user.role === 'SUPER_ADMIN' }
+    { id: 'overview', label: 'Resumo operacional', icon: LayoutDashboard, visible: true },
+    { id: 'inbox', label: 'Conversas & transbordo', icon: MessageSquare, visible: true },
+    { id: 'stock', label: 'Produtos & estoque', icon: PackageSearch, visible: enabledModules.includes('stock') },
+    { id: 'services', label: 'Catálogo de serviços', icon: Layers, visible: enabledModules.includes('services') },
+    { id: 'appointments', label: 'Agenda de horários', icon: Calendar, visible: enabledModules.includes('appointments') },
+    { id: 'documents', label: 'Contas & documentos', icon: FileText, visible: enabledModules.includes('documents') },
+    { id: 'hours', label: 'Expediente & cadastro', icon: Clock, visible: true },
+    { id: 'ai-brain', label: 'Regras & simulador', icon: Terminal, visible: true },
+    { id: 'whatsapp', label: 'Conexão WhatsApp', icon: QrCode, visible: true },
+    { id: 'super-admin', label: 'Gerenciar módulos (Master)', icon: Sliders, visible: user.role === 'SUPER_ADMIN' }
   ];
 
   return (
-    <div className="min-h-screen bg-[#0D1117] text-slate-100 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[#F6F8FA] text-[#111827] flex flex-col lg:flex-row">
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 px-5 py-3.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm shadow-2xl flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5" />
-          {toast}
+        <div className="fixed bottom-5 right-5 z-50 px-4 py-3 rounded bg-[#111827] text-white font-medium text-sm border border-[#374151] flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+          <span>{toast}</span>
         </div>
       )}
 
-      {/* Sidebar */}
-      <aside className="w-full lg:w-72 bg-[#161B22] border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col shrink-0">
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500 flex items-center justify-center">
-              <Bot className="w-5 h-5 text-slate-950" />
-            </div>
-            <div>
-              <div className="font-extrabold text-white leading-none">neoxy<span className="text-emerald-400">.ai</span></div>
-              <div className="text-[11px] text-slate-400 mt-0.5">
-                {user.role === 'SUPER_ADMIN' ? 'Modo Super Admin' : 'Painel Empresarial'}
-              </div>
-            </div>
+      {/* Left Sidebar — Industrial ERP Rail */}
+      <aside className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-[#DCE2EA] flex flex-col shrink-0">
+        <div className="p-4 border-b border-[#DCE2EA] flex items-center justify-between">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-lg font-bold tracking-tight text-[#111827]">neoxy</span>
+            <span className="text-xs font-semibold text-[#0F4C81] bg-[#0F4C81]/10 px-1.5 py-0.5 rounded">
+              .ai
+            </span>
           </div>
+          <span className="text-[11px] font-medium text-[#4B5563]">
+            {user.role === 'SUPER_ADMIN' ? 'Master' : 'Empresa'}
+          </span>
         </div>
 
         {/* Tenant Switcher */}
-        <div className="p-4 border-b border-slate-800 bg-[#0D1117]/50">
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-            Estabelecimento Ativo:
+        <div className="p-4 border-b border-[#DCE2EA] bg-[#F6F8FA]">
+          <label className="block text-xs font-medium text-[#4B5563] mb-1.5">
+            Estabelecimento selecionado
           </label>
           <select
             value={selectedSlug}
@@ -351,29 +343,29 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
               setSelectedSlug(e.target.value);
               setActiveTab('overview');
             }}
-            className="w-full min-h-[42px] px-3 py-2 rounded-lg bg-[#161B22] border border-slate-700 text-sm font-semibold text-white focus:outline-none focus:border-emerald-500"
+            className="w-full min-h-[38px] px-3 py-1.5 rounded bg-white border border-[#C4CDD8] text-sm font-semibold text-[#111827] focus:outline-none focus:border-[#0F4C81]"
           >
             {tenants.map(t => (
               <option key={t.slug} value={t.slug}>
-                {t.name} ({t.businessType})
+                {t.name}
               </option>
             ))}
           </select>
 
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <div className="mt-2.5 flex flex-wrap gap-1">
             {enabledModules.map(mod => (
               <span
                 key={mod}
-                className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                className="text-[11px] px-2 py-0.5 rounded bg-white border border-[#C4CDD8] text-[#4B5563]"
               >
-                +{mod}
+                {mod}
               </span>
             ))}
           </div>
         </div>
 
         {/* Dynamic Menu */}
-        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+        <nav className="p-3 space-y-0.5 flex-1 overflow-y-auto">
           {navItems.filter(item => item.visible).map(item => {
             const Icon = item.icon;
             const active = activeTab === item.id;
@@ -381,10 +373,10 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-all ${
+                className={`w-full min-h-[40px] px-3 py-2 rounded text-sm flex items-center gap-2.5 transition-colors ${
                   active
-                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/15'
-                    : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                    ? 'bg-[#0F4C81] text-white font-semibold'
+                    : 'text-[#4B5563] hover:bg-[#EDF1F5] hover:text-[#111827] font-medium'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
@@ -395,18 +387,18 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
         </nav>
 
         {/* User Footer */}
-        <div className="p-4 border-t border-slate-800 flex items-center justify-between bg-[#0D1117]/40">
+        <div className="p-4 border-t border-[#DCE2EA] flex items-center justify-between bg-[#F6F8FA]">
           <div className="truncate pr-2">
-            <div className="text-xs font-bold text-white truncate">{user.name}</div>
-            <div className="text-[11px] text-slate-400 truncate">{user.email}</div>
+            <div className="text-xs font-bold text-[#111827] truncate">{user.name}</div>
+            <div className="text-[11px] text-[#4B5563] truncate">{user.email}</div>
           </div>
           <button
             onClick={() => {
               setToken(null);
               onLogout();
             }}
-            title="Sair do Sistema"
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-300 transition-colors"
+            title="Sair da conta"
+            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded border border-[#C4CDD8] bg-white hover:bg-red-50 text-[#4B5563] hover:text-red-700 transition-colors"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -416,87 +408,92 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
       {/* Main Content Area */}
       <main className="flex-1 p-6 lg:p-10 overflow-y-auto">
         {/* Top Bar Info */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-6 mb-8 border-b border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-6 mb-8 border-b border-[#DCE2EA]">
           <div>
             <div className="flex items-center gap-2.5">
-              <Building2 className="w-5 h-5 text-emerald-400" />
-              <h1 className="text-2xl font-extrabold text-white">{currentTenant?.name}</h1>
-              <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                Perfil: {currentTenant?.businessType}
+              <Building2 className="w-5 h-5 text-[#0F4C81]" />
+              <h1 className="text-2xl font-bold text-[#111827]">{currentTenant?.name}</h1>
+              <span className="text-xs px-2.5 py-0.5 rounded bg-white border border-[#C4CDD8] text-[#4B5563] font-medium">
+                {currentTenant?.businessType}
               </span>
             </div>
-            <p className="text-sm text-slate-400 mt-1">
-              {currentTenant?.parsedSettings?.storeInfo?.about || 'Ambiente configurado e isolado para este estabelecimento.'}
+            <p className="text-sm text-[#4B5563] mt-1">
+              {currentTenant?.parsedSettings?.storeInfo?.about || 'Ambiente operacional isolado.'}
             </p>
           </div>
 
           <button
             onClick={() => setActiveTab('ai-brain')}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-sm font-semibold flex items-center gap-2 transition-all"
+            className="min-h-[40px] px-4 py-2 rounded bg-white hover:bg-[#EDF1F5] border border-[#C4CDD8] text-[#111827] text-sm font-semibold flex items-center gap-2 transition-colors"
           >
-            <Bot className="w-4 h-4" />
-            Testar Bot desta Empresa
+            <Terminal className="w-4 h-4 text-[#0F4C81]" />
+            <span>Simular conversa</span>
           </button>
         </div>
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <div className="bg-[#161B22] border border-slate-800 p-5 rounded-2xl">
-                <div className="text-xs font-semibold uppercase text-slate-400">Clientes Atendidos</div>
-                <div className="text-3xl font-extrabold text-white mt-2">{metrics?.activeSessions ?? 0}</div>
-                <div className="text-xs text-emerald-400 mt-1">Atendimento 24h Ativo</div>
+            {/* Joined Metric Strip */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-white border border-[#C4CDD8] rounded divide-y sm:divide-y-0 sm:divide-x divide-[#DCE2EA]">
+              <div className="p-5">
+                <div className="text-xs font-medium text-[#4B5563]">Clientes em atendimento</div>
+                <div className="tabular-data text-3xl font-bold text-[#111827] mt-1">{metrics?.activeSessions ?? 0}</div>
+                <div className="text-xs text-[#166534] mt-1 font-medium">Recepção automática ativa</div>
               </div>
 
               {enabledModules.includes('stock') && (
-                <div className="bg-[#161B22] border border-slate-800 p-5 rounded-2xl">
-                  <div className="text-xs font-semibold uppercase text-slate-400">Itens no Catálogo</div>
-                  <div className="text-3xl font-extrabold text-white mt-2">{metrics?.totalCatalog ?? 0}</div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    Fonte: {currentTenant?.parsedSettings?.catalogSource?.type === 'google_sheets_csv' ? 'Google Sheets + Banco' : 'Banco Dedicado'}
+                <div className="p-5">
+                  <div className="text-xs font-medium text-[#4B5563]">Itens cadastrados</div>
+                  <div className="tabular-data text-3xl font-bold text-[#111827] mt-1">{metrics?.totalCatalog ?? 0}</div>
+                  <div className="text-xs text-[#4B5563] mt-1">
+                    {currentTenant?.parsedSettings?.catalogSource?.type === 'google_sheets_csv'
+                      ? 'Planilha Google Sheets + Local'
+                      : 'Catálogo em banco local'}
                   </div>
                 </div>
               )}
 
               {enabledModules.includes('appointments') && (
-                <div className="bg-[#161B22] border border-slate-800 p-5 rounded-2xl">
-                  <div className="text-xs font-semibold uppercase text-slate-400">Horários Agendados</div>
-                  <div className="text-3xl font-extrabold text-cyan-400 mt-2">{metrics?.totalAppointments ?? 0}</div>
-                  <div className="text-xs text-slate-400 mt-1">Confirmados na agenda</div>
+                <div className="p-5">
+                  <div className="text-xs font-medium text-[#4B5563]">Compromissos na agenda</div>
+                  <div className="tabular-data text-3xl font-bold text-[#111827] mt-1">{metrics?.totalAppointments ?? 0}</div>
+                  <div className="text-xs text-[#4B5563] mt-1">Horários confirmados</div>
                 </div>
               )}
 
               {enabledModules.includes('documents') && (
-                <div className="bg-[#161B22] border border-slate-800 p-5 rounded-2xl">
-                  <div className="text-xs font-semibold uppercase text-slate-400">Contas / Boletos Pendentes</div>
-                  <div className="text-3xl font-extrabold text-purple-400 mt-2">{metrics?.pendingDocuments ?? 0}</div>
-                  <div className="text-xs text-slate-400 mt-1">Extraídos pelo Gemini Vision</div>
+                <div className="p-5">
+                  <div className="text-xs font-medium text-[#4B5563]">Documentos pendentes</div>
+                  <div className="tabular-data text-3xl font-bold text-[#111827] mt-1">{metrics?.pendingDocuments ?? 0}</div>
+                  <div className="text-xs text-[#4B5563] mt-1">Boletos e notas recebidos</div>
                 </div>
               )}
 
-              <div className="bg-[#161B22] border border-slate-800 p-5 rounded-2xl">
-                <div className="text-xs font-semibold uppercase text-slate-400">Aguardando Humano (Handoff)</div>
-                <div className="text-3xl font-extrabold text-amber-400 mt-2">{metrics?.handoffSessions ?? 0}</div>
-                <div className="text-xs text-slate-400 mt-1">Conversas transferidas ao balcão</div>
+              <div className="p-5">
+                <div className="text-xs font-medium text-[#4B5563]">Aguardando atendente humano</div>
+                <div className="tabular-data text-3xl font-bold text-[#0F4C81] mt-1">{metrics?.handoffSessions ?? 0}</div>
+                <div className="text-xs text-[#4B5563] mt-1">Em pausa humana (Handoff)</div>
               </div>
             </div>
 
             {/* Missed Demands for Retail */}
             {enabledModules.includes('stock') && metrics?.missedDemands?.length > 0 && (
-              <div className="bg-[#161B22] border border-slate-800 rounded-2xl p-6">
-                <h3 className="text-lg font-bold text-white mb-1">
-                  📊 Demandas Perdidas (Produtos procurados no WhatsApp sem estoque)
-                </h3>
-                <p className="text-xs text-slate-400 mb-4">
-                  A IA registra automaticamente quando clientes pedem itens que sua loja ainda não cadastrou:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-white border border-[#C4CDD8] rounded overflow-hidden">
+                <div className="p-5 border-b border-[#DCE2EA]">
+                  <h3 className="text-base font-bold text-[#111827]">
+                    Demandas perdidas (produtos procurados no WhatsApp sem saldo)
+                  </h3>
+                  <p className="text-xs text-[#4B5563] mt-0.5">
+                    Itens solicitados pelos clientes que não constavam no catálogo no momento da busca.
+                  </p>
+                </div>
+                <div className="divide-y divide-[#DCE2EA]">
                   {metrics.missedDemands.map((md: any) => (
-                    <div key={md.id} className="flex items-center justify-between p-3.5 rounded-xl bg-[#0D1117] border border-slate-800">
-                      <span className="font-medium text-sm text-slate-200">{md.productName}</span>
-                      <span className="px-2.5 py-1 text-xs font-bold rounded bg-amber-500/20 text-amber-300">
-                        {md.searchCount} pedidos
+                    <div key={md.id} className="px-5 py-3.5 flex items-center justify-between text-sm">
+                      <span className="font-medium text-[#111827]">{md.productName}</span>
+                      <span className="tabular-data text-xs px-2.5 py-1 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-[#111827] font-medium">
+                        {md.searchCount} solicitações
                       </span>
                     </div>
                   ))}
@@ -509,8 +506,8 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
         {/* TAB 2: STOCK & CATALOG (Retail / Hybrid) */}
         {activeTab === 'stock' && (
           <div className="space-y-8">
-            <div className="bg-[#161B22] border border-slate-800 rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4">Cadastrar / Atualizar Produto Específico</h3>
+            <div className="bg-white border border-[#C4CDD8] rounded p-6">
+              <h3 className="text-base font-bold text-[#111827] mb-4">Adicionar ou atualizar item no catálogo</h3>
               <form onSubmit={handleAddProduct} className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                 <input
                   type="text"
@@ -518,15 +515,15 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                   required
                   value={newProduct.code}
                   onChange={e => setNewProduct({ ...newProduct, code: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <input
                   type="text"
-                  placeholder="Nome do Produto"
+                  placeholder="Descrição do produto"
                   required
                   value={newProduct.name}
                   onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
-                  className="sm:col-span-2 min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="sm:col-span-2 min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <input
                   type="number"
@@ -535,44 +532,45 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                   required
                   value={newProduct.price}
                   onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <button
                   type="submit"
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2"
+                  className="min-h-[40px] px-4 py-2 rounded bg-[#0F4C81] hover:bg-[#0B3961] text-white font-semibold text-sm flex items-center justify-center gap-2"
                 >
-                  <Plus className="w-4 h-4" /> Salvar Item
+                  <Plus className="w-4 h-4" />
+                  <span>Salvar item</span>
                 </button>
               </form>
             </div>
 
-            <div className="bg-[#161B22] border border-slate-800 rounded-2xl overflow-hidden">
-              <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+            <div className="bg-white border border-[#C4CDD8] rounded overflow-hidden">
+              <div className="p-5 border-b border-[#DCE2EA] flex items-center justify-between bg-[#F6F8FA]">
                 <div>
-                  <h3 className="font-bold text-white">Itens Cadastrados neste Estabelecimento</h3>
+                  <h3 className="font-bold text-sm text-[#111827]">Catálogo de produtos do estabelecimento</h3>
                   {currentTenant?.parsedSettings?.catalogSource?.type === 'google_sheets_csv' && (
-                    <p className="text-xs text-emerald-400 mt-0.5">
-                      🔗 Sincronização Híbrida Ativa: Planilha Google Sheets (8.004 produtos) + Itens Locais abaixo
+                    <p className="text-xs text-[#166534] mt-0.5 font-medium">
+                      Sincronização ativa com planilha Google Sheets (8.004 produtos) + itens locais abaixo
                     </p>
                   )}
                 </div>
               </div>
-              <div className="divide-y divide-slate-800">
+              <div className="divide-y divide-[#DCE2EA]">
                 {catalog.map(item => (
-                  <div key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-800/30">
+                  <div key={item.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-[#F6F8FA]">
                     <div>
-                      <div className="font-semibold text-white text-sm">{item.name}</div>
-                      <div className="text-xs text-slate-400">
-                        Cód: {item.code} • Categoria: {item.category || 'Geral'} • Estoque: {item.stockQty} un
+                      <div className="font-semibold text-[#111827] text-sm">{item.name}</div>
+                      <div className="tabular-data text-xs text-[#4B5563] mt-0.5">
+                        Cód: {item.code} | Categoria: {item.category || 'Geral'} | Saldo: {item.stockQty} un
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="font-bold text-emerald-400 text-sm">
+                      <span className="tabular-data font-semibold text-[#111827] text-sm">
                         R$ {Number(item.price).toFixed(2)}
                       </span>
                       <button
                         onClick={() => handleDeleteProduct(item.id)}
-                        className="p-2 text-slate-400 hover:text-red-400"
+                        className="p-1.5 text-[#6B7280] hover:text-red-700"
                         title="Remover produto"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -588,16 +586,16 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
         {/* TAB 3: SERVICES (Clinics, Pet Shops, Consultancies) */}
         {activeTab === 'services' && (
           <div className="space-y-8">
-            <div className="bg-[#161B22] border border-slate-800 rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4">Adicionar Serviço ou Procedimento</h3>
+            <div className="bg-white border border-[#C4CDD8] rounded p-6">
+              <h3 className="text-base font-bold text-[#111827] mb-4">Cadastrar procedimento ou serviço</h3>
               <form onSubmit={handleAddService} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <input
                   type="text"
-                  placeholder="Nome do Serviço (ex: Banho e Tosa)"
+                  placeholder="Nome do serviço (ex: Banho e Tosa)"
                   required
                   value={newService.name}
                   onChange={e => setNewService({ ...newService, name: e.target.value })}
-                  className="sm:col-span-2 min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="sm:col-span-2 min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <input
                   type="number"
@@ -605,7 +603,7 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                   required
                   value={newService.durationMinutes}
                   onChange={e => setNewService({ ...newService, durationMinutes: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <input
                   type="number"
@@ -614,37 +612,39 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                   required
                   value={newService.price}
                   onChange={e => setNewService({ ...newService, price: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <input
                   type="text"
-                  placeholder="Descrição detalhada para a IA explicar ao cliente no WhatsApp"
+                  placeholder="Explicação detalhada para o atendente informar no WhatsApp"
                   value={newService.description}
                   onChange={e => setNewService({ ...newService, description: e.target.value })}
-                  className="sm:col-span-3 min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="sm:col-span-3 min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <button
                   type="submit"
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2"
+                  className="min-h-[40px] px-4 py-2 rounded bg-[#0F4C81] hover:bg-[#0B3961] text-white font-semibold text-sm flex items-center justify-center gap-2"
                 >
-                  <Plus className="w-4 h-4" /> Adicionar Serviço
+                  <Plus className="w-4 h-4" />
+                  <span>Adicionar</span>
                 </button>
               </form>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white border border-[#C4CDD8] rounded divide-y divide-[#DCE2EA]">
               {services.map(srv => (
-                <div key={srv.id} className="bg-[#161B22] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+                <div key={srv.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-white">{srv.name}</h4>
-                      <span className="text-sm font-extrabold text-emerald-400">R$ {Number(srv.price).toFixed(2)}</span>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-2">{srv.description}</p>
+                    <h4 className="font-bold text-sm text-[#111827]">{srv.name}</h4>
+                    <p className="text-xs text-[#4B5563] mt-1">{srv.description}</p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                    <span>⏱️ Duração estimada: {srv.durationMinutes} min</span>
-                    <span className="text-emerald-400 font-semibold">Ativo no WhatsApp</span>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className="tabular-data text-xs text-[#4B5563] bg-[#EDF1F5] px-2.5 py-1 rounded">
+                      {srv.durationMinutes} min
+                    </span>
+                    <span className="tabular-data font-bold text-sm text-[#111827]">
+                      R$ {Number(srv.price).toFixed(2)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -655,16 +655,16 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
         {/* TAB 4: APPOINTMENTS (Services & Offices) */}
         {activeTab === 'appointments' && (
           <div className="space-y-8">
-            <div className="bg-[#161B22] border border-slate-800 rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4">Agendar Novo Horário Manualmente</h3>
+            <div className="bg-white border border-[#C4CDD8] rounded p-6">
+              <h3 className="text-base font-bold text-[#111816] mb-4">Registrar agendamento manual</h3>
               <form onSubmit={handleAddAppointment} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <input
                   type="text"
-                  placeholder="Nome do Cliente / Paciente"
+                  placeholder="Nome do cliente"
                   required
                   value={newAppointment.customerName}
                   onChange={e => setNewAppointment({ ...newAppointment, customerName: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <input
                   type="text"
@@ -672,43 +672,44 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                   required
                   value={newAppointment.customerPhone}
                   onChange={e => setNewAppointment({ ...newAppointment, customerPhone: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <input
                   type="datetime-local"
                   required
                   value={newAppointment.scheduledAt}
                   onChange={e => setNewAppointment({ ...newAppointment, scheduledAt: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <button
                   type="submit"
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2"
+                  className="min-h-[40px] px-4 py-2 rounded bg-[#0F4C81] hover:bg-[#0B3961] text-white font-semibold text-sm flex items-center justify-center gap-2"
                 >
-                  <Calendar className="w-4 h-4" /> Confirmar Horário
+                  <Calendar className="w-4 h-4" />
+                  <span>Confirmar horário</span>
                 </button>
               </form>
             </div>
 
-            <div className="bg-[#161B22] border border-slate-800 rounded-2xl overflow-hidden">
-              <div className="p-5 border-b border-slate-800">
-                <h3 className="font-bold text-white">Agenda de Compromissos e Atendimentos</h3>
+            <div className="bg-white border border-[#C4CDD8] rounded overflow-hidden">
+              <div className="p-4 border-b border-[#DCE2EA] bg-[#F6F8FA]">
+                <h3 className="font-bold text-sm text-[#111827]">Compromissos agendados</h3>
               </div>
-              <div className="divide-y divide-slate-800">
+              <div className="divide-y divide-[#DCE2EA]">
                 {appointments.map(apt => (
                   <div key={apt.id} className="p-5 flex flex-wrap items-center justify-between gap-4">
                     <div>
-                      <div className="font-bold text-white text-sm">{apt.customerName}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">
-                        📱 {apt.customerPhone} • {apt.service?.name || 'Horário Marcado'}
+                      <div className="font-bold text-[#111827] text-sm">{apt.customerName}</div>
+                      <div className="tabular-data text-xs text-[#4B5563] mt-0.5">
+                        Tel: {apt.customerPhone} | {apt.service?.name || 'Atendimento agendado'}
                       </div>
-                      {apt.notes && <div className="text-xs text-slate-300 mt-1">📝 Obs: {apt.notes}</div>}
+                      {apt.notes && <div className="text-xs text-[#4B5563] mt-1">Observação: {apt.notes}</div>}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="px-3 py-1.5 rounded-lg bg-[#0D1117] border border-slate-700 text-xs font-semibold text-cyan-300">
+                      <span className="tabular-data px-3 py-1 rounded bg-[#EDF1F5] border border-[#C4CDD8] text-xs font-medium text-[#111827]">
                         {new Date(apt.scheduledAt).toLocaleString('pt-BR')}
                       </span>
-                      <span className="px-2.5 py-1 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300">
+                      <span className="px-2.5 py-1 rounded text-xs font-semibold bg-[#166534]/10 text-[#166534]">
                         {apt.status}
                       </span>
                     </div>
@@ -722,37 +723,37 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
         {/* TAB 5: DOCUMENTS & BILLS (Offices / Accounting / Financial) */}
         {activeTab === 'documents' && (
           <div className="space-y-8">
-            <div className="bg-[#161B22] border border-slate-800 rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-white mb-1">Protocolar Conta / Boleto / Documento</h3>
-              <p className="text-xs text-slate-400 mb-4">
-                Documentos enviados pelos clientes no WhatsApp aparecem aqui com leitura automática de valor e vencimento:
+            <div className="bg-white border border-[#C4CDD8] rounded p-6">
+              <h3 className="text-base font-bold text-[#111827] mb-1">Protocolar conta, boleto ou documento</h3>
+              <p className="text-xs text-[#4B5563] mb-4">
+                Arquivos recebidos pelo WhatsApp são listados abaixo com valor e vencimento identificados.
               </p>
               <form onSubmit={handleAddDocument} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <input
                   type="text"
-                  placeholder="Título (ex: Boleto Aluguel)"
+                  placeholder="Descrição (ex: Boleto Energia)"
                   required
                   value={newDoc.title}
                   onChange={e => setNewDoc({ ...newDoc, title: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <select
                   value={newDoc.docType}
                   onChange={e => setNewDoc({ ...newDoc, docType: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 >
-                  <option value="BOLETO">Boleto / Conta a Pagar</option>
+                  <option value="BOLETO">Boleto / Conta a pagar</option>
                   <option value="NOTA_FISCAL">Nota Fiscal (NF-e / NFS-e)</option>
-                  <option value="COMPROVANTE">Comprovante de Pagamento</option>
+                  <option value="COMPROVANTE">Comprovante de pagamento</option>
                   <option value="CONTRATO">Contrato / Documento</option>
                 </select>
                 <input
                   type="text"
-                  placeholder="Cliente / Empresa"
+                  placeholder="Nome do cliente / empresa"
                   required
                   value={newDoc.customerName}
                   onChange={e => setNewDoc({ ...newDoc, customerName: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <input
                   type="number"
@@ -760,61 +761,62 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                   placeholder="Valor R$"
                   value={newDoc.amount}
                   onChange={e => setNewDoc({ ...newDoc, amount: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <input
                   type="date"
                   value={newDoc.dueDate}
                   onChange={e => setNewDoc({ ...newDoc, dueDate: e.target.value })}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
                 <button
                   type="submit"
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2"
+                  className="min-h-[40px] px-4 py-2 rounded bg-[#0F4C81] hover:bg-[#0B3961] text-white font-semibold text-sm flex items-center justify-center gap-2"
                 >
-                  <Plus className="w-4 h-4" /> Registrar Conta
+                  <Plus className="w-4 h-4" />
+                  <span>Registrar protocolo</span>
                 </button>
               </form>
             </div>
 
-            <div className="space-y-4">
+            <div className="bg-white border border-[#C4CDD8] rounded divide-y divide-[#DCE2EA]">
               {documents.map(doc => (
-                <div key={doc.id} className="bg-[#161B22] border border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+                <div key={doc.id} className="p-5 flex flex-wrap items-center justify-between gap-4">
                   <div className="space-y-1 max-w-2xl">
-                    <div className="flex items-center gap-2.5">
-                      <span className="px-2.5 py-0.5 text-[11px] font-bold rounded bg-purple-500/20 text-purple-300">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 text-[11px] font-semibold rounded bg-[#EDF1F5] border border-[#C4CDD8] text-[#111827]">
                         {doc.docType}
                       </span>
-                      <h4 className="font-bold text-white text-base">{doc.title}</h4>
+                      <h4 className="font-bold text-[#111827] text-sm">{doc.title}</h4>
                     </div>
-                    <div className="text-xs text-slate-400">
-                      Enviado por: <strong>{doc.customerName}</strong> ({doc.customerPhone}) • Vencimento: <strong>{doc.dueDate || 'Não informado'}</strong>
+                    <div className="text-xs text-[#4B5563]">
+                      Remetente: <strong>{doc.customerName}</strong> ({doc.customerPhone}) | Vencimento: <strong className="tabular-data">{doc.dueDate || 'Não informado'}</strong>
                     </div>
                     {doc.aiSummary && (
-                      <div className="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 px-3 py-2 rounded-lg mt-2">
-                        🤖 <strong>Leitura da IA:</strong> {doc.aiSummary}
+                      <div className="text-xs text-[#112A1A] bg-[#EBF5EE] border border-[#BBDAC4] px-3 py-2 rounded mt-2">
+                        <strong>Resumo extraído:</strong> {doc.aiSummary}
                       </div>
                     )}
                   </div>
 
                   <div className="flex flex-col items-end gap-2">
                     {doc.amount && (
-                      <div className="text-lg font-extrabold text-white">
+                      <div className="tabular-data text-base font-bold text-[#111827]">
                         R$ {Number(doc.amount).toFixed(2)}
                       </div>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {['PENDING', 'REVIEWED', 'PAID'].map(st => (
                         <button
                           key={st}
                           onClick={() => handleUpdateDocStatus(doc, st)}
-                          className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
                             doc.status === st
-                              ? 'bg-emerald-500 text-slate-950'
-                              : 'bg-[#0D1117] text-slate-400 hover:text-white border border-slate-700'
+                              ? 'bg-[#0F4C81] text-white'
+                              : 'bg-[#F6F8FA] text-[#4B5563] hover:text-[#111827] border border-[#C4CDD8]'
                           }`}
                         >
-                          {st === 'PENDING' ? 'Pendente' : st === 'REVIEWED' ? 'Conferido' : 'Pago/Baixado'}
+                          {st === 'PENDING' ? 'Pendente' : st === 'REVIEWED' ? 'Conferido' : 'Baixado'}
                         </button>
                       ))}
                     </div>
@@ -828,71 +830,71 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
         {/* TAB 6: BUSINESS HOURS & GENERAL INFO */}
         {activeTab === 'hours' && (
           <form onSubmit={handleSaveSettings} className="space-y-8 max-w-4xl">
-            <div className="bg-[#161B22] border border-slate-800 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-white">Informações Padrão do Estabelecimento</h3>
+            <div className="bg-white border border-[#C4CDD8] rounded p-6 space-y-4">
+              <h3 className="text-base font-bold text-[#111827]">Dados cadastrais e operacionais</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Nome Comercial</label>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Nome comercial</label>
                   <input
                     type="text"
                     value={storeName}
                     onChange={e => setStoreName(e.target.value)}
-                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                    className="w-full min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Endereço Físico / Localização</label>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Endereço físico</label>
                   <input
                     type="text"
                     value={storeAddress}
                     onChange={e => setStoreAddress(e.target.value)}
-                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                    className="w-full min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Sobre a Empresa (Contexto Geral para a IA)</label>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Apresentação e ramo de atuação</label>
                   <textarea
                     rows={2}
                     value={storeAbout}
                     onChange={e => setStoreAbout(e.target.value)}
-                    className="w-full p-3.5 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                    className="w-full p-3 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Política de Entregas / Atendimento</label>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Regras de entrega / retirada</label>
                   <input
                     type="text"
                     value={deliveryPolicy}
                     onChange={e => setDeliveryPolicy(e.target.value)}
-                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                    className="w-full min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Formas de Pagamento Aceitas</label>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Meios de pagamento aceitos</label>
                   <input
                     type="text"
                     value={paymentMethods}
                     onChange={e => setPaymentMethods(e.target.value)}
-                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                    className="w-full min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#161B22] border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div className="bg-white border border-[#C4CDD8] rounded p-6 space-y-4">
               <div>
-                <h3 className="text-lg font-bold text-white">Horários de Funcionamento Semanal</h3>
-                <p className="text-xs text-slate-400">
-                  A IA verifica estes horários em tempo real antes de responder cada cliente no WhatsApp:
+                <h3 className="text-base font-bold text-[#111827]">Quadro de horários de funcionamento</h3>
+                <p className="text-xs text-[#4B5563]">
+                  O motor verifica automaticamente este quadro antes de responder clientes fora de hora.
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="divide-y divide-[#DCE2EA] border border-[#DCE2EA] rounded">
                 {['1', '2', '3', '4', '5', '6', '0'].map(dayKey => {
                   const ranges = schedule[dayKey] || [];
                   const isOpen = ranges.length > 0;
                   return (
-                    <div key={dayKey} className="p-3.5 rounded-xl bg-[#0D1117] border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                    <div key={dayKey} className="p-3.5 bg-[#F6F8FA] flex flex-wrap items-center justify-between gap-4">
                       <div className="flex items-center gap-3 min-w-[160px]">
                         <input
                           type="checkbox"
@@ -904,9 +906,9 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                               setSchedule({ ...schedule, [dayKey]: [] });
                             }
                           }}
-                          className="w-4 h-4 accent-emerald-500"
+                          className="w-4 h-4 accent-[#0F4C81]"
                         />
-                        <span className="text-sm font-semibold text-white">{DAY_NAMES[dayKey]}</span>
+                        <span className="text-sm font-medium text-[#111827]">{DAY_NAMES[dayKey]}</span>
                       </div>
 
                       {isOpen ? (
@@ -921,9 +923,9 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                                   copy[idx] = { ...copy[idx], start: e.target.value };
                                   setSchedule({ ...schedule, [dayKey]: copy });
                                 }}
-                                className="px-2.5 py-1.5 rounded-lg bg-[#161B22] border border-slate-700 text-xs text-white"
+                                className="tabular-data px-2.5 py-1 rounded bg-white border border-[#C4CDD8] text-xs text-[#111827]"
                               />
-                              <span className="text-xs text-slate-400">às</span>
+                              <span className="text-xs text-[#4B5563]">até</span>
                               <input
                                 type="time"
                                 value={r.end}
@@ -932,13 +934,13 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                                   copy[idx] = { ...copy[idx], end: e.target.value };
                                   setSchedule({ ...schedule, [dayKey]: copy });
                                 }}
-                                className="px-2.5 py-1.5 rounded-lg bg-[#161B22] border border-slate-700 text-xs text-white"
+                                className="tabular-data px-2.5 py-1 rounded bg-white border border-[#C4CDD8] text-xs text-[#111827]"
                               />
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-xs font-semibold text-red-400">Fechado</span>
+                        <span className="text-xs text-[#6B7280] font-medium">Fechado</span>
                       )}
                     </div>
                   );
@@ -948,9 +950,10 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
 
             <button
               type="submit"
-              className="min-h-[48px] px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+              className="min-h-[44px] px-6 py-2.5 rounded bg-[#0F4C81] hover:bg-[#0B3961] text-white font-semibold text-sm flex items-center gap-2"
             >
-              <Save className="w-4 h-4" /> Salvar Horários e Informações
+              <Save className="w-4 h-4" />
+              <span>Salvar expediente e dados</span>
             </button>
           </form>
         )}
@@ -958,90 +961,91 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
         {/* TAB 7: AI BRAIN & SIMULATOR */}
         {activeTab === 'ai-brain' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <form onSubmit={handleSaveSettings} className="lg:col-span-6 bg-[#161B22] border border-slate-800 rounded-2xl p-6 space-y-4">
-              <h3 className="text-lg font-bold text-white">Diretrizes & Personalidade ("Zero-Robô")</h3>
+            <form onSubmit={handleSaveSettings} className="lg:col-span-6 bg-white border border-[#C4CDD8] rounded p-6 space-y-4">
+              <h3 className="text-base font-bold text-[#111827]">Postura de atendimento e regras de negócio</h3>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Nome do Atendente Virtual</label>
+                <label className="block text-sm font-medium text-[#111827] mb-1">Nome do atendente responsável</label>
                 <input
                   type="text"
                   value={attendantName}
                   onChange={e => setAttendantName(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="w-full min-h-[40px] px-3 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Tom de Voz e Comportamento</label>
+                <label className="block text-sm font-medium text-[#111827] mb-1">Tom de conversa com o cliente</label>
                 <textarea
                   rows={3}
                   value={personaTone}
                   onChange={e => setPersonaTone(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="w-full p-3 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Resposta Padrão ao Pedirem Desconto (Handoff)</label>
+                <label className="block text-sm font-medium text-[#111827] mb-1">Orientação quando o cliente pedir desconto (Handoff)</label>
                 <textarea
                   rows={2}
                   value={discountMessage}
                   onChange={e => setDiscountMessage(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white"
+                  className="w-full p-3 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827]"
                 />
               </div>
               <button
                 type="submit"
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm flex items-center gap-2"
+                className="min-h-[42px] px-5 py-2 rounded bg-[#0F4C81] hover:bg-[#0B3961] text-white font-semibold text-sm flex items-center gap-2"
               >
-                <Save className="w-4 h-4" /> Atualizar Cérebro da IA
+                <Save className="w-4 h-4" />
+                <span>Salvar diretrizes</span>
               </button>
             </form>
 
             {/* Live AI Simulator */}
-            <div className="lg:col-span-6 bg-[#161B22] border border-slate-800 rounded-2xl p-6 flex flex-col h-[520px]">
-              <div className="pb-3 mb-3 border-b border-slate-800 flex items-center justify-between">
+            <div className="lg:col-span-6 bg-white border border-[#C4CDD8] rounded p-6 flex flex-col h-[520px]">
+              <div className="pb-3 mb-3 border-b border-[#DCE2EA] flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-white text-base">Simulador WhatsApp em Tempo Real</h3>
-                  <p className="text-xs text-slate-400">Testando com as regras e catálogo de: {currentTenant?.name}</p>
+                  <h3 className="font-bold text-[#111827] text-sm">Bancada de teste de conversação</h3>
+                  <p className="text-xs text-[#4B5563]">Contexto carregado: {currentTenant?.name}</p>
                 </div>
-                <span className="px-2.5 py-1 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300">
+                <span className="px-2 py-0.5 rounded text-[11px] bg-[#EDF1F5] border border-[#C4CDD8] text-[#111827] font-medium">
                   Gemini 2.5 Flash
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1 bg-[#F6F8FA] p-4 rounded border border-[#DCE2EA]">
                 {simHistory.length === 0 && (
-                  <div className="text-center text-xs text-slate-500 my-12">
-                    Envie uma mensagem abaixo para testar como o bot responde para os clientes de <strong>{currentTenant?.name}</strong>.
+                  <div className="text-center text-xs text-[#4B5563] my-12">
+                    Envie uma mensagem abaixo para testar o comportamento de <strong>{currentTenant?.name}</strong>.
                   </div>
                 )}
                 {simHistory.map((m, i) => (
                   <div
                     key={i}
-                    className={`p-3.5 rounded-xl text-sm ${
+                    className={`p-3 rounded text-sm border ${
                       m.role === 'user'
-                        ? 'bg-slate-800 text-white ml-10 rounded-tr-none'
-                        : 'bg-emerald-950/90 border border-emerald-500/30 text-emerald-100 mr-10 rounded-tl-none'
+                        ? 'bg-white border-[#C4CDD8] text-[#111827] ml-10'
+                        : 'bg-[#EBF5EE] border-[#BBDAC4] text-[#112A1A] mr-10'
                     }`}
                   >
                     {m.text}
                   </div>
                 ))}
                 {simLoading && (
-                  <div className="text-xs text-emerald-400 animate-pulse">Digitando resposta humanizada...</div>
+                  <div className="text-xs text-[#0F4C81] font-medium">Processando resposta...</div>
                 )}
               </div>
 
-              <form onSubmit={handleSendTestChat} className="mt-4 pt-3 border-t border-slate-800 flex gap-2">
+              <form onSubmit={handleSendTestChat} className="mt-4 flex gap-2">
                 <input
                   type="text"
                   value={simMessage}
                   onChange={e => setSimMessage(e.target.value)}
-                  placeholder="Digite como se fosse um cliente no WhatsApp..."
-                  className="flex-1 min-h-[44px] px-4 py-2 rounded-xl bg-[#0D1117] border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="Escreva uma pergunta como cliente..."
+                  className="flex-1 min-h-[42px] px-3.5 py-2 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-sm text-[#111827] focus:outline-none focus:border-[#0F4C81]"
                 />
                 <button
                   type="submit"
                   disabled={simLoading}
-                  className="min-h-[44px] px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold flex items-center justify-center"
+                  className="min-h-[42px] px-4 rounded bg-[#0F4C81] hover:bg-[#0B3961] text-white font-semibold flex items-center justify-center"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -1052,41 +1056,44 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
 
         {/* TAB 8: INBOX & HUMAN HANDOFF */}
         {activeTab === 'inbox' && (
-          <div className="bg-[#161B22] border border-slate-800 rounded-2xl p-6 space-y-4">
+          <div className="bg-white border border-[#C4CDD8] rounded p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold text-white">Caixa de Entrada & Controle de Transbordo (Handoff)</h3>
-                <p className="text-xs text-slate-400">
-                  Assuma o atendimento humano a qualquer momento. Enquanto estiver pausado, a IA fica em silêncio para esse cliente.
+                <h3 className="text-base font-bold text-[#111827]">Conversas ativas e controle de intervenção humana</h3>
+                <p className="text-xs text-[#4B5563]">
+                  Ao assumir uma conversa, o atendente automático é pausado imediatamente para aquele número.
                 </p>
               </div>
               <button
                 onClick={() => loadTenantTabContent(currentTenant.slug, 'inbox')}
-                className="min-h-[40px] px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold text-slate-200 flex items-center gap-1.5"
+                className="min-h-[38px] px-3 py-1.5 rounded bg-[#F6F8FA] border border-[#C4CDD8] text-xs font-semibold text-[#111827] flex items-center gap-1.5"
               >
-                <RefreshCw className="w-3.5 h-3.5" /> Atualizar
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Atualizar lista</span>
               </button>
             </div>
 
             {inboxSessions.length === 0 ? (
-              <div className="p-8 text-center text-sm text-slate-400 bg-[#0D1117] rounded-xl border border-slate-800">
-                Nenhuma sessão iniciada ainda. Use a aba "Personalidade & Simulador IA" para gerar uma conversa de teste!
+              <div className="p-8 text-center text-sm text-[#4B5563] bg-[#F6F8FA] rounded border border-[#DCE2EA]">
+                Nenhuma conversa registrada no momento. Utilize a aba "Regras & simulador" para iniciar um atendimento.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="divide-y divide-[#DCE2EA] border border-[#DCE2EA] rounded">
                 {inboxSessions.map(sess => {
                   const isPaused = sess.state === 'HUMAN_HANDOFF';
                   return (
-                    <div key={sess.id} className="p-5 rounded-xl bg-[#0D1117] border border-slate-800 space-y-3">
+                    <div key={sess.id} className="p-5 bg-[#F6F8FA] space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5">
-                          <span className="font-bold text-white text-sm">📱 Cliente: {sess.customerPhone}</span>
+                          <span className="tabular-data font-bold text-[#111827] text-sm">Cliente: {sess.customerPhone}</span>
                           <span
-                            className={`px-2.5 py-0.5 text-xs font-bold rounded ${
-                              isPaused ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
+                            className={`px-2 py-0.5 text-xs font-semibold rounded ${
+                              isPaused
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-[#166534]/15 text-[#166534]'
                             }`}
                           >
-                            {isPaused ? '👩‍💼 Em Atendimento Humano (IA Pausada)' : '🤖 IA Atendendo Automaticamente'}
+                            {isPaused ? 'Atendimento humano (IA pausada)' : 'Atendimento automático ativo'}
                           </span>
                         </div>
                         <button
@@ -1096,24 +1103,24 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                               body: JSON.stringify({ customerPhone: sess.customerPhone, pauseForHuman: !isPaused })
                             });
                             loadTenantTabContent(currentTenant.slug, 'inbox');
-                            showNotification(!isPaused ? 'Conversa assumida por humano!' : 'IA reativada para este cliente!');
+                            showNotification(!isPaused ? 'Conversa assumida pela equipe.' : 'Atendimento automático reativado.');
                           }}
-                          className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${
+                          className={`min-h-[36px] px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 ${
                             isPaused
-                              ? 'bg-emerald-500 text-slate-950'
-                              : 'bg-amber-500/20 border border-amber-500/40 text-amber-300'
+                              ? 'bg-[#0F4C81] text-white'
+                              : 'bg-white border border-[#C4CDD8] text-[#111827] hover:bg-[#EDF1F5]'
                           }`}
                         >
-                          <UserCheck className="w-4 h-4" />
-                          {isPaused ? 'Devolver para a IA' : 'Assumir Conversa (Pausar IA)'}
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>{isPaused ? 'Devolver para atendimento automático' : 'Assumir conversa (pausar IA)'}</span>
                         </button>
                       </div>
 
-                      <div className="space-y-2 max-h-48 overflow-y-auto pt-2 border-t border-slate-800/80">
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto pt-2 border-t border-[#DCE2EA]">
                         {sess.messages?.slice(-4).map((m: any) => (
-                          <div key={m.id} className="text-xs text-slate-300">
-                            <strong className={m.role === 'user' ? 'text-cyan-400' : 'text-emerald-400'}>
-                              {m.role === 'user' ? 'Cliente: ' : 'Atendente IA: '}
+                          <div key={m.id} className="text-xs text-[#111827]">
+                            <strong className={m.role === 'user' ? 'text-[#4B5563]' : 'text-[#0F4C81]'}>
+                              {m.role === 'user' ? 'Cliente: ' : 'Atendente: '}
                             </strong>
                             {m.content}
                           </div>
@@ -1129,25 +1136,23 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
 
         {/* TAB 9: WHATSAPP CONNECTION (Evolution API) */}
         {activeTab === 'whatsapp' && (
-          <div className="bg-[#161B22] border border-slate-800 rounded-2xl p-8 max-w-2xl">
+          <div className="bg-white border border-[#C4CDD8] rounded p-6 max-w-2xl">
             <div className="flex items-center gap-3 mb-4">
-              <QrCode className="w-8 h-8 text-emerald-400" />
+              <QrCode className="w-6 h-6 text-[#0F4C81]" />
               <div>
-                <h3 className="text-lg font-bold text-white">Gateway WhatsApp — Evolution API v2</h3>
-                <p className="text-xs text-slate-400">
-                  Instância dedicada para <strong>{currentTenant?.name}</strong>: <code>{currentTenant?.slug}_instance</code>
+                <h3 className="text-base font-bold text-[#111827]">Instância WhatsApp — Evolution API v2</h3>
+                <p className="text-xs text-[#4B5563]">
+                  Identificador da sessão: <strong>{currentTenant?.slug}_instance</strong>
                 </p>
               </div>
             </div>
-            <div className="p-6 rounded-xl bg-[#0D1117] border border-slate-800 text-sm text-slate-300 space-y-3">
-              <p>
-                O webhook Multi-Tenant já está pronto em:
-                <code className="block mt-1 p-2.5 rounded bg-slate-900 text-emerald-400 text-xs">
-                  POST http://localhost:3000/api/webhooks/whatsapp
-                </code>
-              </p>
-              <p className="text-xs text-slate-400">
-                Para conectar um celular real via QR Code, inicie o contêiner com <code>docker compose up -d</code> e acesse o gerenciador da Evolution API na porta <code>8080</code>.
+            <div className="p-4 rounded bg-[#F6F8FA] border border-[#DCE2EA] text-sm text-[#111827] space-y-2">
+              <p className="text-xs text-[#4B5563]">Endpoint de recebimento de eventos (Webhook):</p>
+              <div className="p-2.5 rounded bg-white border border-[#C4CDD8] text-xs font-semibold text-[#111827]">
+                POST http://localhost:3000/api/webhooks/whatsapp
+              </div>
+              <p className="text-xs text-[#4B5563] pt-1">
+                Para parear um aparelho via QR Code, execute docker compose up -d e conecte a instância na porta 8080.
               </p>
             </div>
           </div>
@@ -1156,31 +1161,31 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
         {/* TAB 10: SUPER ADMIN MASTER CONTROL */}
         {activeTab === 'super-admin' && user.role === 'SUPER_ADMIN' && (
           <div className="space-y-6">
-            <div className="bg-[#161B22] border border-emerald-500/40 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-white">👑 Controle Global de Empresas & Módulos (Feature Flags)</h3>
-              <p className="text-sm text-slate-400 mt-1">
-                Ligue ou desligue funções específicas para cada cliente em tempo real. A barra lateral do cliente se adapta instantaneamente:
+            <div className="bg-white border border-[#C4CDD8] rounded p-6">
+              <h3 className="text-lg font-bold text-[#111827]">Controle global de empresas e liberação de módulos</h3>
+              <p className="text-sm text-[#4B5563] mt-1">
+                Habilite ou desabilite funções para qualquer empresa. O menu lateral do cliente é atualizado imediatamente.
               </p>
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 divide-y divide-[#DCE2EA] border border-[#DCE2EA] rounded">
                 {tenants.map(t => {
                   const mods: string[] = t.parsedModules || [];
                   const allAvailableModules = [
-                    { id: 'stock', label: '📦 Produtos & Estoque' },
-                    { id: 'services', label: '✨ Catálogo de Serviços' },
-                    { id: 'appointments', label: '📅 Agenda & Horários' },
-                    { id: 'documents', label: '📄 Recebimento de Contas/Docs' },
-                    { id: 'crm', label: '📊 Funil CRM' }
+                    { id: 'stock', label: 'Produtos & Estoque' },
+                    { id: 'services', label: 'Catálogo de Serviços' },
+                    { id: 'appointments', label: 'Agenda de Horários' },
+                    { id: 'documents', label: 'Recebimento de Contas/Docs' },
+                    { id: 'crm', label: 'Funil CRM' }
                   ];
                   return (
-                    <div key={t.id} className="p-5 rounded-xl bg-[#0D1117] border border-slate-800 flex flex-col gap-4">
+                    <div key={t.id} className="p-5 bg-[#F6F8FA] flex flex-col gap-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <span className="font-bold text-white text-base">{t.name}</span>
-                          <span className="ml-2 text-xs text-slate-400">({t.slug})</span>
+                          <span className="font-bold text-[#111827] text-sm">{t.name}</span>
+                          <span className="ml-2 text-xs text-[#4B5563]">({t.slug})</span>
                         </div>
-                        <span className="px-2.5 py-1 text-xs font-bold rounded bg-slate-800 text-emerald-400">
-                          Perfil Base: {t.businessType}
+                        <span className="px-2.5 py-0.5 text-xs rounded bg-white border border-[#C4CDD8] text-[#111827] font-medium">
+                          Perfil: {t.businessType}
                         </span>
                       </div>
 
@@ -1191,14 +1196,14 @@ export function DashboardPage({ user, tenants, onLogout, onRefreshSession }: Das
                             <button
                               key={m.id}
                               onClick={() => handleToggleModuleForTenant(t, m.id)}
-                              className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-2 ${
+                              className={`min-h-[36px] px-3 py-1.5 rounded text-xs font-semibold border transition-colors flex items-center gap-2 ${
                                 enabled
-                                  ? 'bg-emerald-500/20 border-emerald-500 text-emerald-200'
-                                  : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300'
+                                  ? 'bg-[#0F4C81] border-[#0F4C81] text-white'
+                                  : 'bg-white border-[#C4CDD8] text-[#4B5563] hover:text-[#111827]'
                               }`}
                             >
-                              <div className={`w-2 h-2 rounded-full ${enabled ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-                              {m.label}
+                              <span className={`w-1.5 h-1.5 rounded-full ${enabled ? 'bg-white' : 'bg-[#6B7280]'}`} />
+                              <span>{m.label}</span>
                             </button>
                           );
                         })}
