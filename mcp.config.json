@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/mcp-config.json",
+  "mcpServers": {
+    "filesystem-obsidian": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${workspaceFolder}"
+      ],
+      "description": "Acesso direto aos arquivos de contexto, regras e cofre do Obsidian."
+    },
+    "sqlite-neoxy": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-sqlite",
+        "--db-path",
+        "${workspaceFolder}/prisma/neoxy.db"
+      ],
+      "description": "Leitura e depuração direta do banco de dados relacional e multi-tenant."
+    },
+    "docker": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-docker"
+      ],
+      "description": "Gerenciamento e inspeção de logs da Evolution API e Redis no Docker."
+    }
+  }
+}

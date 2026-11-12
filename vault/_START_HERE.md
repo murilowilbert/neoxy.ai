@@ -23,6 +23,7 @@ O **Neoxy.ai** é uma plataforma SaaS Multi-Tenant projetada para permitir que e
 - [[Custos-AWS]]: Estratégia de hospedagem com custo mínimo/gratuito na nuvem.
 - [[Design-System-UIUX]]: Padrões visuais, acessibilidade e componentes com a inteligência UI/UX Pro Max.
 - [[Obsidian-Context-Engine]]: Integração com a Obsidian CLI e fluxo de memória persistente para IAs.
+- [[MCP-Servers]]: Servidores de protocolo MCP configurados (Filesystem/Obsidian, SQLite/Prisma e Docker).
 
 
 ### 3. Diretrizes e Regras de Ouro (Invioláveis)
