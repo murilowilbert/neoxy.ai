@@ -10,7 +10,9 @@
     "prisma:push": "prisma db push",
     "prisma:seed": "node prisma/seed.js",
     "test:chat": "node scripts/simulate_chat.js",
-    "chat": "node scripts/interactive_chat.js"
+    "chat": "node scripts/interactive_chat.js",
+    "web:install": "npm --prefix web install",
+    "web:build": "npm --prefix web run build"
   },
   "keywords": [
     "whatsapp",
@@ -26,11 +28,13 @@
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.22.0",
     "axios": "^1.7.9",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "fuse.js": "^7.1.0",
     "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.3",
     "pino": "^9.6.0",
     "xlsx": "^0.18.5"
   },

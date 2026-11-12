@@ -10,21 +10,52 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String         @id @default(uuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  role         String         @default("USER") // "SUPER_ADMIN" | "USER"
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  memberships  TenantMember[]
+}
+
+model TenantMember {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role      String   @default("OWNER") // "OWNER" | "AGENT" | "VIEWER"
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+}
+
 model Tenant {
   id               String                 @id @default(uuid())
-  slug             String                 @unique // ex: "ferragens-demo", "loja-pet-x"
+  slug             String                 @unique // ex: "ferragens-demo", "loja-pet-x", "escritorio-demo"
   name             String
-  segment          String                 // ex: "construcao", "petshop", "farmacia"
+  segment          String                 // ex: "construcao", "petshop", "contabilidade"
+  businessType     String                 @default("RETAIL") // "RETAIL" | "SERVICES" | "OFFICE" | "HYBRID"
+  enabledModules   String                 @default("[\"stock\"]") // JSON array: ["stock", "services", "appointments", "documents", "crm"]
   active           Boolean                @default(true)
   settings         String                 // JSON serializado contendo persona, horários, regras, templates, catálogo
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 
+  members          TenantMember[]
   whatsappAccounts TenantWhatsAppSession[]
   chatSessions     ChatSession[]
   chatHistory      ChatMessage[]
   missedDemands    MissedDemand[]
   catalogItems     CatalogItem[]
+  serviceItems     ServiceItem[]
+  appointments     Appointment[]
+  documents        DocumentSubmission[]
 }
 
 model TenantWhatsAppSession {
@@ -47,6 +78,7 @@ model ChatSession {
   tenantId        String
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customerPhone   String
+  customerName    String?
   state           String   @default("IDLE") // IDLE, AWAITING_TRIAGE_ANSWER, HUMAN_HANDOFF
   stateData       String?  // JSON serializado (contexto de triagem, categoria afunilada)
   lastInteraction DateTime @default(now())
@@ -61,7 +93,7 @@ model ChatMessage {
   tenantId      String
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customerPhone String
-  role          String   // "user" | "model" | "system"
+  role          String   // "user" | "model" | "system" | "human_agent"
   content       String
   mediaType     String?  // "image", "audio", "document"
   mediaUrl      String?
@@ -103,4 +135,60 @@ model CatalogItem {
   @@unique([tenantId, code])
   @@index([tenantId, name])
   @@index([tenantId, category])
+}
+
+model ServiceItem {
+  id              String        @id @default(uuid())
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  durationMinutes Int           @default(30)
+  price           Float         @default(0.0)
+  category        String?
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  appointments    Appointment[]
+
+  @@index([tenantId])
+}
+
+model Appointment {
+  id            String       @id @default(uuid())
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  serviceId     String?
+  service       ServiceItem? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  customerName  String
+  customerPhone String
+  scheduledAt   DateTime
+  status        String       @default("CONFIRMED") // "CONFIRMED" | "PENDING" | "COMPLETED" | "CANCELLED"
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([tenantId, scheduledAt])
+  @@index([tenantId, customerPhone])
+}
+
+model DocumentSubmission {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerName  String
+  customerPhone String
+  docType       String   @default("BOLETO") // "BOLETO" | "NOTA_FISCAL" | "COMPROVANTE" | "CONTRATO" | "OUTRO"
+  title         String
+  amount        Float?
+  dueDate       String?  // YYYY-MM-DD
+  fileUrl       String?
+  aiSummary     String?  // Resumo extraído pela IA
+  status        String   @default("PENDING") // "PENDING" | "REVIEWED" | "PAID" | "ARCHIVED"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
 }

@@ -36,8 +36,9 @@ O **Neoxy.ai** é uma plataforma SaaS Multi-Tenant projetada para permitir que e
 - [[ADR-003-Redis-Debounce]]: Por que utilizamos fila com janela de debounce de 4.5 segundos.
 
 ### 5. Estabelecimentos Cadastrados (Tenants)
-- [[Ferragens-Demo]]: Loja piloto de ferragens espelhada na Ferragem Marlene (8.004 produtos).
-- [[PetShop-Demo]]: Segundo estabelecimento de teste para validação de nicho pet.
+- [[Ferragens-Demo]]: Loja piloto de ferragens espelhada na Ferragem Marlene (8.004 produtos, perfil `RETAIL`).
+- [[PetShop-Demo]]: Estabelecimento de serviços e clínica pet (perfil `SERVICES`).
+- [[Escritorio-Demo]]: Escritório de contabilidade e consultoria com recebimento de boletos e agenda (perfil `OFFICE`).
 
 ---
 

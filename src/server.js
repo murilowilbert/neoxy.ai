@@ -1,31 +1,93 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 const { port, logger } = require('./config');
 const webhookController = require('./modules/whatsapp/webhookController');
 const tenantService = require('./modules/tenants/tenantService');
 const messageQueueService = require('./modules/queue/messageQueueService');
+const authService = require('./modules/auth/authService');
+const {
+  requireAuth,
+  requireSuperAdmin,
+  requireTenantAccess,
+  requireModule
+} = require('./modules/auth/authMiddleware');
+const businessModuleService = require('./modules/business/businessModuleService');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Healthcheck
+// =========================================================================
+// 1. HEALTH & WEBHOOKS PÚBLICOS
+// =========================================================================
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
-    platform: 'Neoxy.ai',
-    version: '1.0.0',
+    platform: 'Neoxy.ai SaaS Platform',
+    version: '2.0.0',
     timestamp: new Date().toISOString()
   });
 });
 
-// Evolution API Webhook
 app.post('/api/webhooks/whatsapp', (req, res) => {
   webhookController.handleEvolutionWebhook(req, res);
 });
 
-// Tenants API
+// =========================================================================
+// 2. AUTENTICAÇÃO & ONBOARDING DE EMPRESAS
+// =========================================================================
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Informe e-mail e senha.' });
+    }
+    const result = await authService.login(email, password);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(401).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { userName, email, password, companyName, slug, segment, businessType } = req.body;
+    if (!userName || !email || !password || !companyName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Preencha todos os campos obrigatórios (nome, e-mail, senha e nome da empresa).'
+      });
+    }
+    const result = await authService.registerCompany({
+      userName,
+      email,
+      password,
+      companyName,
+      slug,
+      segment,
+      businessType
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+  try {
+    const session = await authService.getCurrentSession(req.user.id);
+    res.json({ success: true, ...session });
+  } catch (err) {
+    res.status(401).json({ success: false, error: err.message });
+  }
+});
+
+// =========================================================================
+// 3. ROTAS DE ESTABELECIMENTOS (TENANTS) & CONFIGURAÇÕES
+// =========================================================================
 app.get('/api/tenants', async (req, res) => {
   try {
     const tenants = await tenantService.listTenants();
@@ -39,7 +101,7 @@ app.get('/api/tenants/:slug', async (req, res) => {
   try {
     const tenant = await tenantService.getTenantBySlug(req.params.slug);
     if (!tenant) {
-      return res.status(404).json({ success: false, error: 'Tenant não encontrado' });
+      return res.status(404).json({ success: false, error: 'Estabelecimento não encontrado' });
     }
     res.json({ success: true, tenant });
   } catch (err) {
@@ -56,7 +118,173 @@ app.post('/api/tenants', async (req, res) => {
   }
 });
 
-// Test Chat Endpoint (Para testes ágeis sem WhatsApp)
+app.put('/api/tenants/:slug/settings', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { settings, name, segment, businessType, enabledModules, active } = req.body;
+    const updated = await tenantService.updateTenantSettings(
+      req.params.slug,
+      settings || {},
+      { name, segment, businessType, enabledModules, active }
+    );
+    res.json({ success: true, tenant: updated });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// =========================================================================
+// 4. PAINEL SUPER ADMIN (CONTROLE GLOBAL DE FEATURE FLAGS E PERFIS)
+// =========================================================================
+app.patch('/api/admin/tenants/:slug/modules', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { businessType, enabledModules, active } = req.body;
+    const updated = await tenantService.updateTenantSettings(
+      req.params.slug,
+      {},
+      { businessType, enabledModules, active }
+    );
+    res.json({ success: true, tenant: updated });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// =========================================================================
+// 5. DASHBOARD METRICS & INBOX AO VIVO (UNIVERSAIS)
+// =========================================================================
+app.get('/api/tenants/:slug/metrics', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const metrics = await businessModuleService.getTenantMetrics(req.tenant.id);
+    res.json({ success: true, metrics });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/tenants/:slug/inbox', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const sessions = await businessModuleService.listChatSessionsWithLastMessage(req.tenant.id);
+    res.json({ success: true, sessions });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/inbox/handoff', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { customerPhone, pauseForHuman } = req.body;
+    const session = await businessModuleService.toggleHumanHandoff(
+      req.tenant.id,
+      customerPhone,
+      Boolean(pauseForHuman)
+    );
+    res.json({ success: true, session });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// =========================================================================
+// 6. MÓDULOS DINÂMICOS POR TIPO DE ESTABELECIMENTO (FEATURE FLAGS)
+// =========================================================================
+
+// A. Módulo de Catálogo & Estoque (stock)
+app.get('/api/tenants/:slug/catalog', requireAuth, requireTenantAccess, requireModule('stock'), async (req, res) => {
+  try {
+    const items = await businessModuleService.listCatalogItems(req.tenant.id, req.query.q, req.query.limit);
+    res.json({ success: true, items });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/catalog', requireAuth, requireTenantAccess, requireModule('stock'), async (req, res) => {
+  try {
+    const item = await businessModuleService.upsertCatalogItem(req.tenant.id, req.body);
+    res.json({ success: true, item });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/tenants/:slug/catalog/:itemId', requireAuth, requireTenantAccess, requireModule('stock'), async (req, res) => {
+  try {
+    await businessModuleService.deleteCatalogItem(req.tenant.id, req.params.itemId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// B. Módulo de Serviços (services)
+app.get('/api/tenants/:slug/services', requireAuth, requireTenantAccess, requireModule('services'), async (req, res) => {
+  try {
+    const services = await businessModuleService.listServices(req.tenant.id);
+    res.json({ success: true, services });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/services', requireAuth, requireTenantAccess, requireModule('services'), async (req, res) => {
+  try {
+    const service = await businessModuleService.createOrUpdateService(req.tenant.id, req.body);
+    res.json({ success: true, service });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/tenants/:slug/services/:serviceId', requireAuth, requireTenantAccess, requireModule('services'), async (req, res) => {
+  try {
+    await businessModuleService.deleteService(req.tenant.id, req.params.serviceId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// C. Módulo de Agenda & Horários (appointments)
+app.get('/api/tenants/:slug/appointments', requireAuth, requireTenantAccess, requireModule('appointments'), async (req, res) => {
+  try {
+    const appointments = await businessModuleService.listAppointments(req.tenant.id);
+    res.json({ success: true, appointments });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/appointments', requireAuth, requireTenantAccess, requireModule('appointments'), async (req, res) => {
+  try {
+    const appointment = await businessModuleService.createOrUpdateAppointment(req.tenant.id, req.body);
+    res.json({ success: true, appointment });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// D. Módulo de Recebimento de Contas & Documentos (documents)
+app.get('/api/tenants/:slug/documents', requireAuth, requireTenantAccess, requireModule('documents'), async (req, res) => {
+  try {
+    const documents = await businessModuleService.listDocuments(req.tenant.id);
+    res.json({ success: true, documents });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/documents', requireAuth, requireTenantAccess, requireModule('documents'), async (req, res) => {
+  try {
+    const document = await businessModuleService.createOrUpdateDocument(req.tenant.id, req.body);
+    res.json({ success: true, document });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// =========================================================================
+// 7. SIMULADOR DE TESTE DE CHAT (HTTP)
+// =========================================================================
 app.post('/api/tenants/:slug/test-chat', async (req, res) => {
   try {
     const { slug } = req.params;
@@ -90,9 +318,38 @@ app.post('/api/tenants/:slug/test-chat', async (req, res) => {
   }
 });
 
+// =========================================================================
+// 8. SERVIR FRONTEND WEB (LANDING PAGE + LOGIN + DASHBOARD ADAPTATIVO)
+// =========================================================================
+const webDistPath = path.join(__dirname, '..', 'web', 'dist');
+const publicPath = path.join(__dirname, '..', 'public');
+
+if (fs.existsSync(webDistPath)) {
+  app.use(express.static(webDistPath));
+}
+if (fs.existsSync(publicPath)) {
+  app.use(express.static(publicPath));
+}
+
+// Fallback SPA para rotas do frontend
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/') || req.path === '/health') {
+    return next();
+  }
+  const distIndex = path.join(webDistPath, 'index.html');
+  if (fs.existsSync(distIndex)) {
+    return res.sendFile(distIndex);
+  }
+  const publicIndex = path.join(publicPath, 'index.html');
+  if (fs.existsSync(publicIndex)) {
+    return res.sendFile(publicIndex);
+  }
+  res.status(404).json({ error: 'Frontend não encontrado.' });
+});
+
 function startServer() {
   return app.listen(port, () => {
-    logger.info(`🚀 Neoxy.ai Server rodando na porta ${port}`);
+    logger.info(`🚀 Neoxy.ai Platform Server rodando em http://localhost:${port}`);
   });
 }
 
