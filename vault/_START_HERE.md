@@ -21,6 +21,9 @@ O **Neoxy.ai** é uma plataforma SaaS Multi-Tenant projetada para permitir que e
 - [[Multi-Tenancy]]: Como os dados, catálogos e regras são estritamente isolados por estabelecimento.
 - [[Estoque-Hibrido]]: Adaptadores para Google Sheets, planilhas offline e banco relacional via Fuse.js.
 - [[Custos-AWS]]: Estratégia de hospedagem com custo mínimo/gratuito na nuvem.
+- [[Design-System-UIUX]]: Padrões visuais, acessibilidade e componentes com a inteligência UI/UX Pro Max.
+- [[Obsidian-Context-Engine]]: Integração com a Obsidian CLI e fluxo de memória persistente para IAs.
+
 
 ### 3. Diretrizes e Regras de Ouro (Invioláveis)
 - [[Regras-De-Ouro-Bot]]: Regras críticas de humanização, vocabulário proibido, Title Case e Handoff.
