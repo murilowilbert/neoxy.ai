@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # 1. Neoxy.ai Core API & Workers
+  neoxy-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: neoxy-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/prisma/neoxy.db
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://neoxy-redis:6379
+      - EVOLUTION_API_URL=http://evolution-api:8080
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-neoxy-secret-token}
+      - NEOXY_WEBHOOK_SECRET=${NEOXY_WEBHOOK_SECRET:-neoxy-super-secret}
+    volumes:
+      - neoxy-data:/app/prisma
+    depends_on:
+      - neoxy-redis
+      - evolution-api
+    networks:
+      - neoxy-network
+
+  # 2. Redis - Filas BullMQ, Cache de Catálogos e Debouncing
+  neoxy-redis:
+    image: redis:7-alpine
+    container_name: neoxy-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - neoxy-network
+
+  # 3. Evolution API v2 - WhatsApp Gateway Multi-Sessão Desacoplado
+  evolution-api:
+    image: atendai/evolution-api:v2.1.2
+    container_name: evolution-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - SERVER_TYPE=http
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-neoxy-secret-token}
+      - DATABASE_ENABLED=false
+      - REDIS_ENABLED=true
+      - REDIS_URI=redis://neoxy-redis:6379
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://neoxy-redis:6379
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - WEBHOOK_GLOBAL_URL=http://neoxy-api:3000/api/webhooks/whatsapp
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+    volumes:
+      - evolution-instances:/evolution/instances
+    depends_on:
+      - neoxy-redis
+    networks:
+      - neoxy-network
+
+volumes:
+  neoxy-data:
+  redis-data:
+  evolution-instances:
+
+networks:
+  neoxy-network:
+    driver: bridge

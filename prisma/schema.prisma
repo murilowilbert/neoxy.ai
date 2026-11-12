@@ -1,0 +1,106 @@
+// Prisma Schema for Neoxy.ai (Multi-Tenant SaaS Architecture)
+// Compatible with SQLite for 100% free local development and PostgreSQL for production
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id               String                 @id @default(uuid())
+  slug             String                 @unique // ex: "ferragens-demo", "loja-pet-x"
+  name             String
+  segment          String                 // ex: "construcao", "petshop", "farmacia"
+  active           Boolean                @default(true)
+  settings         String                 // JSON serializado contendo persona, horários, regras, templates, catálogo
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  whatsappAccounts TenantWhatsAppSession[]
+  chatSessions     ChatSession[]
+  chatHistory      ChatMessage[]
+  missedDemands    MissedDemand[]
+  catalogItems     CatalogItem[]
+}
+
+model TenantWhatsAppSession {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instanceName String   @unique // Identificador único na Evolution API
+  phoneNumber  String?
+  status       String   @default("DISCONNECTED") // CONNECTED, QRCODE, DISCONNECTED
+  apiKey       String?
+  webhookUrl   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model ChatSession {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerPhone   String
+  state           String   @default("IDLE") // IDLE, AWAITING_TRIAGE_ANSWER, HUMAN_HANDOFF
+  stateData       String?  // JSON serializado (contexto de triagem, categoria afunilada)
+  lastInteraction DateTime @default(now())
+  pausedUntil     DateTime? // Se estiver em handoff / pausa humana
+
+  @@unique([tenantId, customerPhone])
+  @@index([tenantId, customerPhone])
+}
+
+model ChatMessage {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerPhone String
+  role          String   // "user" | "model" | "system"
+  content       String
+  mediaType     String?  // "image", "audio", "document"
+  mediaUrl      String?
+  metadata      String?  // JSON serializado (intent, confidence, tags como [HANDOFF], [NO_RESPONSE])
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, customerPhone, createdAt])
+}
+
+model MissedDemand {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productName   String
+  searchCount   Int      @default(1)
+  lastRequested DateTime @default(now())
+
+  @@unique([tenantId, productName])
+  @@index([tenantId])
+}
+
+model CatalogItem {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code        String   // EAN ou Código interno
+  name        String
+  description String?
+  price       Float    @default(0.0)
+  stockQty    Float    @default(0.0)
+  category    String?
+  brand       String?
+  tags        String?  // tags separadas por vírgula
+  imageUrl    String?
+  hasPhoto    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, name])
+  @@index([tenantId, category])
+}
