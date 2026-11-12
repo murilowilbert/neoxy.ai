@@ -1,0 +1,15 @@
+{
+  "attachmentFolderPath": "vault/assets",
+  "userIgnoreFilters": [
+    "node_modules/",
+    ".git/",
+    "dist/",
+    "build/",
+    "*.db",
+    "*.db-journal",
+    ".gemini/"
+  ],
+  "newFileLocation": "current",
+  "useMarkdownLinks": false,
+  "alwaysUpdateLinks": true
+}
