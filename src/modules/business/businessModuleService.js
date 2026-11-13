@@ -189,6 +189,12 @@ async function createOrUpdateAppointment(tenantId, data) {
   });
 }
 
+async function deleteAppointment(tenantId, appointmentId) {
+  return prisma.appointment.deleteMany({
+    where: { id: appointmentId, tenantId }
+  });
+}
+
 /**
  * Documents / Bills Submission CRUD (Escritórios / Contabilidade / Financeiro)
  */
@@ -227,6 +233,12 @@ async function createOrUpdateDocument(tenantId, data) {
       status: data.status || 'PENDING',
       aiSummary: data.aiSummary || null
     }
+  });
+}
+
+async function deleteDocument(tenantId, documentId) {
+  return prisma.documentSubmission.deleteMany({
+    where: { id: documentId, tenantId }
   });
 }
 
@@ -291,8 +303,10 @@ module.exports = {
   deleteService,
   listAppointments,
   createOrUpdateAppointment,
+  deleteAppointment,
   listDocuments,
   createOrUpdateDocument,
+  deleteDocument,
   listChatSessionsWithLastMessage,
   toggleHumanHandoff
 };

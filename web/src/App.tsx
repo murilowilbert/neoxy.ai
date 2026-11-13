@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ThemeProvider } from './components/ThemeProvider';
 import { apiFetch, getToken, setToken } from './lib/api';
 
 export function App() {
@@ -33,54 +34,46 @@ export function App() {
     restoreSession();
   }, []);
 
-  if (initializing) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] text-[#57554F] flex items-center justify-center text-sm font-medium">
-        Carregando ambiente operacional Neoxy.ai...
-      </div>
-    );
-  }
-
-  if (view === 'dashboard' && user) {
-    return (
-      <DashboardPage
-        user={user}
-        tenants={tenants}
-        onLogout={() => {
-          setUser(null);
-          setTenants([]);
-          setView('landing');
-        }}
-        onRefreshSession={restoreSession}
-      />
-    );
-  }
-
-  if (view === 'login' || view === 'register') {
-    return (
-      <AuthPage
-        initialMode={view === 'register' ? 'register' : 'login'}
-        prefillEmail={prefillEmail}
-        onSuccess={(authData) => {
-          setUser(authData.user);
-          setTenants(authData.tenants || []);
-          setView('dashboard');
-        }}
-        onBackToLanding={() => setView('landing')}
-      />
-    );
-  }
-
   return (
-    <LandingPage
-      onGoToLogin={(email) => {
-        setPrefillEmail(email || '');
-        setView('login');
-      }}
-      onGoToRegister={() => {
-        setPrefillEmail('');
-        setView('register');
-      }}
-    />
+    <ThemeProvider>
+      {initializing ? (
+        <div className="min-h-screen bg-[var(--nx-bg)] text-[var(--nx-muted)] flex items-center justify-center text-sm font-medium">
+          Carregando ambiente operacional Neoxy.ai...
+        </div>
+      ) : view === 'dashboard' && user ? (
+        <DashboardPage
+          user={user}
+          tenants={tenants}
+          onLogout={() => {
+            setUser(null);
+            setTenants([]);
+            setView('landing');
+          }}
+          onRefreshSession={restoreSession}
+        />
+      ) : view === 'login' || view === 'register' ? (
+        <AuthPage
+          initialMode={view === 'register' ? 'register' : 'login'}
+          prefillEmail={prefillEmail}
+          onSuccess={(authData) => {
+            setUser(authData.user);
+            setTenants(authData.tenants || []);
+            setView('dashboard');
+          }}
+          onBackToLanding={() => setView('landing')}
+        />
+      ) : (
+        <LandingPage
+          onGoToLogin={(email) => {
+            setPrefillEmail(email || '');
+            setView('login');
+          }}
+          onGoToRegister={() => {
+            setPrefillEmail('');
+            setView('register');
+          }}
+        />
+      )}
+    </ThemeProvider>
   );
 }

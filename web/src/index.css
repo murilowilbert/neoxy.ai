@@ -3,25 +3,64 @@
 @tailwind utilities;
 
 :root {
-  --bg-canvas: #F6F8FA;
-  --bg-surface: #FFFFFF;
-  --bg-subtle: #EDF1F5;
-  --ink-primary: #111827;
-  --ink-secondary: #4B5563;
-  --ink-muted: #6B7280;
-  --border-hairline: #DCE2EA;
-  --accent-navy: #0F4C81;
-  --accent-forest: #166534;
+  /* Paleta Mineral e Industrial ERP Modo Claro */
+  --nx-bg: #F6F8FA;
+  --nx-surface: #FFFFFF;
+  --nx-surface-alt: #EDF1F5;
+  --nx-text: #111827;
+  --nx-muted: #4B5563;
+  --nx-subtle: #6B7280;
+  --nx-primary: #0F4C81;
+  --nx-primary-hover: #0B3861;
+  --nx-primary-soft: rgba(15, 76, 129, 0.08);
+  --nx-primary-ring: rgba(15, 76, 129, 0.14);
+  --nx-accent: #166534;
+  --nx-accent-bg: #ECFDF3;
+  --nx-accent-border: #BBF7D0;
+  --nx-border: #DCE2EA;
+  --nx-border-strong: #C4CDD8;
+  --nx-error: #B91C1C;
+  --nx-error-bg: #FEF2F2;
+  --nx-amber: #B45309;
+  --nx-amber-bg: #FFFBEB;
+}
+
+:root.dark {
+  /* Paleta Mineral e Industrial ERP Modo Escuro */
+  --nx-bg: #141A23;
+  --nx-surface: #1B2330;
+  --nx-surface-alt: #222C3C;
+  --nx-text: #F3F4F6;
+  --nx-muted: #9CA3AF;
+  --nx-subtle: #6B7280;
+  --nx-primary: #3B82F6;
+  --nx-primary-hover: #2563EB;
+  --nx-primary-soft: rgba(59, 130, 246, 0.14);
+  --nx-primary-ring: rgba(59, 130, 246, 0.22);
+  --nx-accent: #5C9E73;
+  --nx-accent-bg: rgba(22, 101, 52, 0.28);
+  --nx-accent-border: rgba(92, 158, 115, 0.35);
+  --nx-border: #2A3648;
+  --nx-border-strong: #37465B;
+  --nx-error: #F87171;
+  --nx-error-bg: rgba(185, 28, 28, 0.2);
+  --nx-amber: #FBBF24;
+  --nx-amber-bg: rgba(180, 83, 9, 0.22);
 }
 
 @layer base {
-  html, body {
-    font-size: 16px;
-    line-height: 1.5;
-    overflow-x: clip;
-    background-color: var(--bg-canvas);
-    color: var(--ink-primary);
+  body {
     font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    background-color: var(--nx-bg);
+    color: var(--nx-text);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  h1, h2, h3 {
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -29,16 +68,625 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Scrollbar limpa */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #EDF1F5;
+  background: var(--nx-bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: #C4CDD8;
+  background: var(--nx-border-strong);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9AA5B4;
+  background: var(--nx-muted);
+}
+
+/* Animacoes inspiradas no MedPet */
+@keyframes nxFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nxFadeDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nxSlideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nxScaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes nxSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes nxShake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-5px); }
+  40%      { transform: translateX(5px);
+  }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(3px); }
+}
+
+.animate-fade-up {
+  animation: nxFadeUp 0.35s ease both;
+}
+
+.animate-fade-down {
+  animation: nxFadeDown 0.4s ease both;
+}
+
+.animate-slide-down {
+  animation: nxSlideDown 0.18s ease both;
+}
+
+/* Botao Primario com Reflexo Sutil e Elevacao */
+.nx-btn-primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--nx-primary);
+  color: #ffffff;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.nx-btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.08));
+  pointer-events: none;
+}
+
+.nx-btn-primary:hover:not(:disabled) {
+  background: var(--nx-primary-hover);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+  transform: translateY(-1px);
+}
+
+.nx-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.nx-btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.nx-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: nxSpin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ─── Cartão Interativo com Halo no Hover ────────────────────────── */
+.nx-card-interactive {
+  background: var(--nx-surface);
+  border: 1px solid var(--nx-border);
+  border-radius: 10px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.nx-card-interactive:hover {
+  border-color: var(--nx-primary);
+  box-shadow: 0 0 0 3px var(--nx-primary-ring);
+  transform: translateY(-1px);
+}
+
+/* ─── Inputs com Floating Labels (Padrão MedPet) ─────────────────── */
+.nx-field {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.nx-field input,
+.nx-field textarea,
+.nx-field select {
+  width: 100%;
+  padding: 20px 14px 7px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--nx-text);
+  background: var(--nx-surface);
+  border: 1.5px solid var(--nx-border-strong);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.nx-field input {
+  height: 52px;
+}
+
+.nx-field textarea {
+  padding-top: 28px;
+  min-height: 110px;
+  resize: vertical;
+}
+
+.nx-field input:focus,
+.nx-field textarea:focus,
+.nx-field select:focus {
+  border-color: var(--nx-primary);
+  box-shadow: 0 0 0 3px var(--nx-primary-ring);
+}
+
+.nx-field input.has-error,
+.nx-field textarea.has-error {
+  border-color: var(--nx-error);
+  background: var(--nx-error-bg);
+}
+
+.nx-field label {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--nx-subtle);
+  pointer-events: none;
+  transition: top 0.18s ease, font-size 0.18s ease, color 0.18s ease;
+  transform-origin: left center;
+}
+
+.nx-field textarea ~ label {
+  top: 18px;
+  transform: none;
+}
+
+.nx-field input:focus ~ label,
+.nx-field input:not(:placeholder-shown) ~ label,
+.nx-field textarea:focus ~ label,
+.nx-field textarea:not(:placeholder-shown) ~ label,
+.nx-field select ~ label {
+  top: 8px;
+  transform: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nx-primary);
+}
+
+.nx-field input.has-error ~ label,
+.nx-field textarea.has-error ~ label {
+  color: var(--nx-error);
+}
+
+.nx-field input:-webkit-autofill,
+.nx-field input:-webkit-autofill:hover,
+.nx-field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--nx-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--nx-surface) inset !important;
+  box-shadow: 0 0 0 1000px var(--nx-surface) inset !important;
+}
+
+.nx-field input:-webkit-autofill ~ label {
+  top: 8px;
+  transform: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nx-primary);
+}
+
+.nx-field-suffix {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--nx-subtle);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.nx-field-suffix:hover {
+  color: var(--nx-text);
+}
+
+.nx-field-error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--nx-error);
+  animation: nxSlideDown 0.2s ease;
+}
+
+.nx-api-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--nx-error-bg);
+  border: 1px solid var(--nx-error);
+  border-radius: 8px;
+  color: var(--nx-error);
+  font-size: 13px;
+  animation: nxShake 0.4s ease, nxSlideDown 0.25s ease;
+}
+
+/* ─── Autocomplete de Domínios de E-mail ─────────────────────────── */
+.nx-email-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  padding: 4px;
+  background: var(--nx-surface);
+  border: 1.5px solid var(--nx-border-strong);
+  border-radius: 8px;
+  list-style: none;
+  z-index: 40;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+  animation: nxSlideDown 0.15s ease;
+}
+
+.nx-email-suggestions li button {
+  width: 100%;
+  display: block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--nx-text);
+  transition: background 0.12s;
+}
+
+.nx-email-suggestions li button:hover {
+  background: var(--nx-primary-soft);
+}
+
+/* ─── Seletor de Tipo de Negócio em Cards (.nx-type-card) ────────── */
+.nx-type-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.nx-type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  background: var(--nx-surface);
+  border: 1.5px solid var(--nx-border-strong);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  color: var(--nx-muted);
+  text-align: center;
+}
+
+.nx-type-card:hover {
+  border-color: var(--nx-primary);
+  color: var(--nx-text);
+}
+
+.nx-type-card.active {
+  border-color: var(--nx-primary);
+  background: var(--nx-primary-soft);
+  box-shadow: 0 0 0 3px var(--nx-primary-ring);
+  color: var(--nx-primary);
+}
+
+.nx-type-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--nx-surface-alt);
+  color: var(--nx-muted);
+  transition: background 0.2s, color 0.2s;
+}
+
+.nx-type-card.active .nx-type-card-icon {
+  background: var(--nx-primary-soft);
+  color: var(--nx-primary);
+}
+
+/* ─── Botões de Filtro / Ordenação / Busca Dropdown ──────────────── */
+.nx-sort-wrapper {
+  position: relative;
+}
+
+.nx-btn-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 13px;
+  background: var(--nx-surface);
+  color: var(--nx-muted);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1.5px solid var(--nx-border-strong);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+
+.nx-btn-sort:hover {
+  border-color: var(--nx-primary);
+  color: var(--nx-text);
+  background: var(--nx-primary-soft);
+}
+
+.nx-btn-sort--active {
+  border-color: var(--nx-primary);
+  color: var(--nx-primary);
+  background: var(--nx-primary-soft);
+}
+
+.nx-filter-active-group {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nx-filter-active-group .nx-btn-sort {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+}
+
+.nx-btn-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  width: 34px;
+  background: var(--nx-primary-soft);
+  border: 1.5px solid var(--nx-primary);
+  border-left: 1px solid var(--nx-border-strong);
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  color: var(--nx-primary);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.nx-btn-filter-clear:hover {
+  background: var(--nx-error);
+  border-color: var(--nx-error);
+  color: #ffffff;
+}
+
+.nx-sort-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  padding: 5px;
+  background: var(--nx-surface);
+  border: 1.5px solid var(--nx-border-strong);
+  border-radius: 10px;
+  list-style: none;
+  z-index: 50;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  animation: nxSlideDown 0.15s ease;
+}
+
+.nx-sort-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--nx-muted);
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+
+.nx-sort-option:hover {
+  background: var(--nx-primary-soft);
+  color: var(--nx-text);
+}
+
+.nx-sort-option--active {
+  font-weight: 600;
+  color: var(--nx-primary);
+  background: var(--nx-primary-soft);
+}
+
+/* ─── Botões-Pílula Elásticos nos Cards (.nx-icon-btn-pill) ──────── */
+.nx-icon-btn-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 0;
+  transition: padding 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    gap 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.nx-icon-btn-pill svg {
+  flex-shrink: 0;
+}
+
+.nx-icon-btn-pill-text {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.25s ease 0.05s;
+}
+
+.nx-icon-btn-pill:hover {
+  padding: 0 10px;
+  gap: 6px;
+}
+
+.nx-icon-btn-pill:hover .nx-icon-btn-pill-text {
+  max-width: 140px;
+  opacity: 1;
+}
+
+.nx-icon-btn-pill--pdf {
+  background: var(--nx-amber-bg);
+  color: var(--nx-amber);
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+.nx-icon-btn-pill--whatsapp {
+  background: var(--nx-accent-bg);
+  color: var(--nx-accent);
+  border-color: var(--nx-accent-border);
+}
+
+.nx-icon-btn-pill--blue {
+  background: var(--nx-primary-soft);
+  color: var(--nx-primary);
+  border-color: var(--nx-primary-ring);
+}
+
+/* ─── Modal com Gaveta Lateral Acoplada & Smart Chips ────────────── */
+.nx-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 15, 23, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+  animation: nxSlideDown 0.15s ease;
+}
+
+.nx-modal-box {
+  width: auto;
+  max-width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  max-height: 86svh;
+}
+
+.nx-modal-main {
+  background: var(--nx-surface);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  width: 560px;
+  max-width: 92vw;
+  flex: none;
+  display: flex;
+  position: relative;
+  z-index: 2;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: 86svh;
+  animation: nxScaleIn 0.2s ease;
+}
+
+.nx-modal-side-panel {
+  width: 320px;
+  margin-left: -320px;
+  opacity: 0;
+  visibility: hidden;
+  flex: none;
+  background: var(--nx-surface);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  position: relative;
+  z-index: 1;
+  transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  max-height: 86svh;
+}
+
+.nx-modal-side-panel.open {
+  margin-left: 16px;
+  opacity: 1;
+  visibility: visible;
+}
+
+.nx-smart-chip {
+  height: 27px;
+  padding: 0 10px;
+  border-radius: 14px;
+  background: var(--nx-surface-alt);
+  border: 1px solid var(--nx-border-strong);
+  color: var(--nx-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+
+.nx-smart-chip:hover {
+  border-color: var(--nx-primary);
+  color: var(--nx-text);
+}
+
+.nx-smart-chip.active {
+  background: var(--nx-primary);
+  border-color: var(--nx-primary);
+  color: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .nx-modal-box {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .nx-modal-side-panel {
+    width: 100%;
+    margin-left: 0;
+    margin-top: -200px;
+  }
+  .nx-modal-side-panel.open {
+    margin-left: 0;
+    margin-top: 12px;
+  }
 }

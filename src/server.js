@@ -263,6 +263,15 @@ app.post('/api/tenants/:slug/appointments', requireAuth, requireTenantAccess, re
   }
 });
 
+app.delete('/api/tenants/:slug/appointments/:appointmentId', requireAuth, requireTenantAccess, requireModule('appointments'), async (req, res) => {
+  try {
+    await businessModuleService.deleteAppointment(req.tenant.id, req.params.appointmentId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // D. Módulo de Recebimento de Contas & Documentos (documents)
 app.get('/api/tenants/:slug/documents', requireAuth, requireTenantAccess, requireModule('documents'), async (req, res) => {
   try {
@@ -277,6 +286,15 @@ app.post('/api/tenants/:slug/documents', requireAuth, requireTenantAccess, requi
   try {
     const document = await businessModuleService.createOrUpdateDocument(req.tenant.id, req.body);
     res.json({ success: true, document });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/tenants/:slug/documents/:documentId', requireAuth, requireTenantAccess, requireModule('documents'), async (req, res) => {
+  try {
+    await businessModuleService.deleteDocument(req.tenant.id, req.params.documentId);
+    res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
