@@ -1,4 +1,7 @@
 require('dotenv').config();
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'file:./neoxy.db';
+}
 const pino = require('pino');
 
 const logger = pino({
