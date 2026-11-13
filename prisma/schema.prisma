@@ -221,3 +221,15 @@ model DocumentSubmission {
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
 }
+
+model AuthSlide {
+  id        String   @id @default(uuid())
+  title     String
+  subtitle  String?
+  badge     String?
+  imageUrl  String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

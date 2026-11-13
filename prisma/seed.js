@@ -595,6 +595,39 @@ async function main() {
     ]
   });
 
+  // =========================================================================
+  // 5. BANNERS DO CARROSSEL DA TELA DE LOGIN / CADASTRO (GERENCIÁVEL PELO ADMIN)
+  // =========================================================================
+  await prisma.authSlide.deleteMany({});
+  await prisma.authSlide.createMany({
+    data: [
+      {
+        title: 'Agenda & Ordens de Serviço em 4 Etapas',
+        subtitle: 'Do check-in na recepção ao aviso automático de Pronto para Retirada no WhatsApp.',
+        badge: 'Destaque Serviços',
+        imageUrl: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=1200&q=80',
+        sortOrder: 1,
+        active: true
+      },
+      {
+        title: 'Gestão de Equipe, Portes e Comissões',
+        subtitle: 'Tabela de preços por porte ou complexidade com cálculo automático de repasse.',
+        badge: 'Novo Recurso',
+        imageUrl: 'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=1200&q=80',
+        sortOrder: 2,
+        active: true
+      },
+      {
+        title: 'Atendimento Humanizado 24h no WhatsApp',
+        subtitle: 'Consulta de estoque, agendamento inteligente e transbordo humano em 1 clique.',
+        badge: 'Plataforma Neoxy',
+        imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+        sortOrder: 3,
+        active: true
+      }
+    ]
+  });
+
   console.log('✅ Seed completo finalizado com sucesso!');
   console.log('--------------------------------------------------');
   console.log('🔑 Credenciais de Acesso (Senha padrão: neoxy123):');

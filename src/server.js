@@ -149,6 +149,64 @@ app.patch('/api/admin/tenants/:slug/modules', requireAuth, requireSuperAdmin, as
   }
 });
 
+// Carrossel de Banners da Tela de Login/Cadastro (Público para leitura, Super Admin para edição)
+const prismaClient = require('./database/prisma');
+
+app.get('/api/public/auth-slides', async (req, res) => {
+  try {
+    const slides = await prismaClient.authSlide.findMany({
+      where: { active: true },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
+    });
+    res.json({ success: true, slides });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/admin/auth-slides', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const slides = await prismaClient.authSlide.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
+    });
+    res.json({ success: true, slides });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/admin/auth-slides', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { id, title, subtitle, badge, imageUrl, sortOrder, active } = req.body;
+    if (!title || !imageUrl) {
+      return res.status(400).json({ success: false, error: 'Título e URL da imagem são obrigatórios.' });
+    }
+    const data = {
+      title: String(title).trim(),
+      subtitle: subtitle ? String(subtitle).trim() : null,
+      badge: badge ? String(badge).trim() : null,
+      imageUrl: String(imageUrl).trim(),
+      sortOrder: Number(sortOrder || 0),
+      active: active !== undefined ? Boolean(active) : true
+    };
+    const slide = id
+      ? await prismaClient.authSlide.update({ where: { id }, data })
+      : await prismaClient.authSlide.create({ data });
+    res.json({ success: true, slide });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/admin/auth-slides/:slideId', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    await prismaClient.authSlide.delete({ where: { id: req.params.slideId } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // =========================================================================
 // 5. DASHBOARD METRICS & INBOX AO VIVO (UNIVERSAIS)
 // =========================================================================

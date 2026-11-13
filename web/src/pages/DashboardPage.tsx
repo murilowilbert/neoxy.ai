@@ -2885,6 +2885,120 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </tbody>
               </table>
             </div>
+
+            {/* Gerenciador de Banners do Carrossel da Tela de Login / Cadastro */}
+            <div className="pt-4 space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-[var(--nx-text)]">
+                  Banners da Tela de Login & Cadastro (Carrossel)
+                </h3>
+                <p className="text-xs text-[var(--nx-muted)]">
+                  Adicione imagens promocionais, avisos ou fotos do sistema que ficam passando automaticamente na coluna esquerda do login.
+                </p>
+              </div>
+
+              <form
+                onSubmit={handleSaveAuthSlide}
+                className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-4 grid grid-cols-1 md:grid-cols-12 gap-3 items-end"
+              >
+                <div className="md:col-span-3">
+                  <label className="block text-[11px] font-medium text-[var(--nx-muted)] mb-1">
+                    Título do banner
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Promoção Plano Anual"
+                    value={newSlide.title}
+                    onChange={(e) => setNewSlide({ ...newSlide, title: e.target.value })}
+                    className="w-full px-3 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs text-[var(--nx-text)] outline-none"
+                  />
+                </div>
+                <div className="md:col-span-3">
+                  <label className="block text-[11px] font-medium text-[var(--nx-muted)] mb-1">
+                    Subtítulo curto
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 30% OFF para novas clínicas"
+                    value={newSlide.subtitle}
+                    onChange={(e) => setNewSlide({ ...newSlide, subtitle: e.target.value })}
+                    className="w-full px-3 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs text-[var(--nx-text)] outline-none"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] font-medium text-[var(--nx-muted)] mb-1">
+                    Selo (Badge)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Novidade"
+                    value={newSlide.badge}
+                    onChange={(e) => setNewSlide({ ...newSlide, badge: e.target.value })}
+                    className="w-full px-3 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs text-[var(--nx-text)] outline-none"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] font-medium text-[var(--nx-muted)] mb-1">
+                    URL da imagem
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://..."
+                    value={newSlide.imageUrl}
+                    onChange={(e) => setNewSlide({ ...newSlide, imageUrl: e.target.value })}
+                    className="w-full px-3 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs text-[var(--nx-text)] outline-none"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <button type="submit" className="nx-btn-primary w-full py-2 text-xs">
+                    <Plus className="w-3.5 h-3.5" />
+                    Adicionar Banner
+                  </button>
+                </div>
+              </form>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {authSlides.map((slide) => (
+                  <div
+                    key={slide.id}
+                    className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden flex flex-col justify-between"
+                  >
+                    <div className="relative h-32 bg-[var(--nx-bg)]">
+                      <img
+                        src={slide.imageUrl}
+                        alt={slide.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {slide.badge && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--nx-primary)] text-white">
+                          {slide.badge}
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-3 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[var(--nx-text)] truncate">
+                          {slide.title}
+                        </div>
+                        <div className="text-[11px] text-[var(--nx-muted)] line-clamp-2 mt-0.5">
+                          {slide.subtitle || 'Sem subtítulo'}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAuthSlide(slide.id)}
+                        className="p-1.5 rounded text-[var(--nx-subtle)] hover:text-[var(--nx-error)] shrink-0"
+                        title="Remover banner"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </main>
