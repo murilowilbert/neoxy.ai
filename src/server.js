@@ -393,6 +393,8 @@ app.get('*', (req, res, next) => {
   res.status(404).json({ error: 'Frontend não encontrado.' });
 });
 
+const { ensureDatabaseReady } = require('./database/bootstrap');
+
 function startServer() {
   return app.listen(port, () => {
     logger.info(`🚀 Neoxy.ai Platform Server rodando em http://localhost:${port}`);
@@ -400,7 +402,12 @@ function startServer() {
 }
 
 if (require.main === module) {
-  startServer();
+  ensureDatabaseReady()
+    .then(() => startServer())
+    .catch((err) => {
+      logger.error({ err }, 'Falha ao inicializar banco de dados');
+      process.exit(1);
+    });
 }
 
 module.exports = { app, startServer };
