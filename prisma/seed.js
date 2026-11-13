@@ -296,25 +296,86 @@ async function main() {
     ]
   });
 
+  await prisma.professional.deleteMany({ where: { tenantId: petshopTenant.id } });
+  const profCamila = await prisma.professional.create({
+    data: {
+      tenantId: petshopTenant.id,
+      name: 'Dra. Camila Rocha',
+      role: 'Médica Veterinária (CRMV-RS 14890)',
+      specialty: 'Clínica Geral & Dermatologia',
+      commissionPct: 35.0,
+      phone: '5551997711223',
+      active: true
+    }
+  });
+  const profLucas = await prisma.professional.create({
+    data: {
+      tenantId: petshopTenant.id,
+      name: 'Lucas Martins',
+      role: 'Esteticista & Tosador Sênior',
+      specialty: 'Tosa na Tesoura & Desembolo Técnico',
+      commissionPct: 25.0,
+      phone: '5551996622334',
+      active: true
+    }
+  });
+  const profBox = await prisma.professional.create({
+    data: {
+      tenantId: petshopTenant.id,
+      name: 'Bianca Oliveira (Box 01)',
+      role: 'Banhista & Terapia Capilar Pet',
+      specialty: 'Banhos Medicinais e Ozonioterapia',
+      commissionPct: 20.0,
+      phone: '5551995533445',
+      active: true
+    }
+  });
+
   await prisma.serviceItem.deleteMany({ where: { tenantId: petshopTenant.id } });
   const srvBanho = await prisma.serviceItem.create({
     data: {
       tenantId: petshopTenant.id,
-      name: 'Banho & Tosa Higiênica (Porte Pequeno/Médio)',
-      description: 'Banho morno com produtos hipoalergênicos, secagem, corte de unhas e limpeza de ouvidos.',
+      name: 'Banho & Tosa Higiênica',
+      description: 'Banho morno com produtos hipoalergênicos, secagem, corte de unhas e limpeza de ouvidos. Obrigatório apresentar carteira de vacinação atualizada (V8/V10 e Antirrábica) no check-in.',
       durationMinutes: 60,
       price: 75.00,
-      category: 'Estética Pet'
+      category: 'Estética & Banho',
+      returnCycleDays: 15,
+      variants: JSON.stringify([
+        { label: 'Porte P (até 10kg)', durationMinutes: 45, price: 55.00 },
+        { label: 'Porte M (10 a 25kg)', durationMinutes: 60, price: 75.00 },
+        { label: 'Porte G (acima de 25kg)', durationMinutes: 90, price: 110.00 }
+      ])
     }
   });
   const srvConsulta = await prisma.serviceItem.create({
     data: {
       tenantId: petshopTenant.id,
       name: 'Consulta Veterinária Clínica Geral',
-      description: 'Avaliação clínica completa, check-up e carteira de vacinação.',
+      description: 'Avaliação clínica completa, ausculta, aferição de temperatura e revisão de carteira vacinal.',
       durationMinutes: 45,
       price: 140.00,
-      category: 'Veterinária'
+      category: 'Clínica Veterinária',
+      returnCycleDays: 30,
+      variants: JSON.stringify([
+        { label: 'Consulta Clínica Padrão', durationMinutes: 45, price: 140.00 },
+        { label: 'Consulta Dermatológica + Raspado', durationMinutes: 60, price: 190.00 }
+      ])
+    }
+  });
+  const srvVacina = await prisma.serviceItem.create({
+    data: {
+      tenantId: petshopTenant.id,
+      name: 'Protocolo Vacinal Importado (V10 / Antirrábica)',
+      description: 'Aplicação de vacina importada com avaliação prévia de score corporal e registro no cartão.',
+      durationMinutes: 30,
+      price: 115.00,
+      category: 'Imunização & Preventivos',
+      returnCycleDays: 21,
+      variants: JSON.stringify([
+        { label: 'Dose V10 Importada', durationMinutes: 30, price: 115.00 },
+        { label: 'Combo V10 + Antirrábica', durationMinutes: 35, price: 185.00 }
+      ])
     }
   });
 
@@ -324,20 +385,77 @@ async function main() {
       {
         tenantId: petshopTenant.id,
         serviceId: srvBanho.id,
-        customerName: 'Juliana Mendes (Thor - Golden)',
+        professionalId: profLucas.id,
+        customerName: 'Juliana Mendes (Thor - Golden 32kg)',
         customerPhone: '5551998765432',
-        scheduledAt: new Date(Date.now() + 3 * 3600 * 1000),
-        status: 'CONFIRMED',
-        notes: 'Cão dócil, usar shampoo neutro.'
+        scheduledAt: new Date(Date.now() + 2 * 3600 * 1000),
+        status: 'IN_PROGRESS',
+        variantLabel: 'Porte G (acima de 25kg)',
+        agreedPrice: 110.00,
+        agreedDuration: 90,
+        checkinChecklist: JSON.stringify([
+          'Carteira de vacinação conferida',
+          'Pertences entregues (guia/coleira)',
+          'Sem ectoparasitas aparentes',
+          'Pelagem com nós leves (desembolo autorizado)'
+        ]),
+        returnDueAt: new Date(Date.now() + 15 * 24 * 3600 * 1000),
+        notes: 'Cão dócil, usar shampoo neutro hipoalergênico. Deixou guia azul na recepção.'
+      },
+      {
+        tenantId: petshopTenant.id,
+        serviceId: srvBanho.id,
+        professionalId: profBox.id,
+        customerName: 'Marcos Vinícius (Mel - Shih Tzu 6kg)',
+        customerPhone: '5551997654321',
+        scheduledAt: new Date(Date.now() - 1 * 3600 * 1000),
+        status: 'READY_FOR_PICKUP',
+        variantLabel: 'Porte P (até 10kg)',
+        agreedPrice: 55.00,
+        agreedDuration: 45,
+        checkinChecklist: JSON.stringify([
+          'Carteira de vacinação conferida',
+          'Sem ectoparasitas aparentes',
+          'Perfume hipoalergênico autorizado'
+        ]),
+        returnDueAt: new Date(Date.now() + 15 * 24 * 3600 * 1000),
+        notes: 'Finalizado com lacinho verde. Aguardando tutor retirar no Box 01.'
       },
       {
         tenantId: petshopTenant.id,
         serviceId: srvConsulta.id,
-        customerName: 'Carlos Eduardo (Luna - Poodle)',
+        professionalId: profCamila.id,
+        customerName: 'Carlos Eduardo (Luna - Poodle 8kg)',
         customerPhone: '5551991234567',
-        scheduledAt: new Date(Date.now() + 26 * 3600 * 1000),
+        scheduledAt: new Date(Date.now() + 20 * 3600 * 1000),
         status: 'CONFIRMED',
-        notes: 'Reforço da vacina V10.'
+        variantLabel: 'Consulta Dermatológica + Raspado',
+        agreedPrice: 190.00,
+        agreedDuration: 60,
+        checkinChecklist: JSON.stringify([
+          'Carteira de vacinação conferida'
+        ]),
+        returnDueAt: new Date(Date.now() + 30 * 24 * 3600 * 1000),
+        notes: 'Prurido nas orelhas há 4 dias. Recomendado jejum leve.'
+      },
+      {
+        tenantId: petshopTenant.id,
+        serviceId: srvBanho.id,
+        professionalId: profLucas.id,
+        customerName: 'Fernanda Lima (Bento - Bulldog Francês 13kg)',
+        customerPhone: '5551993344556',
+        scheduledAt: new Date(Date.now() - 15 * 24 * 3600 * 1000),
+        status: 'COMPLETED',
+        variantLabel: 'Porte M (10 a 25kg)',
+        agreedPrice: 75.00,
+        agreedDuration: 60,
+        checkinChecklist: JSON.stringify([
+          'Carteira de vacinação conferida',
+          'Sem ectoparasitas aparentes'
+        ]),
+        returnDueAt: new Date(Date.now() - 6 * 3600 * 1000),
+        returnNotified: false,
+        notes: 'Ciclo quinzenal de banho medicinal vencendo hoje.'
       }
     ]
   });

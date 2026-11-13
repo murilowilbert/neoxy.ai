@@ -244,6 +244,34 @@ app.delete('/api/tenants/:slug/services/:serviceId', requireAuth, requireTenantA
   }
 });
 
+// B2. Grade de Profissionais / Recursos e Comissões (services)
+app.get('/api/tenants/:slug/professionals', requireAuth, requireTenantAccess, requireModule('services'), async (req, res) => {
+  try {
+    const professionals = await businessModuleService.listProfessionals(req.tenant.id);
+    res.json({ success: true, professionals });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/professionals', requireAuth, requireTenantAccess, requireModule('services'), async (req, res) => {
+  try {
+    const professional = await businessModuleService.createOrUpdateProfessional(req.tenant.id, req.body);
+    res.json({ success: true, professional });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/tenants/:slug/professionals/:professionalId', requireAuth, requireTenantAccess, requireModule('services'), async (req, res) => {
+  try {
+    await businessModuleService.deleteProfessional(req.tenant.id, req.params.professionalId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // C. Módulo de Agenda & Horários (appointments)
 app.get('/api/tenants/:slug/appointments', requireAuth, requireTenantAccess, requireModule('appointments'), async (req, res) => {
   try {

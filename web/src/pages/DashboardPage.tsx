@@ -26,7 +26,11 @@ import {
   Clock,
   ChevronDown,
   AlertCircle,
-  Printer
+  Printer,
+  Users,
+  Repeat,
+  ClipboardList,
+  Bell
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
@@ -42,6 +46,12 @@ interface InstructionTemplate {
   id: string;
   name: string;
   instruction: string;
+}
+
+interface ServiceVariant {
+  label: string;
+  durationMinutes: number;
+  price: number;
 }
 
 const DEFAULT_SERVICE_TEMPLATES: InstructionTemplate[] = [
@@ -73,8 +83,24 @@ const DEFAULT_SERVICE_TEMPLATES: InstructionTemplate[] = [
   {
     id: 'tpl-6',
     name: 'Retirada em até 1h',
-    instruction: 'Avisaremos pelo WhatsApp 15 minutos antes da conclusão para retirada.'
+    instruction: 'Avisaremos pelo WhatsApp assim que o atendimento entrar na etapa Pronto para Retirada.'
   }
+];
+
+const DEFAULT_CHECKIN_ITEMS: string[] = [
+  'Carteira de vacinação em dia conferida',
+  'Pertences entregues na recepção (guia / coleira)',
+  'Sem ectoparasitas aparentes na inspeção',
+  'Pelagem com nós leves (desembolo autorizado)',
+  'Alergia ou pele sensível informada pelo cliente',
+  'Autorizado uso de perfume / finalizador'
+];
+
+const OS_STAGES = [
+  { key: 'CONFIRMED', step: 1, label: 'Agendado', shortLabel: '1. Agendado' },
+  { key: 'IN_PROGRESS', step: 2, label: 'Em Execução', shortLabel: '2. Execução' },
+  { key: 'READY_FOR_PICKUP', step: 3, label: 'Pronto p/ Retirada', shortLabel: '3. Pronto' },
+  { key: 'COMPLETED', step: 4, label: 'Finalizado', shortLabel: '4. Entregue' }
 ];
 
 const EMAIL_DOMAINS = ['@gmail.com', '@outlook.com', '@hotmail.com', '@clinica.com.br', '@empresa.com.br'];
@@ -85,7 +111,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onLogout,
   onRefreshSession
 }) => {
-  // Prioriza o estabelecimento de SERVIÇOS quando o usuário for Super Admin para evidenciar o fluxo de serviços
   const initialTenant =
     tenants.find((t) => t.businessType === 'SERVICES') || tenants[0] || null;
 
@@ -98,6 +123,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [metrics, setMetrics] = useState<any>(null);
   const [catalog, setCatalog] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [inboxSessions, setInboxSessions] = useState<any[]>([]);
@@ -126,29 +152,68 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   });
 
-  // Modal de Serviço (Criar / Editar + Gaveta Lateral)
+  // Modal de Serviço (Criar / Editar + Variações por Porte + Ciclo de Retorno + Gaveta Lateral)
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<any | null>(null);
-  const [srvForm, setSrvForm] = useState({
+  const [srvForm, setSrvForm] = useState<{
+    name: string;
+    category: string;
+    durationMinutes: string;
+    price: string;
+    returnCycleDays: string;
+    description: string;
+    variants: ServiceVariant[];
+  }>({
     name: '',
     category: 'Estética & Banho',
     durationMinutes: '60',
     price: '',
-    description: ''
+    returnCycleDays: '15',
+    description: '',
+    variants: []
   });
   const [srvSidePanelOpen, setSrvSidePanelOpen] = useState(false);
 
-  // Modal de Agendamento / Ordem de Serviço (Criar / Editar + Gaveta Lateral)
+  // Modal de Profissional / Recurso e Comissões
+  const [profModalOpen, setProfModalOpen] = useState(false);
+  const [editingProf, setEditingProf] = useState<any | null>(null);
+  const [profForm, setProfForm] = useState({
+    name: '',
+    role: 'Especialista / Profissional',
+    specialty: '',
+    commissionPct: '25',
+    phone: ''
+  });
+
+  // Modal de Agendamento / Ordem de Serviço (Criar / Editar + Porte + Profissional + Checklist + Gaveta Lateral)
   const [apptModalOpen, setApptModalOpen] = useState(false);
   const [editingAppt, setEditingAppt] = useState<any | null>(null);
-  const [apptForm, setApptForm] = useState({
+  const [apptForm, setApptForm] = useState<{
+    customerName: string;
+    customerPhone: string;
+    serviceId: string;
+    professionalId: string;
+    variantLabel: string;
+    agreedPrice: string;
+    agreedDuration: string;
+    scheduledAt: string;
+    status: string;
+    notes: string;
+    checkinChecklist: string[];
+  }>({
     customerName: '',
     customerPhone: '',
     serviceId: '',
+    professionalId: '',
+    variantLabel: '',
+    agreedPrice: '',
+    agreedDuration: '',
     scheduledAt: '',
     status: 'CONFIRMED',
-    notes: ''
+    notes: '',
+    checkinChecklist: []
   });
+  const [customChecklistInput, setCustomChecklistInput] = useState('');
   const [apptSidePanelOpen, setApptSidePanelOpen] = useState(false);
 
   // Estado compartilhado da Gaveta Lateral de Templates
@@ -158,20 +223,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
   const [newTemplateText, setNewTemplateText] = useState('');
 
-  // Modal de Voucher / Ordem de Serviço PDF e Validador QR (Padrão MedPet Validator)
+  // Modal de Voucher / Ordem de Serviço PDF e Validador QR
   const [voucherAppt, setVoucherAppt] = useState<any | null>(null);
   const [validatorInput, setValidatorInput] = useState('');
   const [validatorError, setValidatorError] = useState<string | null>(null);
 
-  // Modal de Disparo por E-mail / WhatsApp com Autocomplete (Padrão MedPet EmailModal)
+  // Modal de Disparo por E-mail / WhatsApp com Autocomplete
   const [notifyAppt, setNotifyAppt] = useState<any | null>(null);
   const [notifyEmail, setNotifyEmail] = useState('');
   const [showNotifySuggestions, setShowNotifySuggestions] = useState(false);
   const [notifySent, setNotifySent] = useState(false);
 
-  // Modal de Confirmação de Exclusão (Padrão MedPet DeleteDialog)
+  // Modal de Confirmação de Exclusão
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: 'service' | 'appointment' | 'catalog' | 'document';
+    type: 'service' | 'appointment' | 'professional' | 'catalog' | 'document';
     item: any;
   } | null>(null);
 
@@ -226,7 +291,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   }, [selectedTenant?.slug]);
 
-  // Fecha dropdowns de busca/filtro/ordenação ao clicar fora
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
@@ -243,7 +307,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Limpa filtros ao trocar de aba
   useEffect(() => {
     setSearchQuery('');
     setFilterBy('all');
@@ -252,7 +315,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   function showToast(msg: string) {
     setToast(msg);
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), 3800);
   }
 
   function saveTemplatesToStorage(updated: InstructionTemplate[]) {
@@ -281,10 +344,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       }
 
       if (mods.includes('services')) {
-        const sRes = await apiFetch(`/api/tenants/${slug}/services`);
+        const [sRes, pRes] = await Promise.all([
+          apiFetch(`/api/tenants/${slug}/services`),
+          apiFetch(`/api/tenants/${slug}/professionals`)
+        ]);
         setServices(sRes.services || []);
+        setProfessionals(pRes.professionals || []);
       } else {
         setServices([]);
+        setProfessionals([]);
       }
 
       if (mods.includes('appointments')) {
@@ -309,7 +377,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const enabledModules: string[] = selectedTenant?.enabledModules || [];
 
-  // Alterna Smart Chip no texto de descrição/instrução
   function toggleSmartChipText(currentText: string, snippet: string): string {
     let next = currentText || '';
     if (next.includes(snippet)) {
@@ -345,7 +412,59 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setNewTemplateText('');
   }
 
-  // CRUD de Serviços
+  // =========================================================================
+  // CRUD DE PROFISSIONAIS / RECURSOS E COMISSÕES (FEATURE 1)
+  // =========================================================================
+  function openCreateProf() {
+    setEditingProf(null);
+    setProfForm({
+      name: '',
+      role: 'Especialista / Recurso',
+      specialty: '',
+      commissionPct: '25',
+      phone: ''
+    });
+    setProfModalOpen(true);
+  }
+
+  function openEditProf(prof: any) {
+    setEditingProf(prof);
+    setProfForm({
+      name: prof.name || '',
+      role: prof.role || 'Especialista',
+      specialty: prof.specialty || '',
+      commissionPct: String(prof.commissionPct ?? 20),
+      phone: prof.phone || ''
+    });
+    setProfModalOpen(true);
+  }
+
+  async function handleSaveProfessional(e: React.FormEvent) {
+    e.preventDefault();
+    if (!profForm.name.trim()) return;
+    try {
+      await apiFetch(`/api/tenants/${selectedTenant.slug}/professionals`, {
+        method: 'POST',
+        body: JSON.stringify({
+          id: editingProf?.id,
+          name: profForm.name,
+          role: profForm.role,
+          specialty: profForm.specialty,
+          commissionPct: Number(profForm.commissionPct || 0),
+          phone: profForm.phone
+        })
+      });
+      setProfModalOpen(false);
+      showToast(editingProf ? 'Profissional atualizado.' : 'Profissional cadastrado na equipe.');
+      loadTenantData(selectedTenant.slug);
+    } catch (err: any) {
+      showToast(err.message);
+    }
+  }
+
+  // =========================================================================
+  // CRUD DE SERVIÇOS + VARIAÇÕES POR PORTE + CICLO DE RETORNO (FEATURES 2 & 4)
+  // =========================================================================
   function openCreateService() {
     setEditingService(null);
     setSrvForm({
@@ -353,7 +472,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       category: 'Estética & Banho',
       durationMinutes: '60',
       price: '',
-      description: ''
+      returnCycleDays: '15',
+      description: '',
+      variants: [
+        { label: 'Porte P (até 8kg)', durationMinutes: 45, price: 55 },
+        { label: 'Porte M (8 a 20kg)', durationMinutes: 60, price: 75 },
+        { label: 'Porte G (acima de 20kg)', durationMinutes: 90, price: 110 }
+      ]
     });
     setSrvSidePanelOpen(false);
     setServiceModalOpen(true);
@@ -366,7 +491,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       category: srv.category || 'Serviços',
       durationMinutes: String(srv.durationMinutes || 45),
       price: String(srv.price || ''),
-      description: srv.description || ''
+      returnCycleDays: srv.returnCycleDays ? String(srv.returnCycleDays) : '',
+      description: srv.description || '',
+      variants: Array.isArray(srv.variants) ? srv.variants : []
     });
     setSrvSidePanelOpen(false);
     setServiceModalOpen(true);
@@ -376,6 +503,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     e.preventDefault();
     if (!srvForm.name.trim()) return;
     try {
+      const cleanVariants = srvForm.variants
+        .filter((v) => v.label.trim() !== '')
+        .map((v) => ({
+          label: v.label.trim(),
+          durationMinutes: Number(v.durationMinutes || 30),
+          price: Number(v.price || 0)
+        }));
+
       await apiFetch(`/api/tenants/${selectedTenant.slug}/services`, {
         method: 'POST',
         body: JSON.stringify({
@@ -384,6 +519,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           category: srvForm.category,
           durationMinutes: Number(srvForm.durationMinutes || 30),
           price: Number(srvForm.price || 0),
+          returnCycleDays: srvForm.returnCycleDays ? Number(srvForm.returnCycleDays) : null,
+          variants: cleanVariants,
           description: srvForm.description
         })
       });
@@ -395,8 +532,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   }
 
-  // CRUD de Agendamentos / Ordens de Serviço
-  function openCreateAppt(preselectedServiceId?: string) {
+  // =========================================================================
+  // CRUD DE AGENDAMENTOS / ORDENS DE SERVIÇO (FEATURES 1, 2, 3, 4, 5)
+  // =========================================================================
+  function openCreateAppt(options?: {
+    serviceId?: string;
+    professionalId?: string;
+    variant?: ServiceVariant;
+    customerName?: string;
+    customerPhone?: string;
+  }) {
     setEditingAppt(null);
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
     tomorrow.setHours(10, 0, 0, 0);
@@ -404,14 +549,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       .toISOString()
       .slice(0, 16);
 
+    const targetService =
+      services.find((s) => s.id === options?.serviceId) || services[0] || null;
+    const defaultVariant =
+      options?.variant ||
+      (Array.isArray(targetService?.variants) && targetService.variants.length > 0
+        ? targetService.variants[0]
+        : null);
+
     setApptForm({
-      customerName: '',
-      customerPhone: '',
-      serviceId: preselectedServiceId || services[0]?.id || '',
+      customerName: options?.customerName || '',
+      customerPhone: options?.customerPhone || '',
+      serviceId: targetService?.id || '',
+      professionalId: options?.professionalId || professionals[0]?.id || '',
+      variantLabel: defaultVariant ? defaultVariant.label : '',
+      agreedPrice: defaultVariant
+        ? String(defaultVariant.price)
+        : targetService
+        ? String(targetService.price)
+        : '',
+      agreedDuration: defaultVariant
+        ? String(defaultVariant.durationMinutes)
+        : targetService
+        ? String(targetService.durationMinutes)
+        : '60',
       scheduledAt: localIso,
       status: 'CONFIRMED',
-      notes: ''
+      notes: '',
+      checkinChecklist: ['Carteira de vacinação em dia conferida']
     });
+    setCustomChecklistInput('');
     setApptSidePanelOpen(false);
     setApptModalOpen(true);
   }
@@ -427,12 +594,67 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       customerName: appt.customerName || '',
       customerPhone: appt.customerPhone || '',
       serviceId: appt.serviceId || '',
+      professionalId: appt.professionalId || '',
+      variantLabel: appt.variantLabel || '',
+      agreedPrice:
+        appt.agreedPrice !== null && appt.agreedPrice !== undefined
+          ? String(appt.agreedPrice)
+          : appt.service?.price !== undefined
+          ? String(appt.service.price)
+          : '',
+      agreedDuration:
+        appt.agreedDuration !== null && appt.agreedDuration !== undefined
+          ? String(appt.agreedDuration)
+          : appt.service?.durationMinutes !== undefined
+          ? String(appt.service.durationMinutes)
+          : '60',
       scheduledAt: localIso,
       status: appt.status || 'CONFIRMED',
-      notes: appt.notes || ''
+      notes: appt.notes || '',
+      checkinChecklist: Array.isArray(appt.checkinChecklist) ? appt.checkinChecklist : []
     });
+    setCustomChecklistInput('');
     setApptSidePanelOpen(false);
     setApptModalOpen(true);
+  }
+
+  function handleSelectServiceInAppt(serviceId: string) {
+    const srv = services.find((s) => s.id === serviceId);
+    const firstVar =
+      Array.isArray(srv?.variants) && srv.variants.length > 0 ? srv.variants[0] : null;
+
+    setApptForm((prev) => ({
+      ...prev,
+      serviceId,
+      variantLabel: firstVar ? firstVar.label : '',
+      agreedPrice: firstVar ? String(firstVar.price) : srv ? String(srv.price) : prev.agreedPrice,
+      agreedDuration: firstVar
+        ? String(firstVar.durationMinutes)
+        : srv
+        ? String(srv.durationMinutes)
+        : prev.agreedDuration
+    }));
+  }
+
+  function handleSelectVariantInAppt(v: ServiceVariant) {
+    setApptForm((prev) => ({
+      ...prev,
+      variantLabel: v.label,
+      agreedPrice: String(v.price),
+      agreedDuration: String(v.durationMinutes)
+    }));
+  }
+
+  function toggleChecklistItemInForm(itemLabel: string) {
+    setApptForm((prev) => {
+      const exists = prev.checkinChecklist.includes(itemLabel);
+      return {
+        ...prev,
+        checkinChecklist: exists
+          ? prev.checkinChecklist.filter((i) => i !== itemLabel)
+          : [...prev.checkinChecklist, itemLabel]
+      };
+    });
   }
 
   async function handleSaveAppointment(e: React.FormEvent) {
@@ -443,24 +665,49 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         method: 'POST',
         body: JSON.stringify({
           id: editingAppt?.id,
-          ...apptForm
+          customerName: apptForm.customerName,
+          customerPhone: apptForm.customerPhone,
+          serviceId: apptForm.serviceId || null,
+          professionalId: apptForm.professionalId || null,
+          variantLabel: apptForm.variantLabel || null,
+          agreedPrice: apptForm.agreedPrice !== '' ? Number(apptForm.agreedPrice) : null,
+          agreedDuration: apptForm.agreedDuration !== '' ? Number(apptForm.agreedDuration) : null,
+          scheduledAt: apptForm.scheduledAt,
+          status: apptForm.status,
+          notes: apptForm.notes,
+          checkinChecklist: apptForm.checkinChecklist
         })
       });
       setApptModalOpen(false);
-      showToast(editingAppt ? 'Agendamento atualizado.' : 'Agendamento registrado na grade.');
+      showToast(editingAppt ? 'Ordem de serviço atualizada.' : 'Agendamento registrado na grade.');
       loadTenantData(selectedTenant.slug);
     } catch (err: any) {
       showToast(err.message);
     }
   }
 
-  async function handleAdvanceApptStatus(appt: any) {
+  // Avança ou define diretamente uma das 4 etapas do Rastreio de OS + dispara WhatsApp quando Pronto p/ Retirada
+  async function handleSetApptStage(appt: any, targetStatus?: string) {
     const nextStatus =
-      appt.status === 'CONFIRMED'
+      targetStatus ||
+      (appt.status === 'CONFIRMED'
         ? 'IN_PROGRESS'
         : appt.status === 'IN_PROGRESS'
+        ? 'READY_FOR_PICKUP'
+        : appt.status === 'READY_FOR_PICKUP'
         ? 'COMPLETED'
-        : 'CONFIRMED';
+        : 'CONFIRMED');
+
+    const protocolCode = `OS-${appt.id.slice(-4).toUpperCase()}`;
+    const serviceLabel = appt.service?.name || 'Atendimento';
+    const notifyWhatsAppMessage =
+      nextStatus === 'READY_FOR_PICKUP'
+        ? `Olá, ${appt.customerName}! O atendimento (${serviceLabel}${
+            appt.variantLabel ? ` - ${appt.variantLabel}` : ''
+          }) já está PRONTO PARA RETIRADA em ${selectedTenant?.name}. Protocolo #${protocolCode}.`
+        : nextStatus === 'IN_PROGRESS'
+        ? `Olá, ${appt.customerName}! Check-in confirmado em ${selectedTenant?.name}. Seu atendimento (${serviceLabel}) acaba de iniciar. Protocolo #${protocolCode}.`
+        : undefined;
 
     try {
       await apiFetch(`/api/tenants/${selectedTenant.slug}/appointments`, {
@@ -470,22 +717,100 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           customerName: appt.customerName,
           customerPhone: appt.customerPhone,
           serviceId: appt.serviceId,
+          professionalId: appt.professionalId,
+          variantLabel: appt.variantLabel,
+          agreedPrice: appt.agreedPrice,
+          agreedDuration: appt.agreedDuration,
           scheduledAt: appt.scheduledAt,
           status: nextStatus,
-          notes: appt.notes
+          notes: appt.notes,
+          checkinChecklist: appt.checkinChecklist,
+          returnDueAt: appt.returnDueAt,
+          returnNotified: appt.returnNotified,
+          notifyWhatsAppMessage
         })
       });
-      const label =
-        nextStatus === 'IN_PROGRESS'
-          ? 'Check-in realizado (Em Atendimento).'
-          : nextStatus === 'COMPLETED'
-          ? 'Ordem de serviço concluída.'
-          : 'Status retornado para Confirmado.';
-      showToast(label);
+
+      const toastByStage: Record<string, string> = {
+        CONFIRMED: 'Status retornado para Etapa 1: Agendado.',
+        IN_PROGRESS: 'Etapa 2: Em Execução (Check-in registrado e cliente avisado).',
+        READY_FOR_PICKUP: `Etapa 3: Pronto para Retirada! Aviso enviado ao WhatsApp (${appt.customerPhone}).`,
+        COMPLETED: 'Etapa 4: Ordem de Serviço concluída e ciclo de retorno programado.'
+      };
+
+      showToast(toastByStage[nextStatus] || 'Status atualizado.');
       loadTenantData(selectedTenant.slug);
       if (voucherAppt?.id === appt.id) {
         setVoucherAppt({ ...appt, status: nextStatus });
       }
+    } catch (err: any) {
+      showToast(err.message);
+    }
+  }
+
+  // Alterna item de checklist diretamente de dentro do Voucher / Check-in Rápido
+  async function handleToggleVoucherChecklist(appt: any, itemLabel: string) {
+    const current: string[] = Array.isArray(appt.checkinChecklist) ? appt.checkinChecklist : [];
+    const updated = current.includes(itemLabel)
+      ? current.filter((i) => i !== itemLabel)
+      : [...current, itemLabel];
+
+    try {
+      await apiFetch(`/api/tenants/${selectedTenant.slug}/appointments`, {
+        method: 'POST',
+        body: JSON.stringify({
+          id: appt.id,
+          customerName: appt.customerName,
+          customerPhone: appt.customerPhone,
+          serviceId: appt.serviceId,
+          professionalId: appt.professionalId,
+          variantLabel: appt.variantLabel,
+          agreedPrice: appt.agreedPrice,
+          agreedDuration: appt.agreedDuration,
+          scheduledAt: appt.scheduledAt,
+          status: appt.status,
+          notes: appt.notes,
+          checkinChecklist: updated,
+          returnDueAt: appt.returnDueAt,
+          returnNotified: appt.returnNotified
+        })
+      });
+      setVoucherAppt({ ...appt, checkinChecklist: updated });
+      loadTenantData(selectedTenant.slug);
+    } catch (err: any) {
+      showToast(err.message);
+    }
+  }
+
+  // Dispara lembrete de Ciclo de Retorno no WhatsApp (Feature 4)
+  async function handleSendReturnReminder(appt: any) {
+    const serviceLabel = appt.service?.name || 'procedimento';
+    const cycleDays = appt.service?.returnCycleDays || 15;
+    const msg = `Olá, ${appt.customerName}! Aqui é da equipe ${selectedTenant?.name}. Completou o ciclo recomendado de ${cycleDays} dias desde o último ${serviceLabel}. Vamos garantir o próximo horário na agenda desta semana?`;
+
+    try {
+      await apiFetch(`/api/tenants/${selectedTenant.slug}/appointments`, {
+        method: 'POST',
+        body: JSON.stringify({
+          id: appt.id,
+          customerName: appt.customerName,
+          customerPhone: appt.customerPhone,
+          serviceId: appt.serviceId,
+          professionalId: appt.professionalId,
+          variantLabel: appt.variantLabel,
+          agreedPrice: appt.agreedPrice,
+          agreedDuration: appt.agreedDuration,
+          scheduledAt: appt.scheduledAt,
+          status: appt.status,
+          notes: appt.notes,
+          checkinChecklist: appt.checkinChecklist,
+          returnDueAt: appt.returnDueAt,
+          returnNotified: true,
+          notifyWhatsAppMessage: msg
+        })
+      });
+      showToast(`Lembrete de retorno enviado para ${appt.customerName} no WhatsApp!`);
+      loadTenantData(selectedTenant.slug);
     } catch (err: any) {
       showToast(err.message);
     }
@@ -519,6 +844,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       if (type === 'service') {
         await apiFetch(`/api/tenants/${selectedTenant.slug}/services/${item.id}`, { method: 'DELETE' });
         showToast('Serviço excluído.');
+      } else if (type === 'professional') {
+        await apiFetch(`/api/tenants/${selectedTenant.slug}/professionals/${item.id}`, { method: 'DELETE' });
+        showToast('Profissional removido da equipe.');
       } else if (type === 'appointment') {
         await apiFetch(`/api/tenants/${selectedTenant.slug}/appointments/${item.id}`, { method: 'DELETE' });
         showToast('Agendamento excluído.');
@@ -670,7 +998,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   }
 
-  // Filtros e Ordenações inteligentes para Serviços e Agendamentos
+  // Filtros e Ordenações inteligentes
   const filteredServices = [...services]
     .filter((srv) => {
       if (filterBy !== 'all' && srv.category !== filterBy) return false;
@@ -700,6 +1028,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           appt.customerName?.toLowerCase().includes(q) ||
           appt.customerPhone?.toLowerCase().includes(q) ||
           appt.service?.name?.toLowerCase().includes(q) ||
+          appt.professional?.name?.toLowerCase().includes(q) ||
+          appt.variantLabel?.toLowerCase().includes(q) ||
           appt.notes?.toLowerCase().includes(q) ||
           appt.id?.toLowerCase().includes(q)
         );
@@ -709,9 +1039,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     .sort((a, b) => {
       if (sortBy === 'alpha-asc') return a.customerName.localeCompare(b.customerName);
       if (sortBy === 'alpha-desc') return b.customerName.localeCompare(a.customerName);
-      if (sortBy === 'price-desc') return Number(b.service?.price || 0) - Number(a.service?.price || 0);
+      if (sortBy === 'price-desc') {
+        const pB = Number(b.agreedPrice ?? b.service?.price ?? 0);
+        const pA = Number(a.agreedPrice ?? a.service?.price ?? 0);
+        return pB - pA;
+      }
       return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
     });
+
+  // Lista de Ciclos de Retorno / Recorrência (Feature 4)
+  const returnAppointments = [...appointments]
+    .filter((appt) => Boolean(appt.returnDueAt || appt.service?.returnCycleDays))
+    .sort((a, b) => {
+      const dA = a.returnDueAt ? new Date(a.returnDueAt).getTime() : Infinity;
+      const dB = b.returnDueAt ? new Date(b.returnDueAt).getTime() : Infinity;
+      return dA - dB;
+    });
+
+  const dueReturnsCount = returnAppointments.filter((appt) => {
+    if (!appt.returnDueAt || appt.returnNotified) return false;
+    const limit = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    return new Date(appt.returnDueAt).getTime() <= limit;
+  }).length;
 
   const filteredCatalog = [...catalog]
     .filter((item) => {
@@ -734,7 +1083,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const serviceCategories = Array.from(new Set(services.map((s) => s.category || 'Serviços')));
 
-  // Renderizador da Barra de Busca + Filtro com X acoplado + Ordenação (Padrão MedPet)
+  // Totais da Equipe & Comissões
+  const totalTeamRevenue = professionals.reduce((acc, p) => acc + Number(p.totalRevenue || 0), 0);
+  const totalTeamCommission = professionals.reduce((acc, p) => acc + Number(p.totalCommission || 0), 0);
+
+  // Serviço atualmente selecionado no formulário de agendamento
+  const selectedServiceInAppt = services.find((s) => s.id === apptForm.serviceId) || null;
+  const selectedServiceVariants: ServiceVariant[] = Array.isArray(selectedServiceInAppt?.variants)
+    ? selectedServiceInAppt.variants
+    : [];
+
   function renderMedPetToolbar(options: {
     searchPlaceholder: string;
     filterOptions?: { key: string; label: string }[];
@@ -753,7 +1111,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
     return (
       <div className="flex flex-wrap items-center gap-2">
-        {/* Lupa Expansível */}
         <div className="nx-sort-wrapper" ref={searchWrapRef}>
           <button
             type="button"
@@ -797,7 +1154,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           )}
         </div>
 
-        {/* Botão de Filtro com X acoplado quando ativo */}
         {options.filterOptions && options.filterOptions.length > 0 && (
           <div className="nx-sort-wrapper" ref={filterWrapRef}>
             {filterBy === 'all' ? (
@@ -864,7 +1220,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* Botão de Ordenação */}
         <div className="nx-sort-wrapper" ref={sortWrapRef}>
           <button
             type="button"
@@ -900,7 +1255,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           )}
         </div>
 
-        {/* Botão Primário de Criação */}
         <button
           type="button"
           onClick={options.onPrimaryClick}
@@ -913,7 +1267,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     );
   }
 
-  // Renderizador da Gaveta Lateral Acoplada de Instruções (Padrão MedPet modal-side-panel)
   function renderCoupledTemplatesSidePanel(
     isOpen: boolean,
     onClose: () => void,
@@ -1081,7 +1434,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg)] text-[var(--nx-text)] flex flex-col md:flex-row transition-colors">
-      {/* Notificação discreta */}
       {toast && (
         <div className="fixed bottom-5 right-5 z-50 px-4 py-3 rounded-lg bg-[var(--nx-text)] text-[var(--nx-bg)] text-xs font-medium shadow-lg border border-[var(--nx-border-strong)] animate-fade-up">
           {toast}
@@ -1091,7 +1443,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* SIDEBAR ERP */}
       <aside className="w-full md:w-64 bg-[var(--nx-surface)] border-b md:border-b-0 md:border-r border-[var(--nx-border)] flex flex-col justify-between shrink-0">
         <div className="p-4 sm:p-5">
-          {/* Logo + ThemeToggle Mobile */}
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-[var(--nx-border)]">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded bg-[var(--nx-primary)] text-white flex items-center justify-center font-bold text-xs shadow-sm">
@@ -1105,7 +1456,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <ThemeToggle />
           </div>
 
-          {/* Seletor de Empresa */}
           {tenants.length > 0 && (
             <div className="mb-6">
               <label className="block text-xs font-medium text-[var(--nx-muted)] mb-1.5">
@@ -1131,7 +1481,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           )}
 
-          {/* Navegação Adaptativa com Destaque para Serviços & Agenda */}
+          {/* Navegação Adaptativa com os 5 Recursos de Serviços */}
           <nav className="space-y-1">
             <button
               onClick={() => setActiveTab('overview')}
@@ -1156,7 +1506,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               >
                 <span className="flex items-center gap-2.5">
                   <Calendar className="w-4 h-4" />
-                  Agenda & Ordens (OS)
+                  Agenda & Rastreio OS
                 </span>
                 <span className="text-[11px] opacity-80 tabular-data">{appointments.length}</span>
               </button>
@@ -1173,9 +1523,49 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               >
                 <span className="flex items-center gap-2.5">
                   <Scissors className="w-4 h-4" />
-                  Grade de Serviços
+                  Serviços & Portes
                 </span>
                 <span className="text-[11px] opacity-80 tabular-data">{services.length}</span>
+              </button>
+            )}
+
+            {enabledModules.includes('services') && (
+              <button
+                onClick={() => setActiveTab('professionals')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                  activeTab === 'professionals'
+                    ? 'bg-[var(--nx-primary)] text-white'
+                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Users className="w-4 h-4" />
+                  Equipe & Comissões
+                </span>
+                <span className="text-[11px] opacity-80 tabular-data">{professionals.length}</span>
+              </button>
+            )}
+
+            {enabledModules.includes('appointments') && (
+              <button
+                onClick={() => setActiveTab('returns')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                  activeTab === 'returns'
+                    ? 'bg-[var(--nx-primary)] text-white'
+                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Repeat className="w-4 h-4" />
+                  Retornos & Recorrência
+                </span>
+                {dueReturnsCount > 0 ? (
+                  <span className="px-1.5 py-0.5 text-[10px] rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] font-semibold tabular-data">
+                    {dueReturnsCount}
+                  </span>
+                ) : (
+                  <span className="text-[11px] opacity-80 tabular-data">{returnAppointments.length}</span>
+                )}
               </button>
             )}
 
@@ -1260,7 +1650,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </nav>
         </div>
 
-        {/* Rodapé do Usuário */}
         <div className="p-4 border-t border-[var(--nx-border)] bg-[var(--nx-bg)]">
           <div className="mb-3">
             <div className="text-xs font-semibold text-[var(--nx-text)] truncate">{user.name}</div>
@@ -1281,7 +1670,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* ÁREA DE TRABALHO PRINCIPAL */}
       <main className="flex-1 p-5 sm:p-8 overflow-y-auto max-w-6xl">
-        {/* Cabeçalho do Estabelecimento */}
         {selectedTenant && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-6 border-b border-[var(--nx-border)]">
             <div>
@@ -1298,7 +1686,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </span>
               </div>
               <p className="text-xs text-[var(--nx-muted)] mt-1 tabular-data">
-                Identificador: {selectedTenant.slug} · Módulos habilitados: {enabledModules.join(', ')}
+                Identificador: {selectedTenant.slug} / Módulos habilitados: {enabledModules.join(', ')}
               </p>
             </div>
 
@@ -1326,7 +1714,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* ABA 1: RESUMO OPERACIONAL */}
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-fade-up">
-            {/* Faixa única de indicadores operacionais */}
             <div className="grid grid-cols-2 lg:grid-cols-4 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-[var(--nx-border)]">
               <div className="p-4">
                 <div className="text-xs text-[var(--nx-subtle)] mb-1">Conversas no WhatsApp</div>
@@ -1338,31 +1725,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
               </div>
 
-              {enabledModules.includes('services') && (
-                <div className="p-4">
-                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Serviços ativos</div>
-                  <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
-                    {metrics?.totalServices ?? services.length}
-                  </div>
-                  <div className="text-[11px] text-[var(--nx-muted)] mt-1">
-                    Com duração e preparo configurados
-                  </div>
-                </div>
-              )}
-
               {enabledModules.includes('appointments') && (
                 <div className="p-4">
-                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Ordens / Agendamentos</div>
+                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Ordens de Serviço (OS)</div>
                   <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
                     {metrics?.totalAppointments ?? appointments.length}
                   </div>
-                  <div className="text-[11px] text-[var(--nx-accent)] mt-1 font-medium">
-                    Validação por protocolo ativa
+                  <div className="text-[11px] text-[var(--nx-accent)] mt-1 font-medium tabular-data">
+                    {metrics?.readyForPickupCount ?? 0} prontas p/ retirada agora
                   </div>
                 </div>
               )}
 
-              {enabledModules.includes('stock') && (
+              {enabledModules.includes('services') && (
+                <div className="p-4">
+                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Equipe & Comissões</div>
+                  <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
+                    {professionals.length}
+                  </div>
+                  <div className="text-[11px] text-[var(--nx-muted)] mt-1 tabular-data">
+                    R$ {totalTeamCommission.toFixed(2)} em comissões geradas
+                  </div>
+                </div>
+              )}
+
+              {enabledModules.includes('appointments') ? (
+                <div className="p-4">
+                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Retornos pendentes</div>
+                  <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
+                    {dueReturnsCount}
+                  </div>
+                  <div className="text-[11px] text-[var(--nx-muted)] mt-1">
+                    Clientes no ciclo de recorrência
+                  </div>
+                </div>
+              ) : (
                 <div className="p-4">
                   <div className="text-xs text-[var(--nx-subtle)] mb-1">Itens em catálogo</div>
                   <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
@@ -1373,21 +1770,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </div>
                 </div>
               )}
-
-              {enabledModules.includes('documents') && (
-                <div className="p-4">
-                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Contas pendentes</div>
-                  <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
-                    {metrics?.pendingDocuments ?? 0}
-                  </div>
-                  <div className="text-[11px] text-[var(--nx-muted)] mt-1">
-                    Guias e boletos em triagem
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Validador Rápido de Protocolo / Check-in na Recepção (Inspirado no PharmacyHome / Validator do MedPet) */}
             {enabledModules.includes('appointments') && (
               <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1397,10 +1781,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </div>
                     <div>
                       <h2 className="text-sm font-bold text-[var(--nx-text)]">
-                        Check-in Rápido & Validador de Ordem de Serviço
+                        Check-in Rápido, Vistoria de Entrada & Validador de OS
                       </h2>
                       <p className="text-xs text-[var(--nx-muted)]">
-                        Informe o protocolo do agendamento, nome do cliente ou telefone para abrir o voucher e iniciar o atendimento.
+                        Informe o protocolo (#OS-XXXX), nome do cliente ou telefone para abrir o checklist de recepção e atualizar o rastreio.
                       </p>
                     </div>
                   </div>
@@ -1439,13 +1823,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Simulador de Atendimento em Tempo Real */}
               <div className="lg:col-span-7 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
                 <h2 className="text-sm font-bold text-[var(--nx-text)] mb-1">
                   Simulador de Atendimento WhatsApp ({selectedTenant?.name})
                 </h2>
                 <p className="text-xs text-[var(--nx-muted)] mb-4">
-                  Envie uma mensagem para testar como o assistente consulta seus serviços, horários ou produtos.
+                  Envie uma mensagem para testar como o assistente consulta seus serviços, variações de porte, horários ou produtos.
                 </p>
 
                 <form onSubmit={handleSimulateChat} className="flex gap-2 mb-4">
@@ -1480,7 +1863,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 )}
               </div>
 
-              {/* Demandas e Procura Recente */}
               <div className="lg:col-span-5 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
                 <h2 className="text-sm font-bold text-[var(--nx-text)] mb-1">
                   Serviços / Itens procurados sem cadastro
@@ -1510,25 +1892,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 2: AGENDA & ORDENS DE SERVIÇO (FOCO EM SERVIÇOS COM PÍLULAS ELÁSTICAS DO MEDPET) */}
+        {/* ABA 2: AGENDA & RASTREIO DE ORDEM DE SERVIÇO EM 4 ETAPAS (FEATURES 1, 2, 3, 5) */}
         {activeTab === 'appointments' && (
           <div className="space-y-6 animate-fade-up">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">
-                  Agenda de Atendimento & Ordens de Serviço
+                  Agenda, Check-in de Recepção & Rastreio de OS (4 Etapas)
                 </h2>
                 <p className="text-xs text-[var(--nx-muted)]">
-                  Gerencie horários marcados, emita o comprovante em PDF com QR Code ou dispare lembretes no WhatsApp.
+                  Acompanhe cada atendimento desde o check-in até o aviso automático de "Pronto para Retirada" no WhatsApp.
                 </p>
               </div>
 
               {renderMedPetToolbar({
-                searchPlaceholder: 'Buscar cliente, serviço, telefone...',
+                searchPlaceholder: 'Buscar cliente, profissional, serviço, protocolo...',
                 filterOptions: [
-                  { key: 'CONFIRMED', label: 'Somente Confirmados' },
-                  { key: 'IN_PROGRESS', label: 'Em Atendimento (Check-in)' },
-                  { key: 'COMPLETED', label: 'Concluídos' }
+                  { key: 'CONFIRMED', label: '1. Agendados' },
+                  { key: 'IN_PROGRESS', label: '2. Em Execução (Check-in)' },
+                  { key: 'READY_FOR_PICKUP', label: '3. Prontos p/ Retirada' },
+                  { key: 'COMPLETED', label: '4. Finalizados' }
                 ],
                 primaryButtonLabel: 'Novo Agendamento',
                 onPrimaryClick: () => openCreateAppt()
@@ -1557,8 +1940,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredAppointments.map((appt) => {
                   const protocolCode = `OS-${appt.id.slice(-4).toUpperCase()}`;
-                  const isCompleted = appt.status === 'COMPLETED';
-                  const isInProgress = appt.status === 'IN_PROGRESS';
+                  const currentStageObj =
+                    OS_STAGES.find((s) => s.key === appt.status) || OS_STAGES[0];
+                  const checklist: string[] = Array.isArray(appt.checkinChecklist)
+                    ? appt.checkinChecklist
+                    : [];
+                  const effectivePrice = Number(appt.agreedPrice ?? appt.service?.price ?? 0);
+                  const effectiveDuration = Number(
+                    appt.agreedDuration ?? appt.service?.durationMinutes ?? 60
+                  );
 
                   return (
                     <div
@@ -1566,39 +1956,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       className="nx-card-interactive flex flex-col justify-between overflow-hidden animate-fade-up"
                     >
                       <div className="p-5">
-                        {/* Topo do Card com Status + Botões-Pílula Elásticos (Padrão MedPet) */}
+                        {/* Topo do Card com Status + Protocolo + Botões-Pílula Elásticos */}
                         <div className="flex items-center justify-between gap-2 mb-3">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                                isCompleted
+                                appt.status === 'COMPLETED'
                                   ? 'bg-[var(--nx-surface-alt)] text-[var(--nx-muted)]'
-                                  : isInProgress
+                                  : appt.status === 'READY_FOR_PICKUP'
+                                  ? 'bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] border border-[var(--nx-accent-border)]'
+                                  : appt.status === 'IN_PROGRESS'
                                   ? 'bg-[var(--nx-amber-bg)] text-[var(--nx-amber)]'
-                                  : 'bg-[var(--nx-accent-bg)] text-[var(--nx-accent)]'
+                                  : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]'
                               }`}
                             >
-                              {isCompleted
-                                ? '● Concluído'
-                                : isInProgress
-                                ? '● Em Atendimento'
-                                : '● Confirmado'}
+                              ● {currentStageObj.label}
                             </span>
                             <span className="px-2 py-0.5 rounded bg-[var(--nx-surface-alt)] text-[11px] font-semibold text-[var(--nx-primary)] tabular-data">
                               #{protocolCode}
                             </span>
                           </div>
 
-                          {/* Botões-Pílula Elásticos que expandem no hover */}
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => setVoucherAppt(appt)}
                               className="nx-icon-btn-pill nx-icon-btn-pill--pdf"
-                              aria-label="Comprovante PDF"
+                              aria-label="Comprovante PDF e Vistoria"
                             >
                               <FileDown className="w-3.5 h-3.5" />
-                              <span className="nx-icon-btn-pill-text">Voucher PDF</span>
+                              <span className="nx-icon-btn-pill-text">Voucher / Check-in</span>
                             </button>
 
                             <button
@@ -1621,7 +2008,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         <h3 className="text-base font-bold text-[var(--nx-text)] mb-1">
                           {appt.customerName}
                         </h3>
-                        <div className="flex items-center justify-between text-xs text-[var(--nx-muted)] mb-2 tabular-data">
+                        <div className="flex items-center justify-between text-xs text-[var(--nx-muted)] mb-3 tabular-data">
                           <span>WhatsApp: {appt.customerPhone}</span>
                           <span className="font-semibold text-[var(--nx-text)]">
                             {new Date(appt.scheduledAt).toLocaleString('pt-BR', {
@@ -1631,37 +2018,119 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </span>
                         </div>
 
-                        {/* Serviço Vinculado */}
-                        <div className="flex items-center justify-between px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs mb-3">
-                          <span className="font-medium text-[var(--nx-text)]">
-                            {appt.service?.name || 'Atendimento Geral'}
-                          </span>
-                          {appt.service?.price !== undefined && (
-                            <span className="font-semibold text-[var(--nx-primary)] tabular-data">
-                              R$ {Number(appt.service.price).toFixed(2)} · {appt.service.durationMinutes} min
+                        {/* Barra Visual de Rastreio em 4 Etapas (Feature 5) */}
+                        <div className="mb-3 p-2.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+                          <div className="flex items-center justify-between text-[10px] font-semibold text-[var(--nx-subtle)] mb-1.5">
+                            <span>RASTREIO DA ORDEM DE SERVIÇO</span>
+                            <span className="tabular-data">Etapa {currentStageObj.step} de 4</span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1">
+                            {OS_STAGES.map((st) => {
+                              const isCurrent = appt.status === st.key;
+                              const isPassed = currentStageObj.step >= st.step;
+                              return (
+                                <button
+                                  key={st.key}
+                                  type="button"
+                                  onClick={() => handleSetApptStage(appt, st.key)}
+                                  title={`Mudar para ${st.label}`}
+                                  className={`py-1 px-1 rounded text-[10px] font-semibold transition-all text-center truncate ${
+                                    isCurrent
+                                      ? 'bg-[var(--nx-primary)] text-white shadow-sm'
+                                      : isPassed
+                                      ? 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]'
+                                      : 'bg-[var(--nx-surface)] text-[var(--nx-subtle)] hover:text-[var(--nx-text)]'
+                                  }`}
+                                >
+                                  {st.shortLabel}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Serviço + Porte/Complexidade + Profissional Alocado (Features 1 & 2) */}
+                        <div className="px-3 py-2.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs mb-3 space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-[var(--nx-text)]">
+                              {appt.service?.name || 'Atendimento Geral'}
                             </span>
+                            <span className="font-bold text-[var(--nx-primary)] tabular-data">
+                              R$ {effectivePrice.toFixed(2)} / {effectiveDuration} min
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 flex-wrap text-[11px] text-[var(--nx-muted)]">
+                            {appt.variantLabel && (
+                              <span className="px-2 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-medium">
+                                Porte / Opção: {appt.variantLabel}
+                              </span>
+                            )}
+                            {appt.professional && (
+                              <span className="inline-flex items-center gap-1 font-medium text-[var(--nx-text)]">
+                                <Users className="w-3 h-3 text-[var(--nx-primary)]" />
+                                {appt.professional.name} ({appt.professional.commissionPct}%)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Resumo do Checklist de Entrada / Anamnese (Feature 3) */}
+                        <div className="mb-2.5">
+                          <div className="flex items-center justify-between text-[11px] font-medium text-[var(--nx-muted)] mb-1">
+                            <span className="inline-flex items-center gap-1">
+                              <ClipboardList className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                              Checklist de Entrada (Vistoria):
+                            </span>
+                            <span className="tabular-data font-semibold text-[var(--nx-text)]">
+                              {checklist.length} {checklist.length === 1 ? 'item conferido' : 'itens conferidos'}
+                            </span>
+                          </div>
+                          {checklist.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {checklist.slice(0, 3).map((item, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-0.5 rounded text-[10px] bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] border border-[var(--nx-accent-border)]"
+                                >
+                                  {item}
+                                </span>
+                              ))}
+                              {checklist.length > 3 && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--nx-surface-alt)] text-[var(--nx-muted)]">
+                                  +{checklist.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-[var(--nx-subtle)]">
+                              Nenhum item marcado no check-in ainda.
+                            </p>
                           )}
                         </div>
 
-                        {/* Instruções / Observações */}
-                        <p className="text-xs text-[var(--nx-muted)] leading-relaxed border-t border-[var(--nx-border)] pt-2.5 line-clamp-3">
-                          {appt.notes || 'Sem recomendações adicionais registradas.'}
+                        <p className="text-xs text-[var(--nx-muted)] leading-relaxed border-t border-[var(--nx-border)] pt-2 line-clamp-2">
+                          {appt.notes || 'Sem observações adicionais.'}
                         </p>
                       </div>
 
-                      {/* Ações Inferiores do Card (Check-in / Editar / Excluir) */}
+                      {/* Ações Inferiores do Card (Avançar Etapa / Editar / Excluir) */}
                       <div className="grid grid-cols-3 divide-x divide-[var(--nx-border)] border-t border-[var(--nx-border)] bg-[var(--nx-bg)] text-xs font-medium">
                         <button
                           type="button"
-                          onClick={() => handleAdvanceApptStatus(appt)}
-                          className="py-2.5 px-2 flex items-center justify-center gap-1.5 text-[var(--nx-primary)] hover:bg-[var(--nx-primary-soft)] transition-colors"
+                          onClick={() => handleSetApptStage(appt)}
+                          className="py-2.5 px-2 flex items-center justify-center gap-1.5 text-[var(--nx-primary)] hover:bg-[var(--nx-primary-soft)] transition-colors font-semibold"
                         >
-                          <Clock className="w-3.5 h-3.5" />
-                          {appt.status === 'CONFIRMED'
-                            ? 'Iniciar Check-in'
-                            : appt.status === 'IN_PROGRESS'
-                            ? 'Concluir OS'
-                            : 'Reabrir'}
+                          <Clock className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">
+                            {appt.status === 'CONFIRMED'
+                              ? 'Iniciar Check-in'
+                              : appt.status === 'IN_PROGRESS'
+                              ? 'Pronto p/ Retirada'
+                              : appt.status === 'READY_FOR_PICKUP'
+                              ? 'Confirmar Entrega'
+                              : 'Reabrir OS'}
+                          </span>
                         </button>
                         <button
                           type="button"
@@ -1669,7 +2138,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           className="py-2.5 px-2 flex items-center justify-center gap-1.5 text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          Editar
+                          Editar / Vistoria
                         </button>
                         <button
                           type="button"
@@ -1688,16 +2157,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 3: GRADE DE SERVIÇOS (COM BUSCA, FILTRO, SMART CHIPS & AGENDAR RÁPIDO) */}
+        {/* ABA 3: SERVIÇOS, VARIAÇÕES POR PORTE & CICLO DE RETORNO (FEATURES 2 & 4) */}
         {activeTab === 'services' && (
           <div className="space-y-6 animate-fade-up">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">
-                  Grade de Serviços, Procedimentos & Preparo
+                  Grade de Serviços, Tabela por Porte & Ciclo de Retorno
                 </h2>
                 <p className="text-xs text-[var(--nx-muted)]">
-                  Configure duração, valores e instruções automáticas que a IA informa antes de agendar.
+                  Configure preços e tempos por porte/complexidade, instruções de preparo e o ciclo de recorrência automática.
                 </p>
               </div>
 
@@ -1710,65 +2179,231 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredServices.map((srv) => (
+              {filteredServices.map((srv) => {
+                const srvVariants: ServiceVariant[] = Array.isArray(srv.variants)
+                  ? srv.variants
+                  : [];
+
+                return (
+                  <div
+                    key={srv.id}
+                    className="nx-card-interactive flex flex-col justify-between overflow-hidden animate-fade-up"
+                  >
+                    <div className="p-5">
+                      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)]">
+                            ● Ativo
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]">
+                            {srv.category || 'Serviços'}
+                          </span>
+                          {srv.returnCycleDays && (
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] tabular-data">
+                              Retorno: {srv.returnCycleDays} dias
+                            </span>
+                          )}
+                        </div>
+
+                        {enabledModules.includes('appointments') && (
+                          <button
+                            type="button"
+                            onClick={() => openCreateAppt({ serviceId: srv.id })}
+                            className="nx-icon-btn-pill nx-icon-btn-pill--blue"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span className="nx-icon-btn-pill-text">Agendar este</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-baseline justify-between gap-4 mb-3">
+                        <h3 className="text-base font-bold text-[var(--nx-text)]">{srv.name}</h3>
+                        <div className="text-right shrink-0">
+                          <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
+                            R$ {Number(srv.price).toFixed(2)}
+                          </span>
+                          <span className="block text-[10px] text-[var(--nx-subtle)] tabular-data">
+                            Base: {srv.durationMinutes} min
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Tabela de Preço e Tempo por Porte / Complexidade (Feature 2) */}
+                      {srvVariants.length > 0 && (
+                        <div className="mb-3 p-2.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+                          <div className="text-[10px] font-semibold uppercase text-[var(--nx-subtle)] mb-1.5">
+                            Variações de Porte / Complexidade (Clique para agendar)
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                            {srvVariants.map((v, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() =>
+                                  openCreateAppt({ serviceId: srv.id, variant: v })
+                                }
+                                className="p-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:border-[var(--nx-primary)] hover:bg-[var(--nx-primary-soft)] text-left transition-colors"
+                              >
+                                <div className="text-[11px] font-semibold text-[var(--nx-text)] truncate">
+                                  {v.label}
+                                </div>
+                                <div className="text-[11px] font-bold text-[var(--nx-primary)] tabular-data mt-0.5">
+                                  R$ {Number(v.price).toFixed(2)}
+                                </div>
+                                <div className="text-[10px] text-[var(--nx-subtle)] tabular-data">
+                                  {v.durationMinutes} min
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-[var(--nx-muted)] leading-relaxed border-t border-[var(--nx-border)] pt-2.5">
+                        {srv.description || 'Nenhuma recomendação pré-atendimento cadastrada.'}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 divide-x divide-[var(--nx-border)] border-t border-[var(--nx-border)] bg-[var(--nx-bg)] text-xs font-medium">
+                      <button
+                        type="button"
+                        onClick={() => openEditService(srv)}
+                        className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        Editar Portes & Preparo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget({ type: 'service', item: srv })}
+                        className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-error)] hover:bg-[var(--nx-error-bg)] transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ABA 4: GRADE DE PROFISSIONAIS / RECURSOS E COMISSÕES (FEATURE 1) */}
+        {activeTab === 'professionals' && (
+          <div className="space-y-6 animate-fade-up">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--nx-text)]">
+                  Grade de Profissionais, Boxes & Cálculo de Comissões
+                </h2>
+                <p className="text-xs text-[var(--nx-muted)]">
+                  Vincule atendimentos a cada profissional ou recurso físico e acompanhe o repasse automático de comissão.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={openCreateProf}
+                className="nx-btn-primary h-[38px] px-4 text-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Novo Profissional / Recurso
+              </button>
+            </div>
+
+            {/* Faixa de Resumo Financeiro de Comissões */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-[var(--nx-border)]">
+              <div className="p-4">
+                <div className="text-xs text-[var(--nx-subtle)] mb-1">Profissionais / Boxes ativos</div>
+                <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
+                  {professionals.length}
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="text-xs text-[var(--nx-subtle)] mb-1">Receita vinculada à equipe</div>
+                <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
+                  R$ {totalTeamRevenue.toFixed(2)}
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="text-xs text-[var(--nx-subtle)] mb-1">Total de comissões apuradas</div>
+                <div className="text-2xl font-bold text-[var(--nx-accent)] tabular-data">
+                  R$ {totalTeamCommission.toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {professionals.map((prof) => (
                 <div
-                  key={srv.id}
+                  key={prof.id}
                   className="nx-card-interactive flex flex-col justify-between overflow-hidden animate-fade-up"
                 >
                   <div className="p-5">
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)]">
-                          ● Ativo
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]">
-                          {srv.category || 'Serviços'}
-                        </span>
-                        <span className="text-xs text-[var(--nx-subtle)] tabular-data">
-                          {srv.durationMinutes} min
-                        </span>
-                      </div>
-
-                      {enabledModules.includes('appointments') && (
-                        <button
-                          type="button"
-                          onClick={() => openCreateAppt(srv.id)}
-                          className="nx-icon-btn-pill nx-icon-btn-pill--blue"
-                        >
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span className="nx-icon-btn-pill-text">Agendar este</span>
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex items-baseline justify-between gap-4 mb-2">
-                      <h3 className="text-base font-bold text-[var(--nx-text)]">{srv.name}</h3>
-                      <span className="text-base font-bold text-[var(--nx-primary)] tabular-data shrink-0">
-                        R$ {Number(srv.price).toFixed(2)}
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]">
+                        {prof.role}
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] tabular-data">
+                        Comissão: {Number(prof.commissionPct).toFixed(0)}%
                       </span>
                     </div>
 
-                    <p className="text-xs text-[var(--nx-muted)] leading-relaxed border-t border-[var(--nx-border)] pt-2.5">
-                      {srv.description || 'Nenhuma recomendação pré-atendimento cadastrada.'}
+                    <h3 className="text-base font-bold text-[var(--nx-text)] mb-0.5">
+                      {prof.name}
+                    </h3>
+                    <p className="text-xs text-[var(--nx-muted)] mb-3">
+                      {prof.specialty || 'Atendimento geral'}
                     </p>
+
+                    <div className="p-3 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[var(--nx-muted)]">Ordens atribuídas:</span>
+                        <strong className="text-[var(--nx-text)] tabular-data">
+                          {prof.appointmentsCount ?? 0} atendimentos
+                        </strong>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[var(--nx-muted)]">Produção bruta:</span>
+                        <strong className="text-[var(--nx-text)] tabular-data">
+                          R$ {Number(prof.totalRevenue || 0).toFixed(2)}
+                        </strong>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-[var(--nx-border)] pt-1.5">
+                        <span className="font-semibold text-[var(--nx-text)]">Comissão a pagar:</span>
+                        <strong className="text-sm font-bold text-[var(--nx-accent)] tabular-data">
+                          R$ {Number(prof.totalCommission || 0).toFixed(2)}
+                        </strong>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 divide-x divide-[var(--nx-border)] border-t border-[var(--nx-border)] bg-[var(--nx-bg)] text-xs font-medium">
+                  <div className="grid grid-cols-3 divide-x divide-[var(--nx-border)] border-t border-[var(--nx-border)] bg-[var(--nx-bg)] text-xs font-medium">
                     <button
                       type="button"
-                      onClick={() => openEditService(srv)}
-                      className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
+                      onClick={() => openCreateAppt({ professionalId: prof.id })}
+                      className="py-2.5 flex items-center justify-center gap-1 text-[var(--nx-primary)] hover:bg-[var(--nx-primary-soft)] transition-colors"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      Editar & Preparo
+                      <Calendar className="w-3.5 h-3.5" />
+                      Agendar
                     </button>
                     <button
                       type="button"
-                      onClick={() => setDeleteTarget({ type: 'service', item: srv })}
-                      className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-error)] hover:bg-[var(--nx-error-bg)] transition-colors"
+                      onClick={() => openEditProf(prof)}
+                      className="py-2.5 flex items-center justify-center gap-1 text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget({ type: 'professional', item: prof })}
+                      className="py-2.5 flex items-center justify-center gap-1 text-[var(--nx-error)] hover:bg-[var(--nx-error-bg)] transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      Excluir
+                      Remover
                     </button>
                   </div>
                 </div>
@@ -1777,7 +2412,138 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 4: CATÁLOGO DE PRODUTOS & INSUMOS */}
+        {/* ABA 5: CICLO DE RETORNO & RECORRÊNCIA AUTOMÁTICA (FEATURE 4) */}
+        {activeTab === 'returns' && (
+          <div className="space-y-6 animate-fade-up">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--nx-text)]">
+                  Ciclo de Retorno & Recorrência Ativa via WhatsApp
+                </h2>
+                <p className="text-xs text-[var(--nx-muted)]">
+                  Clientes cujo ciclo de retorno (15, 21 ou 30 dias) está vencido ou próximo do vencimento para reativação em 1 clique.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openCreateAppt()}
+                className="nx-btn-primary h-[38px] px-4 text-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Novo Agendamento
+              </button>
+            </div>
+
+            {returnAppointments.length === 0 ? (
+              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-10 text-center text-xs text-[var(--nx-subtle)]">
+                Nenhum ciclo de retorno programado até o momento.
+              </div>
+            ) : (
+              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] text-xs font-semibold text-[var(--nx-muted)]">
+                      <th className="py-3 px-4">Cliente / WhatsApp</th>
+                      <th className="py-3 px-4">Último Procedimento</th>
+                      <th className="py-3 px-4">Ciclo</th>
+                      <th className="py-3 px-4">Data Prevista de Retorno</th>
+                      <th className="py-3 px-4">Status do Lembrete</th>
+                      <th className="py-3 px-4 text-right">Ações de Recorrência</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--nx-border)] text-xs">
+                    {returnAppointments.map((appt) => {
+                      const dueTime = appt.returnDueAt
+                        ? new Date(appt.returnDueAt).getTime()
+                        : Date.now();
+                      const isOverdue = dueTime <= Date.now();
+                      const isSoon =
+                        !isOverdue && dueTime <= Date.now() + 7 * 24 * 60 * 60 * 1000;
+
+                      return (
+                        <tr key={appt.id} className="hover:bg-[var(--nx-bg)]">
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-[var(--nx-text)]">{appt.customerName}</div>
+                            <div className="text-[11px] text-[var(--nx-muted)] tabular-data">
+                              {appt.customerPhone}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-semibold text-[var(--nx-text)]">
+                              {appt.service?.name || 'Serviço'}
+                            </div>
+                            {appt.variantLabel && (
+                              <div className="text-[11px] text-[var(--nx-primary)]">
+                                {appt.variantLabel}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 tabular-data text-[var(--nx-muted)]">
+                            Cada {appt.service?.returnCycleDays || 15} dias
+                          </td>
+                          <td className="py-3.5 px-4 tabular-data">
+                            <span
+                              className={`px-2 py-0.5 rounded font-semibold text-[11px] ${
+                                isOverdue
+                                  ? 'bg-[var(--nx-error-bg)] text-[var(--nx-error)]'
+                                  : isSoon
+                                  ? 'bg-[var(--nx-amber-bg)] text-[var(--nx-amber)]'
+                                  : 'bg-[var(--nx-surface-alt)] text-[var(--nx-text)]'
+                              }`}
+                            >
+                              {appt.returnDueAt
+                                ? new Date(appt.returnDueAt).toLocaleDateString('pt-BR')
+                                : 'Programado'}{' '}
+                              {isOverdue ? '(Vencido)' : isSoon ? '(Próximo)' : ''}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            {appt.returnNotified ? (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--nx-accent-bg)] text-[var(--nx-accent)]">
+                                ● Lembrete enviado no WhatsApp
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--nx-amber-bg)] text-[var(--nx-amber)]">
+                                ● Aguardando disparo
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right space-x-2 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => handleSendReturnReminder(appt)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-primary-soft)] hover:text-[var(--nx-primary)] text-[11px] font-semibold text-[var(--nx-text)] transition-colors"
+                            >
+                              <Bell className="w-3.5 h-3.5" />
+                              {appt.returnNotified ? 'Reenviar WhatsApp' : 'Disparar WhatsApp'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openCreateAppt({
+                                  serviceId: appt.serviceId,
+                                  professionalId: appt.professionalId,
+                                  customerName: appt.customerName,
+                                  customerPhone: appt.customerPhone
+                                })
+                              }
+                              className="nx-btn-primary px-3 py-1.5 text-[11px]"
+                            >
+                              <Calendar className="w-3.5 h-3.5" />
+                              Reagendar Retorno
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ABA 6: CATÁLOGO DE PRODUTOS & INSUMOS */}
         {activeTab === 'catalog' && (
           <div className="space-y-6 animate-fade-up">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -1838,7 +2604,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 5: RECEBIMENTO DE CONTAS & DOCUMENTOS */}
+        {/* ABA 7: RECEBIMENTO DE CONTAS & DOCUMENTOS */}
         {activeTab === 'documents' && (
           <div className="space-y-6 animate-fade-up">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -1880,9 +2646,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       <td className="py-3 px-4 text-[var(--nx-muted)]">{doc.docType}</td>
                       <td className="py-3 px-4 text-[var(--nx-muted)]">{doc.customerName}</td>
                       <td className="py-3 px-4 font-semibold text-[var(--nx-text)] tabular-data">
-                        {doc.amount ? `R$ ${Number(doc.amount).toFixed(2)}` : '—'}
+                        {doc.amount ? `R$ ${Number(doc.amount).toFixed(2)}` : '-'}
                       </td>
-                      <td className="py-3 px-4 tabular-data">{doc.dueDate || '—'}</td>
+                      <td className="py-3 px-4 tabular-data">{doc.dueDate || '-'}</td>
                       <td className="py-3 px-4">
                         <span
                           className={`px-2 py-0.5 rounded text-[11px] font-medium ${
@@ -1916,15 +2682,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 6: INBOX AO VIVO & PAUSA PARA HUMANO */}
+        {/* ABA 8: INBOX AO VIVO & PAUSA PARA HUMANO */}
         {activeTab === 'inbox' && (
           <div className="space-y-4 animate-fade-up">
             <div>
               <h2 className="text-base font-bold text-[var(--nx-text)]">
-                Conversas Ativas no WhatsApp & Transbordo Humano
+                Conversas Ativas no WhatsApp & Histórico de Avisos Automáticos
               </h2>
               <p className="text-xs text-[var(--nx-muted)]">
-                Assuma qualquer atendimento manualmente para pausar a IA por 4 horas naquele número.
+                Veja os disparos automáticos de "Pronto para Retirada" e lembretes de retorno ou assuma a conversa manualmente.
               </p>
             </div>
 
@@ -1990,7 +2756,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             }`}
                           >
                             <div className="text-[10px] opacity-70 mb-0.5">
-                              {m.role === 'user' ? 'Cliente' : 'Atendente Neoxy'}
+                              {m.role === 'user' ? 'Cliente' : 'Atendente / Notificação Neoxy'}
                             </div>
                             <div>{m.content}</div>
                           </div>
@@ -2004,7 +2770,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 7: CONFIGURAÇÕES DE EXPEDIENTE & PERSONA */}
+        {/* ABA 9: CONFIGURAÇÕES DE EXPEDIENTE & PERSONA */}
         {activeTab === 'settings' && (
           <form
             onSubmit={handleSaveSettings}
@@ -2065,12 +2831,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </form>
         )}
 
-        {/* ABA 8: CONSOLE SUPER ADMIN */}
+        {/* ABA 10: CONSOLE SUPER ADMIN */}
         {activeTab === 'superadmin' && user.role === 'SUPER_ADMIN' && (
           <div className="space-y-4 animate-fade-up">
             <div>
               <h2 className="text-base font-bold text-[var(--nx-text)]">
-                Console Super Admin — Controle de Módulos (Feature Flags)
+                Console Super Admin / Controle de Módulos (Feature Flags)
               </h2>
               <p className="text-xs text-[var(--nx-muted)]">
                 Habilite ou desabilite módulos em tempo real para qualquer estabelecimento.
@@ -2124,7 +2890,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       </main>
 
       {/* =================================================================== */}
-      {/* MODAL 1: CRIAR / EDITAR SERVIÇO + SMART CHIPS + GAVETA LATERAL      */}
+      {/* MODAL 1: CRIAR / EDITAR SERVIÇO + VARIAÇÕES DE PORTE + RETORNO      */}
       {/* =================================================================== */}
       {serviceModalOpen && (
         <div
@@ -2134,10 +2900,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           }}
         >
           <div className="nx-modal-box" role="dialog" aria-modal="true">
-            <div className="nx-modal-main p-6">
+            <div className="nx-modal-main p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">
-                  {editingService ? 'Editar Serviço' : 'Novo Serviço / Procedimento'}
+                  {editingService ? 'Editar Serviço & Variações' : 'Novo Serviço / Procedimento'}
                 </h2>
                 <button
                   type="button"
@@ -2158,7 +2924,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       value={srvForm.name}
                       onChange={(e) => setSrvForm({ ...srvForm, name: e.target.value })}
                     />
-                    <label>Nome do serviço (ex: Banho Medicinal)</label>
+                    <label>Nome do serviço (ex: Banho & Tosa)</label>
                   </div>
 
                   <div className="nx-field">
@@ -2173,7 +2939,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="nx-field">
                     <input
                       type="number"
@@ -2184,7 +2950,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       value={srvForm.durationMinutes}
                       onChange={(e) => setSrvForm({ ...srvForm, durationMinutes: e.target.value })}
                     />
-                    <label>Duração estimada (minutos)</label>
+                    <label>Duração base (min)</label>
                   </div>
 
                   <div className="nx-field">
@@ -2197,14 +2963,126 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       value={srvForm.price}
                       onChange={(e) => setSrvForm({ ...srvForm, price: e.target.value })}
                     />
-                    <label>Valor do serviço (R$)</label>
+                    <label>Valor base (R$)</label>
+                  </div>
+
+                  <div className="nx-field">
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder=" "
+                      value={srvForm.returnCycleDays}
+                      onChange={(e) => setSrvForm({ ...srvForm, returnCycleDays: e.target.value })}
+                    />
+                    <label>Ciclo retorno (dias)</label>
                   </div>
                 </div>
 
-                {/* Campo de Instrução com Smart Chips + Botão da Gaveta Lateral (Padrão MedPet) */}
+                {/* Construtor de Tabela de Preço e Tempo por Porte / Complexidade (Feature 2) */}
+                <div className="p-3.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] mb-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <div className="text-xs font-bold text-[var(--nx-text)]">
+                        Tabela de Preço e Tempo por Porte / Complexidade
+                      </div>
+                      <p className="text-[11px] text-[var(--nx-muted)]">
+                        Defina durações e valores diferenciados (ex: Porte P, M, G ou Nível de Complexidade).
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSrvForm((prev) => ({
+                            ...prev,
+                            variants: [
+                              { label: 'Porte P (até 8kg)', durationMinutes: 45, price: 55 },
+                              { label: 'Porte M (8 a 20kg)', durationMinutes: 60, price: 75 },
+                              { label: 'Porte G (acima de 20kg)', durationMinutes: 90, price: 110 }
+                            ]
+                          }))
+                        }
+                        className="px-2.5 py-1 rounded text-[11px] font-medium border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:bg-[var(--nx-surface-alt)] text-[var(--nx-text)]"
+                      >
+                        Padrão P / M / G
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSrvForm((prev) => ({
+                            ...prev,
+                            variants: [
+                              ...prev.variants,
+                              { label: '', durationMinutes: 60, price: Number(prev.price || 0) }
+                            ]
+                          }))
+                        }
+                        className="px-2.5 py-1 rounded text-[11px] font-semibold bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]"
+                      >
+                        + Variação
+                      </button>
+                    </div>
+                  </div>
+
+                  {srvForm.variants.length > 0 && (
+                    <div className="space-y-2">
+                      {srvForm.variants.map((v, idx) => (
+                        <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                          <input
+                            type="text"
+                            placeholder="Ex: Porte G (acima de 20kg)"
+                            value={v.label}
+                            onChange={(e) => {
+                              const next = [...srvForm.variants];
+                              next[idx] = { ...next[idx], label: e.target.value };
+                              setSrvForm({ ...srvForm, variants: next });
+                            }}
+                            className="col-span-6 px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Min"
+                            value={v.durationMinutes}
+                            onChange={(e) => {
+                              const next = [...srvForm.variants];
+                              next[idx] = { ...next[idx], durationMinutes: Number(e.target.value) };
+                              setSrvForm({ ...srvForm, variants: next });
+                            }}
+                            className="col-span-2 px-2 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)] tabular-data"
+                          />
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="R$"
+                            value={v.price}
+                            onChange={(e) => {
+                              const next = [...srvForm.variants];
+                              next[idx] = { ...next[idx], price: Number(e.target.value) };
+                              setSrvForm({ ...srvForm, variants: next });
+                            }}
+                            className="col-span-3 px-2 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)] tabular-data"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSrvForm({
+                                ...srvForm,
+                                variants: srvForm.variants.filter((_, i) => i !== idx)
+                              })
+                            }
+                            className="col-span-1 flex justify-center text-[var(--nx-subtle)] hover:text-[var(--nx-error)]"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="nx-field">
                   <textarea
-                    rows={4}
+                    rows={3}
                     placeholder=" "
                     value={srvForm.description}
                     onChange={(e) => setSrvForm({ ...srvForm, description: e.target.value })}
@@ -2278,7 +3156,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       )}
 
       {/* =================================================================== */}
-      {/* MODAL 2: CRIAR / EDITAR AGENDAMENTO + SMART CHIPS + GAVETA LATERAL  */}
+      {/* MODAL 2: CRIAR / EDITAR AGENDAMENTO + PORTE + PROFISSIONAL + CHECKLIST */}
       {/* =================================================================== */}
       {apptModalOpen && (
         <div
@@ -2288,10 +3166,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           }}
         >
           <div className="nx-modal-box" role="dialog" aria-modal="true">
-            <div className="nx-modal-main p-6">
+            <div className="nx-modal-main p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">
-                  {editingAppt ? 'Editar Ordem / Agendamento' : 'Novo Agendamento na Grade'}
+                  {editingAppt ? 'Editar Ordem de Serviço & Vistoria' : 'Novo Agendamento / Ordem de Serviço'}
                 </h2>
                 <button
                   type="button"
@@ -2312,7 +3190,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       value={apptForm.customerName}
                       onChange={(e) => setApptForm({ ...apptForm, customerName: e.target.value })}
                     />
-                    <label>Nome do cliente / paciente</label>
+                    <label>Nome do cliente / responsável</label>
                   </div>
 
                   <div className="nx-field">
@@ -2331,18 +3209,63 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="nx-field">
                     <select
                       value={apptForm.serviceId}
-                      onChange={(e) => setApptForm({ ...apptForm, serviceId: e.target.value })}
+                      onChange={(e) => handleSelectServiceInAppt(e.target.value)}
                     >
                       <option value="">Atendimento Geral</option>
                       {services.map((s) => (
                         <option key={s.id} value={s.id}>
-                          {s.name} (R$ {Number(s.price).toFixed(2)} · {s.durationMinutes}m)
+                          {s.name} (Base R$ {Number(s.price).toFixed(2)} / {s.durationMinutes}m)
                         </option>
                       ))}
                     </select>
                     <label>Serviço / Procedimento</label>
                   </div>
 
+                  <div className="nx-field">
+                    <select
+                      value={apptForm.professionalId}
+                      onChange={(e) => setApptForm({ ...apptForm, professionalId: e.target.value })}
+                    >
+                      <option value="">Sem profissional específico</option>
+                      {professionals.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.role} / Comissão {p.commissionPct}%)
+                        </option>
+                      ))}
+                    </select>
+                    <label>Profissional / Box Responsável</label>
+                  </div>
+                </div>
+
+                {/* Seleção Rápida de Variação de Porte / Complexidade (Feature 2) */}
+                {selectedServiceVariants.length > 0 && (
+                  <div className="p-3 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] mb-3">
+                    <div className="text-[11px] font-semibold text-[var(--nx-muted)] mb-2">
+                      Selecione o Porte / Complexidade para ajustar valor e tempo automaticamente:
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedServiceVariants.map((v, i) => {
+                        const isSelected = apptForm.variantLabel === v.label;
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => handleSelectVariantInAppt(v)}
+                            className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                              isSelected
+                                ? 'bg-[var(--nx-primary)] text-white border-[var(--nx-primary)]'
+                                : 'bg-[var(--nx-surface)] text-[var(--nx-text)] border-[var(--nx-border-strong)] hover:border-[var(--nx-primary)]'
+                            }`}
+                          >
+                            {v.label} / R$ {Number(v.price).toFixed(2)} ({v.durationMinutes}m)
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="nx-field">
                     <input
                       type="datetime-local"
@@ -2353,16 +3276,91 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     />
                     <label>Data e horário</label>
                   </div>
+
+                  <div className="nx-field">
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder=" "
+                      value={apptForm.agreedPrice}
+                      onChange={(e) => setApptForm({ ...apptForm, agreedPrice: e.target.value })}
+                    />
+                    <label>Valor acordado (R$)</label>
+                  </div>
+
+                  <div className="nx-field">
+                    <input
+                      type="number"
+                      placeholder=" "
+                      value={apptForm.agreedDuration}
+                      onChange={(e) => setApptForm({ ...apptForm, agreedDuration: e.target.value })}
+                    />
+                    <label>Tempo alocado (min)</label>
+                  </div>
+                </div>
+
+                {/* Checklist de Entrada / Anamnese de Recepção (Feature 3) */}
+                <div className="p-3.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] mb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-[var(--nx-text)]">
+                      Checklist de Entrada (Anamnese / Vistoria de Recepção)
+                    </span>
+                    <span className="text-[11px] text-[var(--nx-primary)] font-semibold tabular-data">
+                      {apptForm.checkinChecklist.length} marcados
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mb-2.5">
+                    {Array.from(new Set([...DEFAULT_CHECKIN_ITEMS, ...apptForm.checkinChecklist])).map(
+                      (item) => {
+                        const checked = apptForm.checkinChecklist.includes(item);
+                        return (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => toggleChecklistItemInForm(item)}
+                            className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${
+                              checked
+                                ? 'bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] border-[var(--nx-accent-border)]'
+                                : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border-[var(--nx-border-strong)] hover:text-[var(--nx-text)]'
+                            }`}
+                          >
+                            {checked ? '● ' : '+ '}
+                            {item}
+                          </button>
+                        );
+                      }
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customChecklistInput}
+                      onChange={(e) => setCustomChecklistInput(e.target.value)}
+                      placeholder="Adicionar item avulso na vistoria (ex: Guia azul entregue)..."
+                      className="flex-1 px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)] outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!customChecklistInput.trim()) return;
+                        toggleChecklistItemInForm(customChecklistInput.trim());
+                        setCustomChecklistInput('');
+                      }}
+                      className="px-3 py-1.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] text-xs font-semibold"
+                    >
+                      Incluir
+                    </button>
+                  </div>
                 </div>
 
                 <div className="nx-field">
                   <textarea
-                    rows={4}
+                    rows={3}
                     placeholder=" "
                     value={apptForm.notes}
                     onChange={(e) => setApptForm({ ...apptForm, notes: e.target.value })}
                   />
-                  <label>Observações e orientações ao cliente</label>
+                  <label>Observações clínicas / técnicas e orientações ao cliente</label>
 
                   <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -2431,7 +3429,107 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       )}
 
       {/* =================================================================== */}
-      {/* MODAL 3: VOUCHER / ORDEM DE SERVIÇO PDF & VALIDADOR (MEDPET STYLE)  */}
+      {/* MODAL 2B: CRIAR / EDITAR PROFISSIONAL E COMISSÃO (FEATURE 1)        */}
+      {/* =================================================================== */}
+      {profModalOpen && (
+        <div
+          className="nx-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setProfModalOpen(false);
+          }}
+        >
+          <div className="nx-modal-main p-6 max-w-md" role="dialog" aria-modal="true">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-[var(--nx-text)]">
+                {editingProf ? 'Editar Profissional / Recurso' : 'Novo Profissional / Recurso'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setProfModalOpen(false)}
+                className="p-1.5 rounded-md text-[var(--nx-subtle)] hover:text-[var(--nx-text)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfessional} className="space-y-1">
+              <div className="nx-field">
+                <input
+                  type="text"
+                  placeholder=" "
+                  required
+                  value={profForm.name}
+                  onChange={(e) => setProfForm({ ...profForm, name: e.target.value })}
+                />
+                <label>Nome do profissional ou recurso (ex: Dra. Camila / Box 01)</label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="nx-field">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    required
+                    value={profForm.role}
+                    onChange={(e) => setProfForm({ ...profForm, role: e.target.value })}
+                  />
+                  <label>Cargo / Função</label>
+                </div>
+
+                <div className="nx-field">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    placeholder=" "
+                    required
+                    value={profForm.commissionPct}
+                    onChange={(e) => setProfForm({ ...profForm, commissionPct: e.target.value })}
+                  />
+                  <label>Comissão (%)</label>
+                </div>
+              </div>
+
+              <div className="nx-field">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={profForm.specialty}
+                  onChange={(e) => setProfForm({ ...profForm, specialty: e.target.value })}
+                />
+                <label>Especialidade (ex: Dermatologia, Tosa na Tesoura)</label>
+              </div>
+
+              <div className="nx-field">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={profForm.phone}
+                  onChange={(e) => setProfForm({ ...profForm, phone: e.target.value })}
+                />
+                <label>Telefone / WhatsApp do profissional</label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setProfModalOpen(false)}
+                  className="px-4 py-2 text-xs font-medium text-[var(--nx-muted)] border border-[var(--nx-border-strong)] rounded-md"
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="nx-btn-primary px-4 py-2 text-xs">
+                  {editingProf ? 'Salvar alterações' : 'Cadastrar profissional'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* MODAL 3: VOUCHER / ORDEM DE SERVIÇO PDF & VISTORIA INTERATIVA       */}
       {/* =================================================================== */}
       {voucherAppt && (
         <div
@@ -2440,7 +3538,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             if (e.target === e.currentTarget) setVoucherAppt(null);
           }}
         >
-          <div className="nx-modal-main p-6 max-w-md" role="dialog" aria-modal="true">
+          <div className="nx-modal-main p-6 max-w-lg max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true">
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-[var(--nx-border)]">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-lg bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] flex items-center justify-center">
@@ -2481,14 +3579,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </strong>
               </div>
               <div>
-                <span className="text-[10px] uppercase text-[var(--nx-subtle)] block">Status Atual</span>
-                <strong className="text-[var(--nx-accent)]">
-                  {voucherAppt.status === 'COMPLETED'
-                    ? '● Concluído'
-                    : voucherAppt.status === 'IN_PROGRESS'
-                    ? '● Em Atendimento'
-                    : '● Confirmado'}
+                <span className="text-[10px] uppercase text-[var(--nx-subtle)] block">Profissional / Recurso</span>
+                <strong className="text-[var(--nx-text)]">
+                  {voucherAppt.professional?.name || 'Equipe Técnica'}
                 </strong>
+              </div>
+            </div>
+
+            {/* Rastreio de 4 Etapas dentro do Voucher */}
+            <div className="mb-4 p-3 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+              <div className="text-[10px] font-semibold uppercase text-[var(--nx-subtle)] mb-2">
+                Etapa Atual da Ordem de Serviço (Clique para alterar e avisar cliente)
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {OS_STAGES.map((st) => {
+                  const isCurrent = voucherAppt.status === st.key;
+                  return (
+                    <button
+                      key={st.key}
+                      type="button"
+                      onClick={() => handleSetApptStage(voucherAppt, st.key)}
+                      className={`py-1.5 px-1.5 rounded text-[10px] font-semibold transition-colors ${
+                        isCurrent
+                          ? 'bg-[var(--nx-primary)] text-white'
+                          : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border border-[var(--nx-border)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      {st.shortLabel}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -2496,16 +3616,51 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <div className="flex items-center justify-between mb-1">
                 <span className="font-semibold text-[var(--nx-text)]">
                   {voucherAppt.service?.name || 'Atendimento Geral'}
+                  {voucherAppt.variantLabel ? ` (${voucherAppt.variantLabel})` : ''}
                 </span>
-                {voucherAppt.service?.price !== undefined && (
-                  <span className="font-bold text-[var(--nx-primary)] tabular-data">
-                    R$ {Number(voucherAppt.service.price).toFixed(2)}
-                  </span>
-                )}
+                <span className="font-bold text-[var(--nx-primary)] tabular-data">
+                  R$ {Number(voucherAppt.agreedPrice ?? voucherAppt.service?.price ?? 0).toFixed(2)}
+                </span>
               </div>
               <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed mt-1">
                 {voucherAppt.notes || 'Apresente este comprovante na recepção no horário agendado.'}
               </p>
+            </div>
+
+            {/* Checklist de Entrada Interativo dentro do Voucher */}
+            <div className="p-3.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs mb-4">
+              <div className="font-semibold text-[var(--nx-text)] mb-2">
+                Checklist de Recepção / Anamnese de Entrada:
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from(
+                  new Set([
+                    ...DEFAULT_CHECKIN_ITEMS,
+                    ...(Array.isArray(voucherAppt.checkinChecklist)
+                      ? voucherAppt.checkinChecklist
+                      : [])
+                  ])
+                ).map((item) => {
+                  const isChecked =
+                    Array.isArray(voucherAppt.checkinChecklist) &&
+                    voucherAppt.checkinChecklist.includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => handleToggleVoucherChecklist(voucherAppt, item)}
+                      className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${
+                        isChecked
+                          ? 'bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] border-[var(--nx-accent-border)]'
+                          : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border-[var(--nx-border)]'
+                      }`}
+                    >
+                      {isChecked ? '● ' : '○ '}
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-3 border-t border-[var(--nx-border)]">
@@ -2520,14 +3675,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
               <button
                 type="button"
-                onClick={() => handleAdvanceApptStatus(voucherAppt)}
+                onClick={() => handleSetApptStage(voucherAppt)}
                 className="nx-btn-primary px-4 py-2 text-xs"
               >
                 {voucherAppt.status === 'CONFIRMED'
-                  ? 'Validar Check-in Agora'
+                  ? '1. Validar Check-in Agora'
                   : voucherAppt.status === 'IN_PROGRESS'
-                  ? 'Finalizar Atendimento'
-                  : 'Reabrir Ordem'}
+                  ? '2. Marcar Pronto p/ Retirada (WhatsApp)'
+                  : voucherAppt.status === 'READY_FOR_PICKUP'
+                  ? '3. Confirmar Entrega Final'
+                  : 'Reabrir Ordem de Serviço'}
               </button>
             </div>
           </div>

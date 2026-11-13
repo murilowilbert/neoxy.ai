@@ -54,6 +54,7 @@ model Tenant {
   missedDemands    MissedDemand[]
   catalogItems     CatalogItem[]
   serviceItems     ServiceItem[]
+  professionals    Professional[]
   appointments     Appointment[]
   documents        DocumentSubmission[]
 }
@@ -137,6 +138,24 @@ model CatalogItem {
   @@index([tenantId, category])
 }
 
+model Professional {
+  id            String        @id @default(uuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  role          String        @default("Especialista") // ex: "Veterinária", "Tosador Sênior", "Box 01"
+  specialty     String?
+  commissionPct Float         @default(30.0) // Percentual de comissão sobre o serviço
+  phone         String?
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  appointments  Appointment[]
+
+  @@index([tenantId])
+}
+
 model ServiceItem {
   id              String        @id @default(uuid())
   tenantId        String
@@ -146,6 +165,8 @@ model ServiceItem {
   durationMinutes Int           @default(30)
   price           Float         @default(0.0)
   category        String?
+  variants        String?       // JSON array: [{"label":"Porte P","durationMinutes":45,"price":55}]
+  returnCycleDays Int?          // Ciclo de retorno sugerido em dias (ex: 15, 30, 180)
   active          Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -156,18 +177,26 @@ model ServiceItem {
 }
 
 model Appointment {
-  id            String       @id @default(uuid())
-  tenantId      String
-  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  serviceId     String?
-  service       ServiceItem? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  customerName  String
-  customerPhone String
-  scheduledAt   DateTime
-  status        String       @default("CONFIRMED") // "CONFIRMED" | "PENDING" | "COMPLETED" | "CANCELLED"
-  notes         String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id               String        @id @default(uuid())
+  tenantId         String
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  serviceId        String?
+  service          ServiceItem?  @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  professionalId   String?
+  professional     Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  customerName     String
+  customerPhone    String
+  scheduledAt      DateTime
+  status           String        @default("CONFIRMED") // "CONFIRMED" | "IN_PROGRESS" | "READY_FOR_PICKUP" | "COMPLETED" | "CANCELLED"
+  variantLabel     String?       // ex: "Porte G (acima de 25kg)"
+  agreedPrice      Float?        // Valor acordado conforme variação/porte
+  agreedDuration   Int?          // Duração acordada em minutos
+  checkinChecklist String?       // JSON array de itens conferidos na entrada + vistoria
+  returnDueAt      DateTime?     // Data programada para lembrete de retorno
+  returnNotified   Boolean       @default(false)
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([tenantId, scheduledAt])
   @@index([tenantId, customerPhone])
