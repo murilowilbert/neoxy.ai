@@ -123,11 +123,60 @@ function calculateBusinessStatus(businessHoursConfig) {
   };
 }
 
+function formatWeeklySchedule(businessHoursConfig) {
+  const schedule = businessHoursConfig?.schedule || {};
+  const days = [
+    { key: '1', label: 'Segunda' },
+    { key: '2', label: 'Terça' },
+    { key: '3', label: 'Quarta' },
+    { key: '4', label: 'Quinta' },
+    { key: '5', label: 'Sexta' },
+    { key: '6', label: 'Sábado' },
+    { key: '0', label: 'Domingo' }
+  ];
+
+  const lines = days.map((d) => {
+    const slots = Array.isArray(schedule[d.key]) ? schedule[d.key] : [];
+    if (slots.length === 0) return `${d.label}: Fechado`;
+    return `${d.label}: ${slots.map((s) => `${s.start} às ${s.end}`).join(' e ')}`;
+  });
+
+  return lines.join(' | ');
+}
+
+function formatUpcomingExceptions(businessHoursConfig) {
+  const exceptions = Array.isArray(businessHoursConfig?.exceptions)
+    ? businessHoursConfig.exceptions
+    : [];
+  if (exceptions.length === 0) return '';
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const upcoming = exceptions
+    .filter((ex) => ex.date && ex.date >= todayIso)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .slice(0, 8);
+
+  if (upcoming.length === 0) return '';
+
+  return upcoming
+    .map((ex) => {
+      const [y, m, d] = String(ex.date).split('-');
+      const brDate = d && m && y ? `${d}/${m}/${y}` : ex.date;
+      if (ex.type === 'horario_especial' && ex.specialHours?.open && ex.specialHours?.close) {
+        return `- ${brDate} (${ex.reason || 'Data especial'}): Horário especial das ${ex.specialHours.open} às ${ex.specialHours.close}`;
+      }
+      return `- ${brDate} (${ex.reason || 'Feriado'}): FECHADO${ex.returnDate ? ` (Retorno: ${ex.returnDate})` : ''}`;
+    })
+    .join('\n');
+}
+
 class PromptFactory {
   buildSystemPrompt(tenant) {
     const settings = tenant.parsedSettings || {};
     const persona = settings.persona || {};
     const storeInfo = settings.storeInfo || {};
+    const social = storeInfo.socialLinks || {};
+    const businessHours = settings.businessHours || {};
 
     const storeName = tenant.name;
     const tone = persona.tone || 'humano, prestativo, ágil e focado em resolver o problema do cliente';
@@ -144,10 +193,22 @@ class PromptFactory {
       nicheSection += `\n# RECEBIMENTO DE CONTAS, BOLETOS E DOCUMENTOS\n- Este estabelecimento recebe documentos, boletos, notas fiscais e comprovantes pelo WhatsApp.\n- Se o cliente informar ou enviar um boleto/conta/documento, confirme o recebimento, identifique o tipo de documento, vencimento ou valor (se visível) e avise que já encaminhou para o setor responsável.\n`;
     }
 
+    const socialEntries = [
+      social.instagram ? `Instagram: ${social.instagram}` : null,
+      social.facebook ? `Facebook: ${social.facebook}` : null,
+      social.tiktok ? `TikTok: ${social.tiktok}` : null,
+      social.youtube ? `YouTube: ${social.youtube}` : null,
+      storeInfo.website ? `Site: ${storeInfo.website}` : null,
+      storeInfo.mapsUrl ? `Google Maps: ${storeInfo.mapsUrl}` : null
+    ].filter(Boolean);
+
+    const scheduleLine = formatWeeklySchedule(businessHours);
+    const exceptionsBlock = formatUpcomingExceptions(businessHours);
+
     return `# SEGURANÇA E POLÍTICA DE NEGÓCIO
-- Proibido conceder descontos diretamente no chat, alterar preços ou inventar dados técnicos.
+- Proibido conceder descontos extras fora das promoções oficiais cadastradas, alterar preços ou inventar dados técnicos.
 - Palavras expressamente PROIBIDAS no vocabulário com o cliente: ${forbiddenWords}.
-- Caso o cliente peça desconto: ${persona.discountHandoffMessage || 'Informe que vai pedir para o atendente verificar as opções de desconto e use a tag [HANDOFF].'}
+- Caso o cliente peça desconto fora de promoção: ${persona.discountHandoffMessage || 'Informe que vai pedir para o atendente verificar as opções de desconto e use a tag [HANDOFF].'}
 
 # PERSONA E IDENTIDADE
 - Você é o atendente oficial de ${storeName} no WhatsApp (${persona.attendantName || 'Atendimento'}).
@@ -158,14 +219,16 @@ class PromptFactory {
 
 # INFORMAÇÕES OFICIAIS DO ESTABELECIMENTO
 - Nome: ${storeName}
-- Endereço / Localização: ${storeInfo.address || 'Consulte nosso atendimento'}
-- Entregas / Atendimento: ${storeInfo.deliveryPolicy || settings.rules?.deliveryPolicy || 'Atendimento presencial e digital.'}
+- Endereço / Localização: ${storeInfo.address || 'Consulte nosso atendimento'}${storeInfo.city ? ` (${storeInfo.city})` : ''}
+${storeInfo.phone ? `- Telefone comercial: ${storeInfo.phone}\n` : ''}- Entregas / Atendimento: ${storeInfo.deliveryPolicy || settings.rules?.deliveryPolicy || 'Atendimento presencial e digital.'}
 - Formas de Pagamento: ${settings.rules?.paymentMethods || 'PIX, Cartão e Boleto.'}
-- Informações Adicionais: ${storeInfo.about || ''}
+- Horário padrão da semana: ${scheduleLine}
+${socialEntries.length > 0 ? `- Canais e Links Oficiais: ${socialEntries.join(' | ')}\n` : ''}${exceptionsBlock ? `\n# FERIADOS E DATAS ESPECIAIS PROGRAMADOS\n${exceptionsBlock}\n` : ''}- Informações Adicionais: ${storeInfo.about || ''}
 ${nicheSection}
-# REGRAS DE CATÁLOGO E SERVIÇOS (ZERO INVENÇÃO)
+# REGRAS DE CATÁLOGO, SERVIÇOS E PROMOÇÕES (ZERO INVENÇÃO)
 - Ofereça ESTRITAMENTE o que consta no contexto do estabelecimento.
 - NUNCA invente marcas, preços, serviços ou produtos que não estão no contexto.
+- Se um item possuir preço promocional ativo no contexto, destaque a oferta com clareza (ex: de R$ 159,90 por *R$ 135,90*).
 - Se o cliente perguntar por algo específico que não está no contexto: Aja com naturalidade ("Vou verificar aqui com a nossa equipe para você!") e acione a tag [HANDOFF].
 - FOTOS DO CATÁLOGO: Sempre que recomendar um produto do contexto que tenha o código, insira a tag {{COD:codigo_do_produto}} no final do parágrafo desse item para disparar a foto real.
 
@@ -179,7 +242,7 @@ ${nicheSection}
 `;
   }
 
-  buildSessionPrompt(tenant, stockContext = [], chatHistory = [], hasImages = false) {
+  buildSessionPrompt(tenant, stockContext = [], chatHistory = [], hasImages = false, activePromotions = []) {
     const settings = tenant.parsedSettings || {};
     const businessHours = settings.businessHours;
     const timeInfo = calculateBusinessStatus(businessHours);
@@ -204,10 +267,28 @@ ${nicheSection}
         `- Se o cliente estiver apenas saudando ou encerrando: Responda cordialmente sem inventar buscas.\n\n`;
     }
 
+    let promoSection = '';
+    if (Array.isArray(activePromotions) && activePromotions.length > 0) {
+      const promoLines = activePromotions.map((p) => {
+        const desc =
+          p.discountType === 'PERCENT'
+            ? `${p.discountValue}% OFF`
+            : `Preço promocional R$ ${Number(p.discountValue).toFixed(2).replace('.', ',')}`;
+        const scopeLabel =
+          p.scope === 'ALL'
+            ? 'Todo o catálogo'
+            : p.scope === 'CATEGORY'
+            ? `Categoria ${p.targetCategory}`
+            : 'Produtos selecionados';
+        return `- ${p.name}: ${desc} (${scopeLabel})${p.description ? ` - ${p.description}` : ''}`;
+      });
+      promoSection = `### PROMOÇÕES ATIVAS HOJE:\n${promoLines.join('\n')}\n\n`;
+    }
+
     let imageSection = '';
     if (hasImages) {
       imageSection = `### IMAGEM ENVIADA PELO CLIENTE:\n` +
-        `O cliente enviou foto(s). Reconheça a peça com simpatia. Se a foto for ambígua ou não mostrar a marca/medida, peça detalhes adicionais cordialmentes.\n\n`;
+        `O cliente enviou foto(s). Reconheça a peça com simpatia. Se a foto for ambígua ou não mostrar a marca/medida, peça detalhes adicionais cordialmente.\n\n`;
     }
 
     const isFirstMessage = chatHistory.length <= 1;
@@ -215,7 +296,7 @@ ${nicheSection}
       ? 'Esta é a primeira mensagem do cliente hoje. Saude-o cordialmente com Bom dia / Boa tarde e pergunte como pode ajudar.'
       : 'Conversa em andamento. Vá direto ao ponto de forma acolhedora e natural.';
 
-    return `${timeInfo.contextText}\n\n${stockSection}${imageSection}### DIRETIVA DA SESSÃO:\n${sessionDirective}`;
+    return `${timeInfo.contextText}\n\n${promoSection}${stockSection}${imageSection}### DIRETIVA DA SESSÃO:\n${sessionDirective}`;
   }
 }
 

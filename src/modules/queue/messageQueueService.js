@@ -3,6 +3,7 @@ const stockService = require('../stock/stockService');
 const aiService = require('../ai/aiService');
 const chatSessionService = require('../chat/chatSessionService');
 const evolutionClient = require('../whatsapp/evolutionClient');
+const crmExtensions = require('../business/crmExtensionsService');
 
 class MessageQueueService {
   constructor() {
@@ -51,6 +52,19 @@ class MessageQueueService {
     }, this.debounceTimeMs);
   }
 
+  async trackMatchedDemands(tenantId, stockContext) {
+    if (!Array.isArray(stockContext) || stockContext.length === 0) return;
+    const topItem = stockContext.find((it) => it && (it['modelo/produto'] || it.name));
+    if (!topItem) return;
+    const itemName = topItem['modelo/produto'] || topItem.name;
+    await crmExtensions
+      .recordExistingDemand(tenantId, {
+        itemType: 'PRODUCT',
+        itemName
+      })
+      .catch(() => {});
+  }
+
   async processQueueItem(queueKey) {
     const item = this.buffer.get(queueKey);
     if (!item) return;
@@ -68,13 +82,28 @@ class MessageQueueService {
     const consolidatedText = messages.join('\n').trim();
 
     try {
+      // 0. Registra/atualiza contato automaticamente no CRM
+      await crmExtensions.touchContact(tenant.id, customerPhone).catch(() => {});
+
+      // 0.5 Verifica se o contato está na Lista de Bloqueio da IA
+      const isBlocked = await crmExtensions.isPhoneAiBlocked(tenant.id, customerPhone);
+      if (isBlocked) {
+        logger.info({ tenantId: tenant.id, customerPhone }, 'Contato bloqueado para IA no filtro de Contatos. Mensagem apenas registrada.');
+        await chatSessionService.appendMessage({
+          tenantId: tenant.id,
+          customerPhone,
+          role: 'user',
+          content: consolidatedText || '[Mídia]'
+        });
+        return { text: '', isNoResponse: true, blockedByContactFilter: true };
+      }
+
       // 1. Checa se o atendimento está em pausa/handoff humano
       const session = await chatSessionService.getOrCreateSession(tenant.id, customerPhone);
       const isPaused = await chatSessionService.isSessionPaused(session);
 
       if (isPaused) {
         logger.info({ tenantId: tenant.id, customerPhone }, 'Sessão em pausa por atendente humano. Mensagem arquivada sem resposta do bot.');
-        // Registra a mensagem do usuário no histórico mesmo em pausa
         await chatSessionService.appendMessage({
           tenantId: tenant.id,
           customerPhone,
@@ -95,19 +124,53 @@ class MessageQueueService {
         content: consolidatedText
       });
 
-      // 4. Busca no estoque do tenant
+      // 3.5 Verifica Gatilhos Automáticos de Respostas Rápidas (Quick Replies)
+      if (consolidatedText && mediaItems.length === 0) {
+        const autoReply = await crmExtensions.matchAutoQuickReply(
+          tenant,
+          consolidatedText,
+          session.customerName || ''
+        );
+        if (autoReply) {
+          if (instanceName) {
+            await evolutionClient.sendTextMessage(instanceName, customerPhone, autoReply.renderedText);
+          }
+          if (autoReply.triggerHandoff) {
+            const handoffHours = tenant.parsedSettings?.features?.automaticHandoffHours || 6;
+            await chatSessionService.pauseSession(tenant.id, customerPhone, handoffHours);
+          }
+          await chatSessionService.appendMessage({
+            tenantId: tenant.id,
+            customerPhone,
+            role: 'model',
+            content: autoReply.renderedText,
+            metadata: { quickReplyShortcut: autoReply.quickReply.shortcut, isHandoff: autoReply.triggerHandoff }
+          });
+          return {
+            text: autoReply.renderedText,
+            isHandoff: autoReply.triggerHandoff,
+            isNoResponse: false,
+            photoCodes: []
+          };
+        }
+      }
+
+      // 4. Busca no estoque do tenant + promoções ativas
       let stockContext = [];
       if (consolidatedText) {
         stockContext = await stockService.searchProduct(tenant, consolidatedText);
+        await this.trackMatchedDemands(tenant.id, stockContext);
       }
+      const activePromotions = await crmExtensions.getActivePromotions(tenant.id).catch(() => []);
 
-      // 5. Gera resposta com o Gemini 2.5 Flash
+      // 5. Gera resposta com o Gemini
       const aiResult = await aiService.generateResponse({
         tenant,
         customerText: consolidatedText,
         chatHistory: history,
         stockContext,
-        imageParts: mediaItems
+        imageParts: mediaItems,
+        activePromotions
       });
 
       // 6. Verifica silêncio inteligente
@@ -118,15 +181,10 @@ class MessageQueueService {
 
       // 7. Envia resposta via Evolution API (se houver texto)
       if (aiResult.text && instanceName) {
-        // Envia presença digitando
         await evolutionClient.sendPresence(instanceName, customerPhone, 'composing');
-
-        // Separa em parágrafos para simular bolhas humanas de WhatsApp
         const bubbles = aiResult.text.split('\n\n').filter(b => b.trim() !== '');
-
         for (const bubble of bubbles) {
           await evolutionClient.sendTextMessage(instanceName, customerPhone, bubble.trim());
-          // Pequena pausa entre bolhas para naturalidade
           if (bubbles.length > 1) {
             await new Promise(r => setTimeout(r, 600));
           }
@@ -191,6 +249,31 @@ class MessageQueueService {
     const rawList = media ? (Array.isArray(media) ? media : [media]) : [];
     const mediaItems = rawList.map((m) => this.normalizeMediaPart(m)).filter(Boolean);
 
+    await crmExtensions.touchContact(tenant.id, customerPhone).catch(() => {});
+
+    // Verifica filtro de bloqueio de IA por contato
+    const isBlocked = await crmExtensions.isPhoneAiBlocked(tenant.id, customerPhone);
+    if (isBlocked) {
+      await chatSessionService.appendMessage({
+        tenantId: tenant.id,
+        customerPhone,
+        role: 'user',
+        content: text || (mediaItems.length > 0 ? '[Foto enviada pelo cliente]' : ''),
+        mediaType: mediaItems.length > 0 ? 'image' : null
+      });
+      return {
+        text: '',
+        replyText: '[IA bloqueada para este contato no filtro de WhatsApp → Contatos. Nenhuma resposta automática foi enviada.]',
+        isNoResponse: true,
+        isHandoff: false,
+        blockedByContactFilter: true,
+        photoCodes: [],
+        imageAnalyzed: false,
+        matchedStockCount: 0,
+        sampleMatchedStock: []
+      };
+    }
+
     const history = await chatSessionService.getRecentHistory(tenant.id, customerPhone, 10);
 
     await chatSessionService.appendMessage({
@@ -201,13 +284,44 @@ class MessageQueueService {
       mediaType: mediaItems.length > 0 ? 'image' : null
     });
 
+    // Verifica gatilhos automáticos de respostas rápidas
+    if (text && mediaItems.length === 0) {
+      const autoReply = await crmExtensions.matchAutoQuickReply(tenant, text, '');
+      if (autoReply) {
+        await chatSessionService.appendMessage({
+          tenantId: tenant.id,
+          customerPhone,
+          role: 'model',
+          content: autoReply.renderedText,
+          metadata: { quickReplyShortcut: autoReply.quickReply.shortcut, isHandoff: autoReply.triggerHandoff }
+        });
+        if (autoReply.triggerHandoff) {
+          const handoffHours = tenant.parsedSettings?.features?.automaticHandoffHours || 6;
+          await chatSessionService.pauseSession(tenant.id, customerPhone, handoffHours);
+        }
+        return {
+          text: autoReply.renderedText,
+          replyText: autoReply.renderedText,
+          isHandoff: autoReply.triggerHandoff,
+          isNoResponse: false,
+          quickReplyTriggered: autoReply.quickReply.shortcut,
+          photoCodes: [],
+          imageAnalyzed: false,
+          matchedStockCount: 0,
+          sampleMatchedStock: []
+        };
+      }
+    }
+
     let stockContext = [];
     if (text) {
       stockContext = await stockService.searchProduct(tenant, text);
+      await this.trackMatchedDemands(tenant.id, stockContext);
     } else if (mediaItems.length > 0) {
-      // Quando o cliente envia apenas foto sem texto, busca amostra do catálogo para a IA cruzar
       stockContext = await stockService.searchProduct(tenant, 'a');
     }
+
+    const activePromotions = await crmExtensions.getActivePromotions(tenant.id).catch(() => []);
 
     const aiResult = await aiService.generateResponse({
       tenant,
@@ -218,7 +332,8 @@ class MessageQueueService {
           : ''),
       chatHistory: history,
       stockContext,
-      imageParts: mediaItems
+      imageParts: mediaItems,
+      activePromotions
     });
 
     if (!aiResult.isNoResponse) {

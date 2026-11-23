@@ -1,11 +1,12 @@
 const Fuse = require('fuse.js');
 const prisma = require('../../../database/prisma');
 const StockAdapterInterface = require('./stockAdapterInterface');
+const crmExtensions = require('../../business/crmExtensionsService');
 const { logger } = require('../../../config');
 
 // Cache em memória de itens de banco por tenant
 const tenantDbCaches = new Map();
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 2 * 60 * 1000;
 
 class DatabaseStockAdapter extends StockAdapterInterface {
   async loadCatalog(tenant, forceRefresh = false) {
@@ -15,14 +16,23 @@ class DatabaseStockAdapter extends StockAdapterInterface {
       return cached;
     }
 
-    const items = await prisma.catalogItem.findMany({
-      where: { tenantId }
-    });
+    const [items, activePromotions] = await Promise.all([
+      prisma.catalogItem.findMany({ where: { tenantId } }),
+      crmExtensions.getActivePromotions(tenantId).catch(() => [])
+    ]);
 
-    const normalizedItems = items.map(item => ({
+    const annotated = crmExtensions.annotateCatalogWithPromotions(items, activePromotions);
+
+    const normalizedItems = annotated.map(item => ({
       código: item.code,
       'modelo/produto': item.name,
       preço: item.price ? `R$${item.price.toFixed(2).replace('.', ',')}` : '',
+      ...(item.activePromotion
+        ? {
+            preço_promocional: `R$${item.effectivePrice.toFixed(2).replace('.', ',')}`,
+            promoção_ativa: `${item.activePromotion.name} (${item.discountPct}% OFF)`
+          }
+        : {}),
       estoque: item.stockQty,
       categoria_geral: item.category || 'Geral',
       marca: item.brand || '',

@@ -39,13 +39,20 @@ class AIService {
     chatHistory = [],
     stockContext = [],
     imageParts = [],
-    audioParts = []
+    audioParts = [],
+    activePromotions = []
   }) {
     const MAX_RETRIES = 3;
     let delay = 1500;
 
     const systemPrompt = promptFactory.buildSystemPrompt(tenant);
-    const sessionPrompt = promptFactory.buildSessionPrompt(tenant, stockContext, chatHistory, imageParts.length > 0);
+    const sessionPrompt = promptFactory.buildSessionPrompt(
+      tenant,
+      stockContext,
+      chatHistory,
+      imageParts.length > 0,
+      activePromotions
+    );
 
     const model = this.getModel(tenant);
 

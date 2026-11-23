@@ -95,6 +95,35 @@ class EvolutionClient {
       throw err;
     }
   }
+
+  /**
+   * Busca lista de contatos da instância conectada na Evolution API v2.
+   * Retorna [] silenciosamente se a instância estiver offline.
+   */
+  async fetchContacts(instanceName) {
+    if (!instanceName) return [];
+    try {
+      const response = await this.client.post(`/chat/findContacts/${instanceName}`, {
+        where: {}
+      });
+      const raw = Array.isArray(response.data) ? response.data : [];
+      return raw
+        .filter((c) => c && (c.remoteJid || c.id) && !String(c.remoteJid || c.id).includes('@g.us'))
+        .map((c) => {
+          const jid = String(c.remoteJid || c.id || '');
+          const phone = jid.replace('@s.whatsapp.net', '').replace(/[^0-9]/g, '');
+          return {
+            phone,
+            pushName: c.pushName || c.name || null,
+            name: c.name || c.pushName || null
+          };
+        })
+        .filter((c) => c.phone.length >= 8);
+    } catch (err) {
+      logger.warn({ err: err.message, instanceName }, 'Evolution API offline ao sincronizar contatos (usando contatos locais)');
+      return [];
+    }
+  }
 }
 
 module.exports = new EvolutionClient();

@@ -38,12 +38,25 @@ import {
   Image as ImageIcon,
   PanelLeftClose,
   PanelLeftOpen,
-  Key
+  Key,
+  ChevronRight,
+  Tag,
+  Radio
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
 import { MediaFieldBox } from '../components/MediaFieldBox';
 import NeoxyLogo from '../components/NeoxyLogo';
+import { OverviewAnalyticsPanel, TenantAnalytics } from '../components/dashboard/OverviewAnalyticsPanel';
+import { WhatsAppContactsTab, WhatsAppContactItem } from '../components/dashboard/WhatsAppContactsTab';
+import { PromotionsTab, PromotionItem } from '../components/dashboard/PromotionsTab';
+import {
+  QuickRepliesTab,
+  FollowUpRadarTab,
+  QuickReplyItem,
+  RadarItem
+} from '../components/dashboard/QuickRepliesAndRadarTab';
+import { CompanyHoursTab } from '../components/dashboard/CompanyHoursTab';
 
 interface DashboardPageProps {
   user: any;
@@ -177,6 +190,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [appointments, setAppointments] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [inboxSessions, setInboxSessions] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<TenantAnalytics | null>(null);
+  const [contacts, setContacts] = useState<WhatsAppContactItem[]>([]);
+  const [promotions, setPromotions] = useState<PromotionItem[]>([]);
+  const [quickReplies, setQuickReplies] = useState<QuickReplyItem[]>([]);
+  const [radarItems, setRadarItems] = useState<RadarItem[]>([]);
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    whatsapp: true,
+    catalog: false,
+    profile: false
+  });
+  const [simPhone, setSimPhone] = useState('5551988887777');
+  const [inboxReplyDrafts, setInboxReplyDrafts] = useState<Record<string, string>>({});
+  const [sendingInboxPhone, setSendingInboxPhone] = useState<string | null>(null);
 
   // Busca, Filtro e Ordenação (Padrão MedPet)
   const [searchQuery, setSearchQuery] = useState('');
@@ -484,12 +510,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setLoading(true);
     try {
       const mods: string[] = parseModules(selectedTenant?.enabledModules);
-      const [mRes, inboxRes] = await Promise.all([
+      const [mRes, inboxRes, anRes, ctRes, prRes, qrRes, rdRes] = await Promise.all([
         apiFetch(`/api/tenants/${slug}/metrics`),
-        apiFetch(`/api/tenants/${slug}/inbox`)
+        apiFetch(`/api/tenants/${slug}/inbox`),
+        apiFetch(`/api/tenants/${slug}/analytics`).catch(() => ({ analytics: null })),
+        apiFetch(`/api/tenants/${slug}/contacts`).catch(() => ({ contacts: [] })),
+        apiFetch(`/api/tenants/${slug}/promotions`).catch(() => ({ promotions: [] })),
+        apiFetch(`/api/tenants/${slug}/quick-replies`).catch(() => ({ quickReplies: [] })),
+        apiFetch(`/api/tenants/${slug}/radar`).catch(() => ({ radar: [] }))
       ]);
       setMetrics(mRes.metrics);
       setInboxSessions(inboxRes.sessions || []);
+      setAnalytics(anRes.analytics || null);
+      setContacts(ctRes.contacts || []);
+      setPromotions(prRes.promotions || []);
+      setQuickReplies(qrRes.quickReplies || []);
+      setRadarItems(rdRes.radar || []);
 
       if (mods.includes('stock')) {
         const cRes = await apiFetch(`/api/tenants/${slug}/catalog`);
@@ -1034,12 +1070,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   }
 
-  function openCreateCatalog() {
+  function openCreateCatalog(prefillName?: string) {
     setEditingCatalog(null);
     setNewCatalog({
       code: '',
       ean: '',
-      name: '',
+      name: typeof prefillName === 'string' ? prefillName : '',
       unit: 'un',
       brand: '',
       category: 'Insumos & Produtos',
@@ -1330,7 +1366,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         body: JSON.stringify({
           message: simMessage,
           media: simImage || undefined,
-          customerPhone: '5551988887777'
+          customerPhone: simPhone.trim() || '5551988887777'
         })
       });
       setSimResult(res.response);
@@ -1340,6 +1376,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       showToast(err.message);
     } finally {
       setSimLoading(false);
+    }
+  }
+
+  async function handleSendInboxReply(customerPhone: string) {
+    const text = (inboxReplyDrafts[customerPhone] || '').trim();
+    if (!text) return;
+    setSendingInboxPhone(customerPhone);
+    try {
+      await apiFetch(`/api/tenants/${selectedTenant.slug}/inbox/reply`, {
+        method: 'POST',
+        body: JSON.stringify({ customerPhone, text })
+      });
+      setInboxReplyDrafts((prev) => ({ ...prev, [customerPhone]: '' }));
+      await loadTenantData(selectedTenant.slug);
+      showToast('Resposta humana enviada e registrada na conversa.');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao enviar resposta.');
+    } finally {
+      setSendingInboxPhone(null);
+    }
+  }
+
+  function handleQuickCreateFromDemand(itemName: string) {
+    if (enabledModules.includes('stock')) {
+      setActiveTab('catalog');
+      openCreateCatalog(itemName);
+    } else if (enabledModules.includes('services')) {
+      setActiveTab('services');
+      openCreateService();
+      setSrvForm((prev: any) => ({ ...prev, name: itemName }));
     }
   }
 
@@ -1859,10 +1925,198 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           )}
 
-          {/* Navegação Adaptativa */}
+          {/* Navegação Adaptativa com Submenus Expansíveis */}
           <nav className="space-y-1.5">
+            {/* Resumo */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              title="Resumo"
+              aria-label="Resumo"
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
+              } rounded-lg text-xs font-medium transition-colors ${
+                activeTab === 'overview'
+                  ? 'bg-[var(--nx-primary)] text-white'
+                  : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <LayoutDashboard className="w-4 h-4 shrink-0" />
+                {!sidebarCollapsed && <span>Resumo</span>}
+              </span>
+            </button>
+
+            {/* Grupo Expansível: WhatsApp */}
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (sidebarCollapsed) {
+                    setActiveTab('inbox');
+                  } else {
+                    setExpandedMenus((prev) => ({ ...prev, whatsapp: !prev.whatsapp }));
+                  }
+                }}
+                title="WhatsApp"
+                aria-label="WhatsApp"
+                className={`w-full flex items-center ${
+                  sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
+                } rounded-lg text-xs font-medium transition-colors ${
+                  ['inbox', 'contacts', 'quickreplies', 'radar'].includes(activeTab)
+                    ? sidebarCollapsed
+                      ? 'bg-[var(--nx-primary)] text-white'
+                      : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
+                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <MessageSquare className="w-4 h-4 shrink-0" />
+                  {!sidebarCollapsed && <span>WhatsApp</span>}
+                </span>
+                {!sidebarCollapsed && (
+                  <span className="flex items-center gap-1.5">
+                    {metrics?.handoffSessions > 0 && (
+                      <span className="px-1.5 py-0.5 rounded bg-[var(--nx-error)] text-white font-semibold text-[10px] tabular-data">
+                        {metrics.handoffSessions}
+                      </span>
+                    )}
+                    {expandedMenus.whatsapp ? (
+                      <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                    ) : (
+                      <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                    )}
+                  </span>
+                )}
+              </button>
+
+              {!sidebarCollapsed && expandedMenus.whatsapp && (
+                <div className="nx-submenu-rail">
+                  {[
+                    { key: 'inbox', label: 'Conversas ao Vivo', count: inboxSessions.length },
+                    {
+                      key: 'contacts',
+                      label: 'Contatos & Filtro IA',
+                      count: contacts.length
+                    },
+                    {
+                      key: 'quickreplies',
+                      label: 'Respostas & Gatilhos',
+                      count: quickReplies.length
+                    },
+                    {
+                      key: 'radar',
+                      label: 'Radar de Follow-up',
+                      count: radarItems.length,
+                      alert: radarItems.length > 0
+                    }
+                  ].map((sub) => (
+                    <button
+                      key={sub.key}
+                      type="button"
+                      onClick={() => setActiveTab(sub.key)}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                        activeTab === sub.key
+                          ? 'bg-[var(--nx-primary)] text-white'
+                          : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      <span>{sub.label}</span>
+                      <span
+                        className={`text-[10px] tabular-data ${
+                          activeTab === sub.key
+                            ? 'opacity-90'
+                            : sub.alert
+                            ? 'px-1.5 py-0.5 rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] font-semibold'
+                            : 'opacity-70'
+                        }`}
+                      >
+                        {sub.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Grupo Expansível: Catálogo (quando módulo stock ativo) */}
+            {enabledModules.includes('stock') && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (sidebarCollapsed) {
+                      setActiveTab('catalog');
+                    } else {
+                      setExpandedMenus((prev) => ({ ...prev, catalog: !prev.catalog }));
+                    }
+                  }}
+                  title="Catálogo"
+                  aria-label="Catálogo"
+                  className={`w-full flex items-center ${
+                    sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
+                  } rounded-lg text-xs font-medium transition-colors ${
+                    ['catalog', 'promotions'].includes(activeTab)
+                      ? sidebarCollapsed
+                        ? 'bg-[var(--nx-primary)] text-white'
+                        : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
+                      : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Package className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && <span>Catálogo</span>}
+                  </span>
+                  {!sidebarCollapsed && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-[11px] tabular-data opacity-80">{catalog.length}</span>
+                      {expandedMenus.catalog ? (
+                        <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                      )}
+                    </span>
+                  )}
+                </button>
+
+                {!sidebarCollapsed && expandedMenus.catalog && (
+                  <div className="nx-submenu-rail">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('catalog')}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                        activeTab === 'catalog'
+                          ? 'bg-[var(--nx-primary)] text-white'
+                          : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      <span>Produtos & Estoque</span>
+                      <span className="text-[10px] tabular-data opacity-80">{catalog.length}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('promotions')}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                        activeTab === 'promotions'
+                          ? 'bg-[var(--nx-primary)] text-white'
+                          : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <Tag className="w-3 h-3" />
+                        Promoções & Ofertas
+                      </span>
+                      <span className="text-[10px] tabular-data opacity-80">
+                        {promotions.filter((p) => p.active).length}
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Módulos Operacionais (Serviços, Agenda, Equipe, Retornos, Documentos) */}
             {[
-              { key: 'overview', label: 'Resumo', icon: LayoutDashboard, show: true },
               {
                 key: 'appointments',
                 label: 'Agenda & OS',
@@ -1893,32 +2147,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 show: enabledModules.includes('appointments')
               },
               {
-                key: 'inbox',
-                label: 'WhatsApp',
-                icon: MessageSquare,
-                count: metrics?.handoffSessions > 0 ? metrics.handoffSessions : undefined,
-                errorAlert: metrics?.handoffSessions > 0,
-                show: true
-              },
-              {
-                key: 'catalog',
-                label: 'Catálogo',
-                icon: Package,
-                count: catalog.length,
-                show: enabledModules.includes('stock')
-              },
-              {
                 key: 'documents',
                 label: 'Documentos',
                 icon: FileText,
                 count: documents.length,
                 show: enabledModules.includes('documents')
-              },
-              {
-                key: 'settings',
-                label: 'Perfil & Módulos',
-                icon: Settings,
-                show: true
               }
             ]
               .filter((item) => item.show)
@@ -1947,9 +2180,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     {!sidebarCollapsed && item.count !== undefined && (
                       <span
                         className={`text-[11px] tabular-data ${
-                          item.errorAlert
-                            ? 'px-1.5 py-0.5 rounded bg-[var(--nx-error)] text-white font-semibold text-[10px]'
-                            : item.alert
+                          item.alert
                             ? 'px-1.5 py-0.5 rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] font-semibold text-[10px]'
                             : 'opacity-80'
                         }`}
@@ -1960,6 +2191,69 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </button>
                 );
               })}
+
+            {/* Grupo Expansível: Perfil & Módulos */}
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (sidebarCollapsed) {
+                    setActiveTab('settings');
+                  } else {
+                    setExpandedMenus((prev) => ({ ...prev, profile: !prev.profile }));
+                  }
+                }}
+                title="Perfil & Módulos"
+                aria-label="Perfil & Módulos"
+                className={`w-full flex items-center ${
+                  sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
+                } rounded-lg text-xs font-medium transition-colors ${
+                  ['settings', 'profile_hours'].includes(activeTab)
+                    ? sidebarCollapsed
+                      ? 'bg-[var(--nx-primary)] text-white'
+                      : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
+                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 shrink-0" />
+                  {!sidebarCollapsed && <span>Perfil & Módulos</span>}
+                </span>
+                {!sidebarCollapsed &&
+                  (expandedMenus.profile ? (
+                    <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                  ))}
+              </button>
+
+              {!sidebarCollapsed && expandedMenus.profile && (
+                <div className="nx-submenu-rail">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('settings')}
+                    className={`w-full text-left px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                      activeTab === 'settings'
+                        ? 'bg-[var(--nx-primary)] text-white'
+                        : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                    }`}
+                  >
+                    Módulos & IA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('profile_hours')}
+                    className={`w-full text-left px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                      activeTab === 'profile_hours'
+                        ? 'bg-[var(--nx-primary)] text-white'
+                        : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                    }`}
+                  >
+                    Empresa, Horários & Feriados
+                  </button>
+                </div>
+              )}
+            </div>
 
             {user.role === 'SUPER_ADMIN' && (
               <button
@@ -2048,66 +2342,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 1: RESUMO OPERACIONAL */}
+        {/* ABA 1: RESUMO OPERACIONAL & TELEMETRIA INDUSTRIAL */}
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-fade-up">
-            <div className="grid grid-cols-2 lg:grid-cols-4 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-[var(--nx-border)]">
-              <div className="p-4">
-                <div className="text-xs text-[var(--nx-subtle)] mb-1">Conversas no WhatsApp</div>
-                <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
-                  {metrics?.activeSessions ?? 0}
-                </div>
-                <div className="text-[11px] text-[var(--nx-muted)] mt-1 tabular-data">
-                  {metrics?.handoffSessions ?? 0} aguardando atendente humano
-                </div>
-              </div>
-
-              {enabledModules.includes('appointments') && (
-                <div className="p-4">
-                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Ordens de Serviço (OS)</div>
-                  <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
-                    {metrics?.totalAppointments ?? appointments.length}
-                  </div>
-                  <div className="text-[11px] text-[var(--nx-accent)] mt-1 font-medium tabular-data">
-                    {metrics?.readyForPickupCount ?? 0} prontas p/ retirada agora
-                  </div>
-                </div>
-              )}
-
-              {enabledModules.includes('services') && (
-                <div className="p-4">
-                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Equipe & Comissões</div>
-                  <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
-                    {professionals.length}
-                  </div>
-                  <div className="text-[11px] text-[var(--nx-muted)] mt-1 tabular-data">
-                    R$ {totalTeamCommission.toFixed(2)} em comissões geradas
-                  </div>
-                </div>
-              )}
-
-              {enabledModules.includes('appointments') ? (
-                <div className="p-4">
-                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Retornos pendentes</div>
-                  <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
-                    {dueReturnsCount}
-                  </div>
-                  <div className="text-[11px] text-[var(--nx-muted)] mt-1">
-                    Clientes no ciclo de recorrência
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4">
-                  <div className="text-xs text-[var(--nx-subtle)] mb-1">Itens em catálogo</div>
-                  <div className="text-2xl font-bold text-[var(--nx-text)] tabular-data">
-                    {metrics?.totalCatalog ?? catalog.length}
-                  </div>
-                  <div className="text-[11px] text-[var(--nx-muted)] mt-1">
-                    Consulta automática pelo bot
-                  </div>
-                </div>
-              )}
-            </div>
+            <OverviewAnalyticsPanel
+              analytics={analytics}
+              metrics={metrics}
+              enabledModules={enabledModules}
+              onQuickCreateFromDemand={handleQuickCreateFromDemand}
+              onNavigateTab={(tab) => {
+                if (['inbox', 'contacts', 'quickreplies', 'radar'].includes(tab)) {
+                  setExpandedMenus((p) => ({ ...p, whatsapp: true }));
+                }
+                if (['catalog', 'promotions'].includes(tab)) {
+                  setExpandedMenus((p) => ({ ...p, catalog: true }));
+                }
+                if (['settings', 'profile_hours'].includes(tab)) {
+                  setExpandedMenus((p) => ({ ...p, profile: true }));
+                }
+                setActiveTab(tab);
+              }}
+            />
 
             {enabledModules.includes('appointments') && (
               <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
@@ -2159,113 +2414,113 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-7 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
-                <h2 className="text-sm font-bold text-[var(--nx-text)] mb-1">
-                  Simulador de Atendimento WhatsApp ({selectedTenant?.name})
-                </h2>
-                <p className="text-xs text-[var(--nx-muted)] mb-4">
-                  Envie uma mensagem ou anexe uma foto de produto/peça para testar a identificação visual via Gemini + consulta ao catálogo.
-                </p>
+            {/* Simulador de Atendimento WhatsApp */}
+            <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-sm font-bold text-[var(--nx-text)]">
+                    Simulador de Atendimento WhatsApp ({selectedTenant?.name})
+                  </h2>
+                  <p className="text-xs text-[var(--nx-muted)]">
+                    Teste perguntas de estoque, promoções, horários/feriados, gatilhos rápidos, fotos via Gemini ou números bloqueados no filtro de contatos.
+                  </p>
+                </div>
 
-                {simImage && (
-                  <div className="mb-3 flex items-center gap-3 p-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)]">
-                    <img
-                      src={simImage}
-                      alt="Prévia da foto"
-                      className="w-12 h-12 rounded object-cover border border-[var(--nx-border)]"
-                    />
-                    <div className="flex-1 text-xs text-[var(--nx-muted)]">
-                      Foto anexada para identificação visual pela IA
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSimImage(null)}
-                      className="p-1 text-[var(--nx-subtle)] hover:text-[var(--nx-error)]"
-                      title="Remover foto"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                <form onSubmit={handleSimulateChat} className="flex gap-2 mb-4">
-                  <label
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] cursor-pointer shrink-0 transition-colors"
-                    title="Anexar foto para identificação pela IA"
-                  >
-                    <ImageIcon className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
-                    Foto
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleSelectSimImage}
-                      className="hidden"
-                    />
-                  </label>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] text-[var(--nx-muted)]">Número teste:</span>
                   <input
                     type="text"
-                    value={simMessage}
-                    onChange={(e) => setSimMessage(e.target.value)}
-                    placeholder={
-                      selectedTenant?.businessType === 'SERVICES'
-                        ? 'Ex: Quero agendar um atendimento ou mande uma foto do problema'
-                        : 'Ex: Vocês têm essa peça? (ou anexe uma foto)'
-                    }
-                    className="flex-1 px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                    value={simPhone}
+                    onChange={(e) => setSimPhone(e.target.value)}
+                    placeholder="5551988887777"
+                    className="w-36 px-2.5 py-1.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] tabular-data text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
                   />
-                  <button
-                    type="submit"
-                    disabled={simLoading}
-                    className="nx-btn-primary px-4 py-2 text-xs"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    {simLoading ? 'Processando...' : 'Testar'}
-                  </button>
-                </form>
+                </div>
+              </div>
 
-                {simResult && (
-                  <div className="p-3.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs space-y-2 animate-fade-up">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-[var(--nx-text)]">Resposta gerada:</span>
+              {simImage && (
+                <div className="mb-3 flex items-center gap-3 p-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+                  <img
+                    src={simImage}
+                    alt="Prévia da foto"
+                    className="w-12 h-12 rounded object-cover border border-[var(--nx-border)]"
+                  />
+                  <div className="flex-1 text-xs text-[var(--nx-muted)]">
+                    Foto anexada para identificação visual pela IA
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSimImage(null)}
+                    className="p-1 text-[var(--nx-subtle)] hover:text-[var(--nx-error)]"
+                    title="Remover foto"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleSimulateChat} className="flex gap-2 mb-3">
+                <label
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] cursor-pointer shrink-0 transition-colors"
+                  title="Anexar foto para identificação pela IA"
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                  Foto
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSelectSimImage}
+                    className="hidden"
+                  />
+                </label>
+                <input
+                  type="text"
+                  value={simMessage}
+                  onChange={(e) => setSimMessage(e.target.value)}
+                  placeholder={
+                    selectedTenant?.businessType === 'SERVICES'
+                      ? 'Ex: Quero agendar um atendimento ou mande uma foto do problema'
+                      : 'Ex: Qual o preço da ducha Lorenzetti? Vocês abrem no Natal?'
+                  }
+                  className="flex-1 px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                />
+                <button
+                  type="submit"
+                  disabled={simLoading}
+                  className="nx-btn-primary px-4 py-2 text-xs"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {simLoading ? 'Processando...' : 'Testar'}
+                </button>
+              </form>
+
+              {simResult && (
+                <div className="p-3.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs space-y-2 animate-fade-up">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-semibold text-[var(--nx-text)]">Resposta gerada:</span>
+                    <div className="flex items-center gap-2">
+                      {simResult.blockedByContactFilter && (
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-error-bg)] text-[var(--nx-error)] text-[10px] font-semibold">
+                          Bloqueado pelo Filtro de Contatos
+                        </span>
+                      )}
+                      {simResult.quickReplyTriggered && (
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] text-[10px] font-semibold tabular-data">
+                          Gatilho {simResult.quickReplyTriggered}
+                        </span>
+                      )}
                       {simResult.imageAnalyzed && (
                         <span className="px-2 py-0.5 rounded bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] text-[10px] font-semibold">
                           Visão Computacional Ativa
                         </span>
                       )}
                     </div>
-                    <p className="text-[var(--nx-muted)] leading-relaxed whitespace-pre-line">
-                      {simResult.replyText || simResult.text || JSON.stringify(simResult)}
-                    </p>
                   </div>
-                )}
-              </div>
-
-              <div className="lg:col-span-5 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
-                <h2 className="text-sm font-bold text-[var(--nx-text)] mb-1">
-                  Serviços / Itens procurados sem cadastro
-                </h2>
-                <p className="text-xs text-[var(--nx-muted)] mb-4">
-                  Solicitações feitas por clientes no WhatsApp que ainda não constam na sua grade.
-                </p>
-
-                {metrics?.missedDemands?.length > 0 ? (
-                  <div className="divide-y divide-[var(--nx-border)] border-t border-[var(--nx-border)]">
-                    {metrics.missedDemands.map((md: any) => (
-                      <div key={md.id} className="py-2.5 flex items-center justify-between text-xs">
-                        <span className="font-medium text-[var(--nx-text)]">{md.term}</span>
-                        <span className="px-2 py-0.5 rounded bg-[var(--nx-surface-alt)] text-[var(--nx-muted)] tabular-data">
-                          {md.searchCount}x procurado
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-6 text-center text-xs text-[var(--nx-subtle)] border border-dashed border-[var(--nx-border)] rounded">
-                    Nenhuma demanda reprimida registrada.
-                  </div>
-                )}
-              </div>
+                  <p className="text-[var(--nx-muted)] leading-relaxed whitespace-pre-line">
+                    {simResult.replyText || simResult.text || JSON.stringify(simResult)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -3153,7 +3408,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </div>
                         </td>
                         <td className="py-3 px-4 font-semibold text-[var(--nx-text)] tabular-data">
-                          R$ {Number(item.price).toFixed(2)}
+                          {item.activePromotion ? (
+                            <div className="flex flex-col">
+                              <span className="text-[var(--nx-accent)] font-bold">
+                                R$ {Number(item.effectivePrice).toFixed(2)}
+                              </span>
+                              <span className="text-[10px] line-through text-[var(--nx-subtle)]">
+                                R$ {Number(item.price).toFixed(2)} (-{item.discountPct}%)
+                              </span>
+                            </div>
+                          ) : (
+                            <>R$ {Number(item.price).toFixed(2)}</>
+                          )}
                         </td>
                         <td className="py-3 px-4 tabular-data">
                           {item.stockQty} {item.unit || 'un'}.
@@ -3226,9 +3492,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </h3>
 
                           <div className="flex items-baseline justify-between pt-1">
-                            <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
-                              R$ {Number(item.price).toFixed(2)}
-                            </span>
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                              {item.activePromotion ? (
+                                <>
+                                  <span className="text-base font-bold text-[var(--nx-accent)] tabular-data">
+                                    R$ {Number(item.effectivePrice).toFixed(2)}
+                                  </span>
+                                  <span className="text-[11px] line-through text-[var(--nx-subtle)] tabular-data">
+                                    R$ {Number(item.price).toFixed(2)}
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] text-[10px] font-bold tabular-data">
+                                    -{item.discountPct}%
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
+                                  R$ {Number(item.price).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
                             <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] tabular-data">
                               {item.stockQty} {item.unit || 'un'}
                             </span>
@@ -3425,15 +3707,74 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             className={`p-2.5 rounded text-xs max-w-[85%] ${
                               m.role === 'user'
                                 ? 'bg-[var(--nx-surface)] border border-[var(--nx-border)] text-[var(--nx-text)]'
+                                : m.role === 'human_agent'
+                                ? 'bg-[var(--nx-accent)] text-white ml-auto'
                                 : 'bg-[var(--nx-primary)] text-white ml-auto'
                             }`}
                           >
-                            <div className="text-[10px] opacity-70 mb-0.5">
-                              {m.role === 'user' ? 'Cliente' : 'Atendente / Notificação Neoxy'}
+                            <div className="text-[10px] opacity-75 mb-0.5">
+                              {m.role === 'user'
+                                ? 'Cliente'
+                                : m.role === 'human_agent'
+                                ? 'Atendente Humano'
+                                : 'IA Neoxy'}
                             </div>
                             <div>{m.content}</div>
                           </div>
                         ))}
+                      </div>
+
+                      {/* Barra de Resposta Humana + Atalhos Rápidos */}
+                      <div className="p-3 border-t border-[var(--nx-border)] bg-[var(--nx-surface)] space-y-2">
+                        {quickReplies.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {quickReplies.slice(0, 6).map((qr) => (
+                              <button
+                                key={qr.id}
+                                type="button"
+                                onClick={() =>
+                                  setInboxReplyDrafts((prev) => ({
+                                    ...prev,
+                                    [session.customerPhone]: qr.content
+                                  }))
+                                }
+                                className="px-2 py-0.5 rounded bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] hover:border-[var(--nx-primary)] tabular-data text-[10px] text-[var(--nx-text)]"
+                                title={qr.title}
+                              >
+                                {qr.shortcut}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={inboxReplyDrafts[session.customerPhone] || ''}
+                            onChange={(e) =>
+                              setInboxReplyDrafts((prev) => ({
+                                ...prev,
+                                [session.customerPhone]: e.target.value
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSendInboxReply(session.customerPhone);
+                              }
+                            }}
+                            placeholder="Responder como atendente humano ou clique em um /atalho acima..."
+                            className="flex-1 px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                          />
+                          <button
+                            type="button"
+                            disabled={sendingInboxPhone === session.customerPhone}
+                            onClick={() => handleSendInboxReply(session.customerPhone)}
+                            className="nx-btn-primary px-3.5 py-2 text-xs shrink-0"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            Enviar
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -3441,6 +3782,60 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             )}
           </div>
+        )}
+
+        {/* SUB-ABA WHATSAPP: CONTATOS & FILTRO DE BLOQUEIO IA */}
+        {activeTab === 'contacts' && selectedTenant && (
+          <WhatsAppContactsTab
+            tenantSlug={selectedTenant.slug}
+            contacts={contacts}
+            onRefresh={() => loadTenantData(selectedTenant.slug)}
+            onNotify={showToast}
+          />
+        )}
+
+        {/* SUB-ABA WHATSAPP: RESPOSTAS RÁPIDAS & GATILHOS */}
+        {activeTab === 'quickreplies' && selectedTenant && (
+          <QuickRepliesTab
+            tenantSlug={selectedTenant.slug}
+            quickReplies={quickReplies}
+            onRefresh={() => loadTenantData(selectedTenant.slug)}
+            onNotify={showToast}
+          />
+        )}
+
+        {/* SUB-ABA WHATSAPP: RADAR DE FOLLOW-UP */}
+        {activeTab === 'radar' && selectedTenant && (
+          <FollowUpRadarTab
+            tenantSlug={selectedTenant.slug}
+            radar={radarItems}
+            onRefresh={() => loadTenantData(selectedTenant.slug)}
+            onOpenInbox={() => setActiveTab('inbox')}
+            onNotify={showToast}
+          />
+        )}
+
+        {/* SUB-ABA CATÁLOGO: PROMOÇÕES & OFERTAS */}
+        {activeTab === 'promotions' && selectedTenant && (
+          <PromotionsTab
+            tenantSlug={selectedTenant.slug}
+            promotions={promotions}
+            catalog={catalog}
+            onRefresh={() => loadTenantData(selectedTenant.slug)}
+            onNotify={showToast}
+          />
+        )}
+
+        {/* SUB-ABA PERFIL: EMPRESA, HORÁRIOS, REDES SOCIAIS & FERIADOS */}
+        {activeTab === 'profile_hours' && selectedTenant && (
+          <CompanyHoursTab
+            tenant={selectedTenant}
+            onSaved={async () => {
+              await onRefreshSession();
+              await loadTenantData(selectedTenant.slug);
+            }}
+            onNotify={showToast}
+          />
         )}
 
         {/* ABA 9: PERFIL DO NEGÓCIO, MÓDULOS PERSONALIZÁVEIS & REGRAS IA */}

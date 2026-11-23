@@ -14,6 +14,8 @@ const {
   requireModule
 } = require('./modules/auth/authMiddleware');
 const businessModuleService = require('./modules/business/businessModuleService');
+const crmExtensionsService = require('./modules/business/crmExtensionsService');
+const holidaysService = require('./modules/business/holidaysService');
 
 const app = express();
 
@@ -239,6 +241,187 @@ app.post('/api/tenants/:slug/inbox/handoff', requireAuth, requireTenantAccess, a
     res.json({ success: true, session });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Envio de resposta humana / resposta rápida diretamente pela Inbox
+app.post('/api/tenants/:slug/inbox/reply', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { customerPhone, text } = req.body || {};
+    if (!customerPhone || !String(text || '').trim()) {
+      return res.status(400).json({ success: false, error: 'Informe o telefone e o texto da resposta.' });
+    }
+    const chatSessionService = require('./modules/chat/chatSessionService');
+    const evolutionClient = require('./modules/whatsapp/evolutionClient');
+
+    const msg = await chatSessionService.appendMessage({
+      tenantId: req.tenant.id,
+      customerPhone,
+      role: 'human_agent',
+      content: String(text).trim()
+    });
+
+    const instanceName = req.tenant.whatsappAccounts?.[0]?.instanceName;
+    if (instanceName) {
+      await evolutionClient.sendTextMessage(instanceName, customerPhone, String(text).trim());
+    }
+
+    res.json({ success: true, message: msg });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Analytics Executivo (Gráficos Mensagens/Dia, IA vs Humano, Top Procurados)
+app.get('/api/tenants/:slug/analytics', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const analytics = await crmExtensionsService.getTenantAnalytics(req.tenant.id);
+    res.json({ success: true, analytics });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Contatos WhatsApp & Filtro de Bloqueio de IA
+app.get('/api/tenants/:slug/contacts', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const contacts = await crmExtensionsService.listContacts(
+      req.tenant.id,
+      req.query.q || '',
+      req.query.filter || 'all'
+    );
+    res.json({ success: true, contacts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/contacts', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const contact = await crmExtensionsService.upsertContact(req.tenant.id, req.body || {});
+    res.json({ success: true, contact });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.patch('/api/tenants/:slug/contacts/:phone/ai-block', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const contact = await crmExtensionsService.toggleContactAiBlock(
+      req.tenant.id,
+      req.params.phone,
+      Boolean(req.body?.aiBlocked)
+    );
+    res.json({ success: true, contact });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/contacts/sync', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const result = await crmExtensionsService.syncContactsFromWhatsApp(req.tenant);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/tenants/:slug/contacts/:contactId', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    await crmExtensionsService.deleteContact(req.tenant.id, req.params.contactId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Promoções & Ofertas de Catálogo (Preço Manual ou % Geral / por Categoria)
+app.get('/api/tenants/:slug/promotions', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const promotions = await crmExtensionsService.listPromotions(req.tenant.id);
+    res.json({ success: true, promotions });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/promotions', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const promotion = await crmExtensionsService.upsertPromotion(req.tenant.id, req.body || {});
+    res.json({ success: true, promotion });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.patch('/api/tenants/:slug/promotions/:promoId/toggle', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const promotion = await crmExtensionsService.togglePromotion(
+      req.tenant.id,
+      req.params.promoId,
+      Boolean(req.body?.active)
+    );
+    res.json({ success: true, promotion });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/tenants/:slug/promotions/:promoId', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    await crmExtensionsService.deletePromotion(req.tenant.id, req.params.promoId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Respostas Rápidas (/atalho) & Gatilhos Automáticos (Inspirado em Chatwoot & Whatomate)
+app.get('/api/tenants/:slug/quick-replies', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const quickReplies = await crmExtensionsService.listQuickReplies(req.tenant.id);
+    res.json({ success: true, quickReplies });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/quick-replies', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const quickReply = await crmExtensionsService.upsertQuickReply(req.tenant.id, req.body || {});
+    res.json({ success: true, quickReply });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/tenants/:slug/quick-replies/:replyId', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    await crmExtensionsService.deleteQuickReply(req.tenant.id, req.params.replyId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Radar de Follow-up & Conversas Esfriadas (Inspirado em DeskcommCRM)
+app.get('/api/tenants/:slug/radar', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const radar = await crmExtensionsService.getFollowUpRadar(req.tenant.id);
+    res.json({ success: true, radar });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Importador de Feriados Nacionais do Brasil (BrasilAPI + Calculadora Local)
+app.get('/api/system/holidays/:year', requireAuth, async (req, res) => {
+  try {
+    const result = await holidaysService.getBrazilHolidays(req.params.year);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

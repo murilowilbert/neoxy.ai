@@ -1,6 +1,7 @@
 const prisma = require('../../database/prisma');
 const XLSX = require('xlsx');
 const axios = require('axios');
+const crmExtensions = require('./crmExtensionsService');
 
 function parseJsonSafe(raw, fallback) {
   if (!raw) return fallback;
@@ -129,12 +130,18 @@ async function listCatalogItems(tenantId, search = '', limit = 200) {
     ];
   }
 
-  const list = await prisma.catalogItem.findMany({
-    where,
-    orderBy: { name: 'asc' },
-    take: Number(limit)
-  });
-  return list.map(formatCatalogItem);
+  const [list, activePromotions] = await Promise.all([
+    prisma.catalogItem.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      take: Number(limit)
+    }),
+    crmExtensions.getActivePromotions(tenantId).catch(() => [])
+  ]);
+  return crmExtensions.annotateCatalogWithPromotions(
+    list.map(formatCatalogItem),
+    activePromotions
+  );
 }
 
 async function upsertCatalogItem(tenantId, data) {

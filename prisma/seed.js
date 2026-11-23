@@ -796,6 +796,252 @@ async function main() {
     }
   });
 
+  // =========================================================================
+  // 7. SEED DE ANALYTICS, CONTATOS (FILTRO IA), PROMOÇÕES & RESPOSTAS RÁPIDAS
+  // =========================================================================
+  const now = new Date();
+  const makeDate = (daysAgo, hour, minute = 15) => {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo, hour, minute, 0, 0);
+    return d;
+  };
+
+  // Contatos & Filtro IA (Ferragens Marlene)
+  const ferragensContacts = [
+    {
+      phone: '5551991112233',
+      name: 'Carlos Pedreiro',
+      tags: ['VIP', 'Obra'],
+      aiBlocked: false,
+      notes: 'Cliente recorrente de materiais hidráulicos.'
+    },
+    {
+      phone: '5551992223344',
+      name: 'Fornecedor Suvinil Sul',
+      tags: ['Fornecedor'],
+      aiBlocked: true,
+      notes: 'Bloqueado para IA — negociação direta com gerência.'
+    },
+    {
+      phone: '5551993334455',
+      name: 'Marlene (Pessoal / Família)',
+      tags: ['Família'],
+      aiBlocked: true,
+      notes: 'Número pessoal da diretoria.'
+    },
+    {
+      phone: '5551994445566',
+      name: 'Construtora Horizonte',
+      tags: ['Orçamento', 'Lead Quente'],
+      aiBlocked: false,
+      notes: 'Pediu cotação de tintas e fechaduras.'
+    }
+  ];
+
+  for (const c of ferragensContacts) {
+    await prisma.whatsAppContact.upsert({
+      where: { tenantId_phone: { tenantId: ferragensTenant.id, phone: c.phone } },
+      update: {
+        name: c.name,
+        tags: JSON.stringify(c.tags),
+        aiBlocked: c.aiBlocked,
+        notes: c.notes,
+        lastMessageAt: now
+      },
+      create: {
+        tenantId: ferragensTenant.id,
+        phone: c.phone,
+        name: c.name,
+        tags: JSON.stringify(c.tags),
+        aiBlocked: c.aiBlocked,
+        notes: c.notes,
+        source: 'whatsapp',
+        lastMessageAt: now
+      }
+    });
+  }
+
+  // Demandas procuradas (Em Catálogo) para Ferragens Marlene & Desentupidora Guri
+  const ferragensDemands = [
+    { itemType: 'PRODUCT', itemName: 'Ducha Elétrica Lorenzetti Advanced 220V', searchCount: 19 },
+    { itemType: 'PRODUCT', itemName: 'Tinta Acrílica Fosca Suvinil 18L', searchCount: 14 },
+    { itemType: 'PRODUCT', itemName: 'Parafusadeira Bosch GSB 18V-50', searchCount: 11 },
+    { itemType: 'PRODUCT', itemName: 'Fechadura Digital Intelbras FR 101', searchCount: 8 }
+  ];
+  for (const d of ferragensDemands) {
+    await prisma.demandTracker.upsert({
+      where: {
+        tenantId_itemType_itemName: {
+          tenantId: ferragensTenant.id,
+          itemType: d.itemType,
+          itemName: d.itemName
+        }
+      },
+      update: { searchCount: d.searchCount },
+      create: { tenantId: ferragensTenant.id, ...d }
+    });
+  }
+
+  const guriDemands = [
+    { itemType: 'SERVICE', itemName: 'Desentupimento de Pia e Ralo', searchCount: 24 },
+    { itemType: 'SERVICE', itemName: 'Hidrojateamento & Caixa de Gordura', searchCount: 16 }
+  ];
+  for (const d of guriDemands) {
+    await prisma.demandTracker.upsert({
+      where: {
+        tenantId_itemType_itemName: {
+          tenantId: guriTenant.id,
+          itemType: d.itemType,
+          itemName: d.itemName
+        }
+      },
+      update: { searchCount: d.searchCount },
+      create: { tenantId: guriTenant.id, ...d }
+    });
+  }
+
+  await prisma.missedDemand.upsert({
+    where: { tenantId_productName: { tenantId: guriTenant.id, productName: 'Caça-Vazamento com Geofone' } },
+    update: { searchCount: 9 },
+    create: { tenantId: guriTenant.id, productName: 'Caça-Vazamento com Geofone', searchCount: 9 }
+  });
+
+  // Promoções de exemplo na Ferragens Marlene
+  const existingPromoCount = await prisma.promotion.count({ where: { tenantId: ferragensTenant.id } });
+  if (existingPromoCount === 0) {
+    const duchaItem = await prisma.catalogItem.findFirst({
+      where: { tenantId: ferragensTenant.id, code: '7891234001' }
+    });
+    await prisma.promotion.create({
+      data: {
+        tenantId: ferragensTenant.id,
+        name: 'Semana da Pintura — 12% OFF',
+        description: 'Desconto automático em toda linha de tintas e massa corrida.',
+        discountType: 'PERCENT',
+        discountValue: 12,
+        scope: 'CATEGORY',
+        targetCategory: 'Pintura e Tintas',
+        active: true
+      }
+    });
+    if (duchaItem) {
+      await prisma.promotion.create({
+        data: {
+          tenantId: ferragensTenant.id,
+          name: 'Oferta Relâmpago Ducha Lorenzetti',
+          description: 'Preço promocional fixo no balcão e WhatsApp.',
+          discountType: 'FIXED_PRICE',
+          discountValue: 139.9,
+          scope: 'PRODUCTS',
+          targetItemIds: JSON.stringify([duchaItem.id]),
+          active: true
+        }
+      });
+    }
+  }
+
+  // Respostas Rápidas & Gatilhos Automáticos (Ferragens + Guri)
+  const defaultQuickReplies = [
+    {
+      tenantId: ferragensTenant.id,
+      shortcut: '/endereco',
+      title: 'Endereço e Retirada',
+      content: 'Olá {{cliente}}! Estamos na {{endereco}}. Retirada direto no balcão sem filas.',
+      category: 'ATENDIMENTO',
+      triggerKeywords: 'onde fica, qual o endereco, localizacao, endereco da loja',
+      autoTrigger: true,
+      triggerHandoff: false
+    },
+    {
+      tenantId: ferragensTenant.id,
+      shortcut: '/pix',
+      title: 'Pagamento PIX',
+      content: 'Aceitamos PIX, dinheiro e cartões em até 6x na {{empresa}}. Quer que eu separe seu pedido?',
+      category: 'FINANCEIRO',
+      triggerKeywords: 'chave pix, aceita pix, forma de pagamento',
+      autoTrigger: false,
+      triggerHandoff: false
+    },
+    {
+      tenantId: guriTenant.id,
+      shortcut: '/emergencia',
+      title: 'Plantão Emergência 24h',
+      content: 'Olá {{cliente}}! Nosso plantão 24h da {{empresa}} já recebeu seu chamado. Me envie seu bairro e o ponto entupido para passarmos o orçamento imediato.',
+      category: 'ATENDIMENTO',
+      triggerKeywords: 'urgente, emergencia, alagando, transbordando',
+      autoTrigger: true,
+      triggerHandoff: true
+    }
+  ];
+
+  for (const qr of defaultQuickReplies) {
+    await prisma.quickReply.upsert({
+      where: { tenantId_shortcut: { tenantId: qr.tenantId, shortcut: qr.shortcut } },
+      update: qr,
+      create: qr
+    });
+  }
+
+  // Histórico de mensagens nos últimos 7 dias + hoje para alimentar gráficos reais do Resumo
+  const ferragensMsgCount = await prisma.chatMessage.count({ where: { tenantId: ferragensTenant.id } });
+  if (ferragensMsgCount < 10) {
+    const sampleSessions = [
+      { phone: '5551991112233', name: 'Carlos Pedreiro', state: 'IDLE', daysAgo: 0, hour: 9, human: false },
+      { phone: '5551994445566', name: 'Construtora Horizonte', state: 'HUMAN_HANDOFF', daysAgo: 0, hour: 10, human: true },
+      { phone: '5551995556677', name: 'Ana Paula Reforma', state: 'IDLE', daysAgo: 0, hour: 11, human: false },
+      { phone: '5551996667788', name: 'Marcos Eletricista', state: 'IDLE', daysAgo: 1, hour: 14, human: false },
+      { phone: '5551997778899', name: 'Juliana Arquiteta', state: 'HUMAN_HANDOFF', daysAgo: 2, hour: 16, human: true },
+      { phone: '5551998889900', name: 'Pedro Pinturas', state: 'IDLE', daysAgo: 3, hour: 10, human: false },
+      { phone: '5551990001122', name: 'Lucas Serralheria', state: 'IDLE', daysAgo: 4, hour: 15, human: false }
+    ];
+
+    for (const s of sampleSessions) {
+      const ts = makeDate(s.daysAgo, Math.min(s.hour, now.getHours()), 10);
+      await prisma.chatSession.upsert({
+        where: { tenantId_customerPhone: { tenantId: ferragensTenant.id, customerPhone: s.phone } },
+        update: { customerName: s.name, state: s.state, lastInteraction: ts },
+        create: {
+          tenantId: ferragensTenant.id,
+          customerPhone: s.phone,
+          customerName: s.name,
+          state: s.state,
+          pausedUntil: s.human ? new Date(Date.now() + 3 * 3600 * 1000) : null,
+          lastInteraction: ts
+        }
+      });
+
+      await prisma.chatMessage.createMany({
+        data: [
+          {
+            tenantId: ferragensTenant.id,
+            customerPhone: s.phone,
+            role: 'user',
+            content: 'Olá, vocês têm ducha elétrica Lorenzetti 220V ou tinta Suvinil?',
+            createdAt: ts
+          },
+          {
+            tenantId: ferragensTenant.id,
+            customerPhone: s.phone,
+            role: 'model',
+            content: 'Olá! Temos sim a Ducha Elétrica Lorenzetti 220V e a Tinta Suvinil 18L em oferta hoje!',
+            metadata: JSON.stringify({ isHandoff: s.human }),
+            createdAt: new Date(ts.getTime() + 60000)
+          },
+          ...(s.human
+            ? [
+                {
+                  tenantId: ferragensTenant.id,
+                  customerPhone: s.phone,
+                  role: 'human_agent',
+                  content: 'Olá! Aqui é o gerente, já preparei o orçamento fechado para sua obra.',
+                  createdAt: new Date(ts.getTime() + 180000)
+                }
+              ]
+            : [])
+        ]
+      });
+    }
+  }
+
   console.log('✅ Seed completo finalizado com sucesso!');
   console.log('--------------------------------------------------');
   console.log('🔑 Credenciais de Acesso (Senha padrão: neoxy123):');

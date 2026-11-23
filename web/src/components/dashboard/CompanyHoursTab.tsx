@@ -1,0 +1,616 @@
+import React, { useState, useEffect } from 'react';
+import {
+  MapPin,
+  Clock,
+  Calendar,
+  Plus,
+  Trash2,
+  Download,
+  Share2
+} from 'lucide-react';
+import { apiFetch } from '../../lib/api';
+
+interface TimeSlot {
+  start: string;
+  end: string;
+}
+
+interface ScheduleException {
+  date: string;
+  type: 'closed' | 'horario_especial';
+  reason: string;
+  returnDate?: string;
+  specialHours?: { open: string; close: string };
+}
+
+interface CompanyHoursTabProps {
+  tenant: any;
+  onSaved: () => Promise<void>;
+  onNotify: (msg: string) => void;
+}
+
+const WEEK_DAYS = [
+  { key: '1', label: 'Segunda-feira' },
+  { key: '2', label: 'Terça-feira' },
+  { key: '3', label: 'Quarta-feira' },
+  { key: '4', label: 'Quinta-feira' },
+  { key: '5', label: 'Sexta-feira' },
+  { key: '6', label: 'Sábado' },
+  { key: '0', label: 'Domingo' }
+];
+
+export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
+  tenant,
+  onSaved,
+  onNotify
+}) => {
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [mapsUrl, setMapsUrl] = useState('');
+  const [phone, setPhone] = useState('');
+  const [website, setWebsite] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [facebook, setFacebook] = useState('');
+  const [tiktok, setTiktok] = useState('');
+  const [youtube, setYoutube] = useState('');
+
+  const [schedule, setSchedule] = useState<Record<string, TimeSlot[]>>({});
+  const [exceptions, setExceptions] = useState<ScheduleException[]>([]);
+
+  // Novo feriado / data especial
+  const [newExDate, setNewExDate] = useState('');
+  const [newExReason, setNewExReason] = useState('');
+  const [newExType, setNewExType] = useState<'closed' | 'horario_especial'>('closed');
+  const [newExOpen, setNewExOpen] = useState('09:00');
+  const [newExClose, setNewExClose] = useState('13:00');
+  const [newExReturn, setNewExReturn] = useState('');
+
+  const [holidayYear, setHolidayYear] = useState(String(new Date().getFullYear()));
+  const [importingHolidays, setImportingHolidays] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const s = tenant?.parsedSettings || {};
+    const info = s.storeInfo || {};
+    const social = info.socialLinks || {};
+    const bh = s.businessHours || {};
+
+    setAddress(info.address || '');
+    setCity(info.city || '');
+    setMapsUrl(info.mapsUrl || '');
+    setPhone(info.phone || '');
+    setWebsite(info.website || '');
+    setInstagram(social.instagram || '');
+    setFacebook(social.facebook || '');
+    setTiktok(social.tiktok || '');
+    setYoutube(social.youtube || '');
+
+    const initialSchedule: Record<string, TimeSlot[]> = {};
+    for (const d of WEEK_DAYS) {
+      const slots = bh.schedule?.[d.key];
+      initialSchedule[d.key] = Array.isArray(slots) ? slots.map((x: any) => ({ ...x })) : [];
+    }
+    setSchedule(initialSchedule);
+    setExceptions(Array.isArray(bh.exceptions) ? bh.exceptions : []);
+  }, [tenant]);
+
+  function toggleDayOpen(dayKey: string) {
+    setSchedule((prev) => {
+      const current = prev[dayKey] || [];
+      return {
+        ...prev,
+        [dayKey]: current.length > 0 ? [] : [{ start: '08:00', end: '18:00' }]
+      };
+    });
+  }
+
+  function updateSlot(dayKey: string, idx: number, field: 'start' | 'end', value: string) {
+    setSchedule((prev) => {
+      const list = [...(prev[dayKey] || [])];
+      list[idx] = { ...list[idx], [field]: value };
+      return { ...prev, [dayKey]: list };
+    });
+  }
+
+  function addSlot(dayKey: string) {
+    setSchedule((prev) => {
+      const list = [...(prev[dayKey] || [])];
+      if (list.length >= 2) return prev;
+      list.push({ start: '13:30', end: '18:00' });
+      return { ...prev, [dayKey]: list };
+    });
+  }
+
+  function removeSlot(dayKey: string, idx: number) {
+    setSchedule((prev) => {
+      const list = [...(prev[dayKey] || [])].filter((_, i) => i !== idx);
+      return { ...prev, [dayKey]: list };
+    });
+  }
+
+  function copyMondayToWeekdays() {
+    const monday = schedule['1'] || [{ start: '08:00', end: '18:00' }];
+    setSchedule((prev) => ({
+      ...prev,
+      '2': monday.map((s) => ({ ...s })),
+      '3': monday.map((s) => ({ ...s })),
+      '4': monday.map((s) => ({ ...s })),
+      '5': monday.map((s) => ({ ...s }))
+    }));
+    onNotify('Horário de segunda-feira copiado para terça a sexta.');
+  }
+
+  function handleAddException(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newExDate || !newExReason.trim()) return;
+    const item: ScheduleException = {
+      date: newExDate,
+      type: newExType,
+      reason: newExReason.trim(),
+      ...(newExType === 'horario_especial'
+        ? { specialHours: { open: newExOpen, close: newExClose } }
+        : { returnDate: newExReturn.trim() || undefined })
+    };
+    setExceptions((prev) => {
+      const filtered = prev.filter((ex) => ex.date !== item.date);
+      return [...filtered, item].sort((a, b) => a.date.localeCompare(b.date));
+    });
+    setNewExDate('');
+    setNewExReason('');
+    setNewExReturn('');
+  }
+
+  function removeException(date: string) {
+    setExceptions((prev) => prev.filter((ex) => ex.date !== date));
+  }
+
+  async function handleImportNationalHolidays() {
+    setImportingHolidays(true);
+    try {
+      const res = await apiFetch(`/api/system/holidays/${holidayYear}`);
+      const list = Array.isArray(res.holidays) ? res.holidays : [];
+      if (list.length === 0) {
+        onNotify('Nenhum feriado retornado para este ano.');
+        return;
+      }
+      setExceptions((prev) => {
+        const existingDates = new Set(prev.map((x) => x.date));
+        const merged = [...prev];
+        let added = 0;
+        for (const h of list) {
+          if (!existingDates.has(h.date)) {
+            merged.push({
+              date: h.date,
+              type: 'closed',
+              reason: h.name
+            });
+            added += 1;
+          }
+        }
+        onNotify(
+          `${added} feriados nacionais de ${holidayYear} importados (clique em Salvar para confirmar).`
+        );
+        return merged.sort((a, b) => a.date.localeCompare(b.date));
+      });
+    } catch (err: any) {
+      onNotify(err.message || 'Falha ao importar feriados.');
+    } finally {
+      setImportingHolidays(false);
+    }
+  }
+
+  async function handleSaveAll(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const currentSettings = tenant?.parsedSettings || {};
+      const updatedStoreInfo = {
+        ...(currentSettings.storeInfo || {}),
+        address: address.trim(),
+        city: city.trim(),
+        mapsUrl: mapsUrl.trim(),
+        phone: phone.trim(),
+        website: website.trim(),
+        socialLinks: {
+          instagram: instagram.trim(),
+          facebook: facebook.trim(),
+          tiktok: tiktok.trim(),
+          youtube: youtube.trim()
+        }
+      };
+
+      const updatedBusinessHours = {
+        ...(currentSettings.businessHours || {}),
+        timezone: currentSettings.businessHours?.timezone || 'America/Sao_Paulo',
+        schedule,
+        exceptions
+      };
+
+      await apiFetch(`/api/tenants/${tenant.slug}/settings`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          settings: {
+            storeInfo: updatedStoreInfo,
+            businessHours: updatedBusinessHours
+          }
+        })
+      });
+
+      await onSaved();
+      onNotify('Endereço, redes sociais, horários e feriados salvos e sincronizados com o bot!');
+    } catch (err: any) {
+      onNotify(err.message || 'Erro ao salvar configurações da empresa.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSaveAll} className="space-y-6 animate-fade-up">
+      {/* Barra superior com ação Salvar */}
+      <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-sm font-bold text-[var(--nx-text)]">
+            Localização, Redes Sociais, Horários & Feriados
+          </h2>
+          <p className="text-xs text-[var(--nx-muted)]">
+            O bot do WhatsApp consulta estes dados em tempo real para responder endereço, redes, se a empresa está aberta agora e horários em feriados.
+          </p>
+        </div>
+
+        <button type="submit" disabled={saving} className="nx-btn-primary px-5 py-2.5 text-xs shrink-0">
+          {saving ? 'Salvando...' : 'Salvar Empresa & Horários'}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Coluna Esquerda: Localização + Redes Sociais */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* Endereço e Contato */}
+          <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-[var(--nx-text)]">
+              <MapPin className="w-4 h-4 text-[var(--nx-primary)]" />
+              Endereço & Contato Oficial
+            </div>
+
+            <div className="space-y-3">
+              <div className="nx-field !mb-0">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
+                <label>Endereço completo (Rua, nº, bairro)</label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="nx-field !mb-0">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                  />
+                  <label>Cidade / UF</label>
+                </div>
+                <div className="nx-field !mb-0">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                  <label>Telefone comercial</label>
+                </div>
+              </div>
+
+              <div className="nx-field !mb-0">
+                <input
+                  type="url"
+                  placeholder=" "
+                  value={mapsUrl}
+                  onChange={(e) => setMapsUrl(e.target.value)}
+                />
+                <label>Link Google Maps (ex: https://maps.app.goo.gl/...)</label>
+              </div>
+
+              <div className="nx-field !mb-0">
+                <input
+                  type="url"
+                  placeholder=" "
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                />
+                <label>Site oficial (opcional)</label>
+              </div>
+            </div>
+          </div>
+
+          {/* Redes Sociais */}
+          <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-[var(--nx-text)]">
+              <Share2 className="w-4 h-4 text-[var(--nx-primary)]" />
+              Links para Redes Sociais
+            </div>
+
+            <div className="space-y-3">
+              <div className="nx-field !mb-0">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                />
+                <label>Instagram (@perfil ou URL)</label>
+              </div>
+              <div className="nx-field !mb-0">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={facebook}
+                  onChange={(e) => setFacebook(e.target.value)}
+                />
+                <label>Facebook (URL da página)</label>
+              </div>
+              <div className="nx-field !mb-0">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={tiktok}
+                  onChange={(e) => setTiktok(e.target.value)}
+                />
+                <label>TikTok (@perfil ou URL)</label>
+              </div>
+              <div className="nx-field !mb-0">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={youtube}
+                  onChange={(e) => setYoutube(e.target.value)}
+                />
+                <label>YouTube (canal ou URL)</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Coluna Direita: Grade Semanal + Feriados/Datas Especiais */}
+        <div className="lg:col-span-7 space-y-5">
+          {/* Horários de Funcionamento */}
+          <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-bold text-[var(--nx-text)]">
+                <Clock className="w-4 h-4 text-[var(--nx-primary)]" />
+                Horários de Atendimento Semanal
+              </div>
+              <button
+                type="button"
+                onClick={copyMondayToWeekdays}
+                className="px-2.5 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-[11px] font-medium text-[var(--nx-text)]"
+              >
+                Copiar Segunda para Seg–Sex
+              </button>
+            </div>
+
+            <div className="divide-y divide-[var(--nx-border)] border border-[var(--nx-border)] rounded-lg bg-[var(--nx-bg)]">
+              {WEEK_DAYS.map((day) => {
+                const slots = schedule[day.key] || [];
+                const isOpen = slots.length > 0;
+                return (
+                  <div
+                    key={day.key}
+                    className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-[160px]">
+                      <input
+                        type="checkbox"
+                        checked={isOpen}
+                        onChange={() => toggleDayOpen(day.key)}
+                        className="w-4 h-4 accent-[var(--nx-primary)]"
+                      />
+                      <span
+                        className={`text-xs font-semibold ${
+                          isOpen ? 'text-[var(--nx-text)]' : 'text-[var(--nx-subtle)]'
+                        }`}
+                      >
+                        {day.label}
+                      </span>
+                    </div>
+
+                    {!isOpen ? (
+                      <span className="text-[11px] text-[var(--nx-subtle)] font-medium">
+                        Fechado
+                      </span>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2 flex-1 justify-end">
+                        {slots.map((slot, idx) => (
+                          <div key={idx} className="inline-flex items-center gap-1.5">
+                            <input
+                              type="time"
+                              value={slot.start}
+                              onChange={(e) => updateSlot(day.key, idx, 'start', e.target.value)}
+                              className="px-2 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs tabular-data text-[var(--nx-text)]"
+                            />
+                            <span className="text-[11px] text-[var(--nx-subtle)]">às</span>
+                            <input
+                              type="time"
+                              value={slot.end}
+                              onChange={(e) => updateSlot(day.key, idx, 'end', e.target.value)}
+                              className="px-2 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs tabular-data text-[var(--nx-text)]"
+                            />
+                            {slots.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeSlot(day.key, idx)}
+                                className="p-1 text-[var(--nx-muted)] hover:text-[var(--nx-error)]"
+                                title="Remover turno"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {slots.length < 2 && (
+                          <button
+                            type="button"
+                            onClick={() => addSlot(day.key)}
+                            className="px-2 py-1 rounded border border-dashed border-[var(--nx-border-strong)] hover:border-[var(--nx-primary)] text-[11px] text-[var(--nx-muted)] hover:text-[var(--nx-primary)]"
+                            title="Adicionar segundo turno (ex: após almoço)"
+                          >
+                            + 2º turno
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Feriados & Datas Especiais */}
+          <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-[var(--nx-text)]">
+                <Calendar className="w-4 h-4 text-[var(--nx-primary)]" />
+                Feriados & Horários Especiais
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={holidayYear}
+                  onChange={(e) => setHolidayYear(e.target.value)}
+                  className="px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs text-[var(--nx-text)]"
+                >
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={handleImportNationalHolidays}
+                  disabled={importingHolidays}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)]"
+                >
+                  <Download className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                  {importingHolidays ? 'Importando...' : 'Importar Feriados BR'}
+                </button>
+              </div>
+            </div>
+
+            {/* Adicionar Data Especial / Feriado */}
+            <div className="p-3.5 rounded-lg border border-[var(--nx-border)] bg-[var(--nx-bg)] space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <input
+                  type="date"
+                  value={newExDate}
+                  onChange={(e) => setNewExDate(e.target.value)}
+                  className="px-2.5 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                />
+                <input
+                  type="text"
+                  value={newExReason}
+                  onChange={(e) => setNewExReason(e.target.value)}
+                  placeholder="Motivo (ex: Feriado Municipal, Inventário)"
+                  className="px-2.5 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                />
+                <select
+                  value={newExType}
+                  onChange={(e) => setNewExType(e.target.value as 'closed' | 'horario_especial')}
+                  className="px-2.5 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                >
+                  <option value="closed">Fechado o dia todo</option>
+                  <option value="horario_especial">Horário especial</option>
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                {newExType === 'horario_especial' ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-[var(--nx-muted)]">Abre:</span>
+                    <input
+                      type="time"
+                      value={newExOpen}
+                      onChange={(e) => setNewExOpen(e.target.value)}
+                      className="px-2 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] tabular-data text-xs"
+                    />
+                    <span className="text-[var(--nx-muted)]">Fecha:</span>
+                    <input
+                      type="time"
+                      value={newExClose}
+                      onChange={(e) => setNewExClose(e.target.value)}
+                      className="px-2 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] tabular-data text-xs"
+                    />
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={newExReturn}
+                    onChange={(e) => setNewExReturn(e.target.value)}
+                    placeholder="Previsão de retorno (opcional, ex: sexta às 08h)"
+                    className="flex-1 min-w-[200px] px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                  />
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleAddException}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-[var(--nx-primary)] text-white text-xs font-semibold hover:opacity-90"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Adicionar Data
+                </button>
+              </div>
+            </div>
+
+            {/* Lista de Datas Programadas */}
+            {exceptions.length === 0 ? (
+              <div className="text-xs text-[var(--nx-subtle)] text-center py-4">
+                Nenhum feriado ou horário especial programado.
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto divide-y divide-[var(--nx-border)] border border-[var(--nx-border)] rounded-lg bg-[var(--nx-bg)]">
+                {exceptions.map((ex) => {
+                  const [y, m, d] = String(ex.date).split('-');
+                  const brDate = d && m && y ? `${d}/${m}/${y}` : ex.date;
+                  return (
+                    <div
+                      key={ex.date}
+                      className="px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="tabular-data font-bold text-[var(--nx-text)] tabular-data shrink-0">
+                          {brDate}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="font-medium text-[var(--nx-text)] truncate">
+                            {ex.reason}
+                          </div>
+                          <div className="text-[11px] text-[var(--nx-muted)]">
+                            {ex.type === 'horario_especial' && ex.specialHours
+                              ? `Horário especial: ${ex.specialHours.open} às ${ex.specialHours.close}`
+                              : `Fechado${ex.returnDate ? ` (Retorno: ${ex.returnDate})` : ''}`}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeException(ex.date)}
+                        className="p-1.5 text-[var(--nx-muted)] hover:text-[var(--nx-error)] shrink-0"
+                        title="Remover data"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </form>
+  );
+};
+
+export default CompanyHoursTab;
