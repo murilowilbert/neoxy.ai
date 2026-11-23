@@ -1,9 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ThemeProvider } from './components/ThemeProvider';
 import { apiFetch, getToken, setToken } from './lib/api';
+
+class AppErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; errorMessage: string }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorMessage: '' };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMessage: error?.message || 'Erro inesperado na interface.' };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('Neoxy UI ErrorBoundary:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[var(--nx-bg)] text-[var(--nx-text)] flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] rounded-xl p-6 space-y-4 shadow-sm">
+            <h1 className="text-base font-bold text-[var(--nx-error)]">
+              Ocorreu um erro ao renderizar a tela
+            </h1>
+            <p className="text-xs text-[var(--nx-muted)] break-words">
+              {this.state.errorMessage}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setToken(null);
+                window.location.reload();
+              }}
+              className="nx-btn-primary w-full py-2.5 text-xs"
+            >
+              Limpar sessão e recarregar página
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export function App() {
   const [view, setView] = useState<'landing' | 'login' | 'register' | 'dashboard'>('landing');
@@ -36,44 +82,46 @@ export function App() {
 
   return (
     <ThemeProvider>
-      {initializing ? (
-        <div className="min-h-screen bg-[var(--nx-bg)] text-[var(--nx-muted)] flex items-center justify-center text-sm font-medium">
-          Carregando ambiente operacional Neoxy.ai...
-        </div>
-      ) : view === 'dashboard' && user ? (
-        <DashboardPage
-          user={user}
-          tenants={tenants}
-          onLogout={() => {
-            setUser(null);
-            setTenants([]);
-            setView('landing');
-          }}
-          onRefreshSession={restoreSession}
-        />
-      ) : view === 'login' || view === 'register' ? (
-        <AuthPage
-          initialMode={view === 'register' ? 'register' : 'login'}
-          prefillEmail={prefillEmail}
-          onSuccess={(authData) => {
-            setUser(authData.user);
-            setTenants(authData.tenants || []);
-            setView('dashboard');
-          }}
-          onBackToLanding={() => setView('landing')}
-        />
-      ) : (
-        <LandingPage
-          onGoToLogin={(email) => {
-            setPrefillEmail(email || '');
-            setView('login');
-          }}
-          onGoToRegister={() => {
-            setPrefillEmail('');
-            setView('register');
-          }}
-        />
-      )}
+      <AppErrorBoundary>
+        {initializing ? (
+          <div className="min-h-screen bg-[var(--nx-bg)] text-[var(--nx-muted)] flex items-center justify-center text-sm font-medium">
+            Carregando ambiente operacional Neoxy.ai...
+          </div>
+        ) : view === 'dashboard' && user ? (
+          <DashboardPage
+            user={user}
+            tenants={tenants}
+            onLogout={() => {
+              setUser(null);
+              setTenants([]);
+              setView('landing');
+            }}
+            onRefreshSession={restoreSession}
+          />
+        ) : view === 'login' || view === 'register' ? (
+          <AuthPage
+            initialMode={view === 'register' ? 'register' : 'login'}
+            prefillEmail={prefillEmail}
+            onSuccess={(authData) => {
+              setUser(authData.user);
+              setTenants(authData.tenants || []);
+              setView('dashboard');
+            }}
+            onBackToLanding={() => setView('landing')}
+          />
+        ) : (
+          <LandingPage
+            onGoToLogin={(email) => {
+              setPrefillEmail(email || '');
+              setView('login');
+            }}
+            onGoToRegister={() => {
+              setPrefillEmail('');
+              setView('register');
+            }}
+          />
+        )}
+      </AppErrorBoundary>
     </ThemeProvider>
   );
 }
