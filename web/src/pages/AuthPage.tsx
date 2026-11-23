@@ -514,7 +514,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </form>
               )}
 
-              {/* MODO CRIAR CONTA — ETAPA 1: CAIXAS QUADRADAS 2x2 */}
+              {/* MODO CRIAR CONTA / ETAPA 1: CAIXAS QUADRADAS 2x2 */}
               {mode === 'register' && registerStep === 1 && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">

@@ -35,10 +35,13 @@ import {
   List,
   Upload,
   Video,
-  Image as ImageIcon
+  Image as ImageIcon,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
+import { MediaFieldBox } from '../components/MediaFieldBox';
 
 interface DashboardPageProps {
   user: any;
@@ -121,6 +124,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const [selectedTenant, setSelectedTenant] = useState<any>(initialTenant);
   const [activeTab, setActiveTab] = useState<string>('overview');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -161,19 +165,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<any | null>(null);
   const [srvForm, setSrvForm] = useState<{
+    sku: string;
     name: string;
+    unit: string;
+    brand: string;
     category: string;
     durationMinutes: string;
     price: string;
     returnCycleDays: string;
+    imageUrl: string;
+    videoUrl: string;
     description: string;
     variants: ServiceVariant[];
   }>({
+    sku: '',
     name: '',
+    unit: 'serviço',
+    brand: '',
     category: 'Estética & Banho',
     durationMinutes: '60',
     price: '',
     returnCycleDays: '15',
+    imageUrl: '',
+    videoUrl: '',
     description: '',
     variants: []
   });
@@ -568,11 +582,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   function openCreateService() {
     setEditingService(null);
     setSrvForm({
+      sku: '',
       name: '',
+      unit: 'serviço',
+      brand: '',
       category: 'Estética & Banho',
       durationMinutes: '60',
       price: '',
       returnCycleDays: '15',
+      imageUrl: '',
+      videoUrl: '',
       description: '',
       variants: [
         { label: 'Porte P (até 8kg)', durationMinutes: 45, price: 55 },
@@ -587,11 +606,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   function openEditService(srv: any) {
     setEditingService(srv);
     setSrvForm({
+      sku: srv.sku || '',
       name: srv.name || '',
+      unit: srv.unit || 'serviço',
+      brand: srv.brand || '',
       category: srv.category || 'Serviços',
       durationMinutes: String(srv.durationMinutes || 45),
       price: String(srv.price || ''),
       returnCycleDays: srv.returnCycleDays ? String(srv.returnCycleDays) : '',
+      imageUrl: srv.imageUrl || '',
+      videoUrl: srv.videoUrl || '',
       description: srv.description || '',
       variants: Array.isArray(srv.variants) ? srv.variants : []
     });
@@ -615,11 +639,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         method: 'POST',
         body: JSON.stringify({
           id: editingService?.id,
+          sku: srvForm.sku || null,
           name: srvForm.name,
+          unit: srvForm.unit || 'serviço',
+          brand: srvForm.brand || null,
           category: srvForm.category,
           durationMinutes: Number(srvForm.durationMinutes || 30),
           price: Number(srvForm.price || 0),
           returnCycleDays: srvForm.returnCycleDays ? Number(srvForm.returnCycleDays) : null,
+          imageUrl: srvForm.imageUrl || null,
+          videoUrl: srvForm.videoUrl || null,
           variants: cleanVariants,
           description: srvForm.description
         })
@@ -1389,7 +1418,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     };
 
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="nx-sort-wrapper" ref={searchWrapRef}>
           <button
             type="button"
@@ -1719,27 +1748,54 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       )}
 
-      {/* SIDEBAR ERP */}
-      <aside className="w-full md:w-64 bg-[var(--nx-surface)] border-b md:border-b-0 md:border-r border-[var(--nx-border)] flex flex-col justify-between shrink-0">
-        <div className="p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-[var(--nx-border)]">
+      {/* SIDEBAR ERP COLAPSÁVEL */}
+      <aside
+        className={`w-full ${
+          sidebarCollapsed ? 'md:w-[74px]' : 'md:w-64'
+        } bg-[var(--nx-surface)] border-b md:border-b-0 md:border-r border-[var(--nx-border)] flex flex-col justify-between shrink-0 transition-all duration-200`}
+      >
+        <div className={sidebarCollapsed ? 'p-3' : 'p-4 sm:p-5'}>
+          <div
+            className={`flex items-center ${
+              sidebarCollapsed ? 'flex-col gap-3' : 'justify-between'
+            } mb-5 pb-4 border-b border-[var(--nx-border)]`}
+          >
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded bg-[var(--nx-primary)] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+              <div
+                className="w-8 h-8 rounded-md bg-[var(--nx-primary)] text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0 cursor-pointer"
+                onClick={() => setActiveTab('overview')}
+                title="Neoxy.ai"
+              >
                 NX
               </div>
-              <div>
-                <div className="font-bold text-sm text-[var(--nx-text)] leading-none">Neoxy.ai</div>
-                <div className="text-[11px] text-[var(--nx-subtle)] mt-0.5">Gestão & WhatsApp</div>
-              </div>
+              {!sidebarCollapsed && (
+                <div>
+                  <div className="font-bold text-sm text-[var(--nx-text)] leading-none">Neoxy.ai</div>
+                  <div className="text-[11px] text-[var(--nx-subtle)] mt-0.5">Operação</div>
+                </div>
+              )}
             </div>
-            <ThemeToggle />
+
+            <div className={`flex items-center ${sidebarCollapsed ? 'flex-col gap-2' : 'gap-1.5'}`}>
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed((c) => !c)}
+                className="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-[var(--nx-muted)] hover:text-[var(--nx-text)] transition-colors"
+                title={sidebarCollapsed ? 'Expandir menu lateral' : 'Minimizar menu lateral'}
+                aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Minimizar menu lateral'}
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeftOpen className="w-4 h-4" />
+                ) : (
+                  <PanelLeftClose className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
 
-          {tenants.length > 0 && (
-            <div className="mb-6">
-              <label className="block text-xs font-medium text-[var(--nx-muted)] mb-1.5">
-                Estabelecimento ativo
-              </label>
+          {!sidebarCollapsed && tenants.length > 0 && (
+            <div className="mb-5">
               <select
                 value={selectedTenant?.slug || ''}
                 onChange={(e) => {
@@ -1749,200 +1805,160 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     setActiveTab('overview');
                   }
                 }}
+                aria-label="Estabelecimento ativo"
                 className="w-full px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs font-medium text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
               >
                 {tenants.map((t) => (
                   <option key={t.slug} value={t.slug}>
-                    {t.name} ({t.businessType})
+                    {t.name}
                   </option>
                 ))}
               </select>
             </div>
           )}
 
-          {/* Navegação Adaptativa com os 5 Recursos de Serviços */}
-          <nav className="space-y-1">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === 'overview'
-                  ? 'bg-[var(--nx-primary)] text-white'
-                  : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              Resumo Operacional
-            </button>
-
-            {enabledModules.includes('appointments') && (
-              <button
-                onClick={() => setActiveTab('appointments')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                  activeTab === 'appointments'
-                    ? 'bg-[var(--nx-primary)] text-white'
-                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Calendar className="w-4 h-4" />
-                  Agenda & Rastreio OS
-                </span>
-                <span className="text-[11px] opacity-80 tabular-data">{appointments.length}</span>
-              </button>
-            )}
-
-            {enabledModules.includes('services') && (
-              <button
-                onClick={() => setActiveTab('services')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                  activeTab === 'services'
-                    ? 'bg-[var(--nx-primary)] text-white'
-                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Scissors className="w-4 h-4" />
-                  Serviços & Portes
-                </span>
-                <span className="text-[11px] opacity-80 tabular-data">{services.length}</span>
-              </button>
-            )}
-
-            {enabledModules.includes('services') && (
-              <button
-                onClick={() => setActiveTab('professionals')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                  activeTab === 'professionals'
-                    ? 'bg-[var(--nx-primary)] text-white'
-                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Users className="w-4 h-4" />
-                  Equipe & Comissões
-                </span>
-                <span className="text-[11px] opacity-80 tabular-data">{professionals.length}</span>
-              </button>
-            )}
-
-            {enabledModules.includes('appointments') && (
-              <button
-                onClick={() => setActiveTab('returns')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                  activeTab === 'returns'
-                    ? 'bg-[var(--nx-primary)] text-white'
-                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Repeat className="w-4 h-4" />
-                  Retornos & Recorrência
-                </span>
-                {dueReturnsCount > 0 ? (
-                  <span className="px-1.5 py-0.5 text-[10px] rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] font-semibold tabular-data">
-                    {dueReturnsCount}
-                  </span>
-                ) : (
-                  <span className="text-[11px] opacity-80 tabular-data">{returnAppointments.length}</span>
-                )}
-              </button>
-            )}
-
-            <button
-              onClick={() => setActiveTab('inbox')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === 'inbox'
-                  ? 'bg-[var(--nx-primary)] text-white'
-                  : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <MessageSquare className="w-4 h-4" />
-                Atendimento WhatsApp
-              </span>
-              {metrics?.handoffSessions > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] rounded bg-[var(--nx-error)] text-white font-semibold tabular-data">
-                  {metrics.handoffSessions}
-                </span>
-              )}
-            </button>
-
-            {enabledModules.includes('stock') && (
-              <button
-                onClick={() => setActiveTab('catalog')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                  activeTab === 'catalog'
-                    ? 'bg-[var(--nx-primary)] text-white'
-                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Package className="w-4 h-4" />
-                  Catálogo & Insumos
-                </span>
-                <span className="text-[11px] opacity-80 tabular-data">{catalog.length}</span>
-              </button>
-            )}
-
-            {enabledModules.includes('documents') && (
-              <button
-                onClick={() => setActiveTab('documents')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                  activeTab === 'documents'
-                    ? 'bg-[var(--nx-primary)] text-white'
-                    : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <FileText className="w-4 h-4" />
-                  Contas & Documentos
-                </span>
-                <span className="text-[11px] opacity-80 tabular-data">{documents.length}</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                activeTab === 'settings'
-                  ? 'bg-[var(--nx-primary)] text-white'
-                  : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              Perfil, Módulos & IA
-            </button>
+          {/* Navegação Adaptativa */}
+          <nav className="space-y-1.5">
+            {[
+              { key: 'overview', label: 'Resumo', icon: LayoutDashboard, show: true },
+              {
+                key: 'appointments',
+                label: 'Agenda & OS',
+                icon: Calendar,
+                count: appointments.length,
+                show: enabledModules.includes('appointments')
+              },
+              {
+                key: 'services',
+                label: 'Serviços',
+                icon: Scissors,
+                count: services.length,
+                show: enabledModules.includes('services')
+              },
+              {
+                key: 'professionals',
+                label: 'Equipe',
+                icon: Users,
+                count: professionals.length,
+                show: enabledModules.includes('services')
+              },
+              {
+                key: 'returns',
+                label: 'Retornos',
+                icon: Repeat,
+                count: dueReturnsCount > 0 ? dueReturnsCount : returnAppointments.length,
+                alert: dueReturnsCount > 0,
+                show: enabledModules.includes('appointments')
+              },
+              {
+                key: 'inbox',
+                label: 'WhatsApp',
+                icon: MessageSquare,
+                count: metrics?.handoffSessions > 0 ? metrics.handoffSessions : undefined,
+                errorAlert: metrics?.handoffSessions > 0,
+                show: true
+              },
+              {
+                key: 'catalog',
+                label: 'Catálogo',
+                icon: Package,
+                count: catalog.length,
+                show: enabledModules.includes('stock')
+              },
+              {
+                key: 'documents',
+                label: 'Documentos',
+                icon: FileText,
+                count: documents.length,
+                show: enabledModules.includes('documents')
+              },
+              {
+                key: 'settings',
+                label: 'Perfil & Módulos',
+                icon: Settings,
+                show: true
+              }
+            ]
+              .filter((item) => item.show)
+              .map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setActiveTab(item.key)}
+                    title={item.label}
+                    aria-label={item.label}
+                    className={`w-full flex items-center ${
+                      sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
+                    } rounded-lg text-xs font-medium transition-colors ${
+                      isActive
+                        ? 'bg-[var(--nx-primary)] text-white'
+                        : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {!sidebarCollapsed && <span>{item.label}</span>}
+                    </span>
+                    {!sidebarCollapsed && item.count !== undefined && (
+                      <span
+                        className={`text-[11px] tabular-data ${
+                          item.errorAlert
+                            ? 'px-1.5 py-0.5 rounded bg-[var(--nx-error)] text-white font-semibold text-[10px]'
+                            : item.alert
+                            ? 'px-1.5 py-0.5 rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] font-semibold text-[10px]'
+                            : 'opacity-80'
+                        }`}
+                      >
+                        {item.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
 
             {user.role === 'SUPER_ADMIN' && (
               <button
+                type="button"
                 onClick={() => setActiveTab('superadmin')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors mt-3 border-t border-[var(--nx-border)] pt-3 ${
+                title="Super Admin"
+                aria-label="Super Admin"
+                className={`w-full flex items-center ${
+                  sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-2.5'
+                } rounded-lg text-xs font-medium transition-colors mt-3 border-t border-[var(--nx-border)] pt-3 ${
                   activeTab === 'superadmin'
                     ? 'bg-[var(--nx-primary)] text-white'
                     : 'text-[var(--nx-primary)] hover:bg-[var(--nx-surface-alt)]'
                 }`}
               >
-                <Lock className="w-4 h-4" />
-                Console Super Admin
+                <Lock className="w-4 h-4 shrink-0" />
+                {!sidebarCollapsed && <span>Super Admin</span>}
               </button>
             )}
           </nav>
         </div>
 
-        <div className="p-4 border-t border-[var(--nx-border)] bg-[var(--nx-bg)]">
-          <div className="mb-3">
-            <div className="text-xs font-semibold text-[var(--nx-text)] truncate">{user.name}</div>
-            <div className="text-[11px] text-[var(--nx-subtle)] truncate tabular-data">{user.email}</div>
-          </div>
+        <div className={`${sidebarCollapsed ? 'p-3' : 'p-4'} border-t border-[var(--nx-border)] bg-[var(--nx-bg)]`}>
+          {!sidebarCollapsed && (
+            <div className="mb-3">
+              <div className="text-xs font-semibold text-[var(--nx-text)] truncate">{user.name}</div>
+              <div className="text-[11px] text-[var(--nx-subtle)] truncate tabular-data">{user.email}</div>
+            </div>
+          )}
           <button
+            type="button"
             onClick={() => {
               setToken(null);
               onLogout();
             }}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] transition-colors"
+            title="Sair"
+            aria-label="Sair"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] transition-colors"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            Encerrar sessão
+            <LogOut className="w-3.5 h-3.5 shrink-0" />
+            {!sidebarCollapsed && <span>Sair</span>}
           </button>
         </div>
       </aside>
@@ -2477,42 +2493,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 3: SERVIÇOS, VARIAÇÕES POR PORTE & CICLO DE RETORNO (FEATURES 2 & 4) */}
+        {/* ABA 3: SERVIÇOS */}
         {activeTab === 'services' && (
           <div className="space-y-5 animate-fade-up">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-[var(--nx-text)]">
-                  Grade de Serviços, Tabela por Porte & Mídia
-                </h2>
-                <p className="text-xs text-[var(--nx-muted)]">
-                  Configure preços por porte, fotos/vídeos para o bot enviar no WhatsApp e o ciclo de recorrência.
-                </p>
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <h2 className="text-lg font-bold text-[var(--nx-text)]">Serviços</h2>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex rounded-md border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-surface)]">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex rounded-lg border border-[var(--nx-border-strong)] p-1 bg-[var(--nx-surface)] gap-1">
                   <button
                     type="button"
                     onClick={() => setServiceViewMode('list')}
-                    className={`p-1.5 rounded transition-colors ${
+                    className={`p-1.5 rounded-md transition-colors ${
                       serviceViewMode === 'list'
                         ? 'bg-[var(--nx-primary)] text-white'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
-                    title="Visualizar em linhas (resumido)"
+                    title="Linhas"
                   >
                     <List className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setServiceViewMode('grid')}
-                    className={`p-1.5 rounded transition-colors ${
+                    className={`p-1.5 rounded-md transition-colors ${
                       serviceViewMode === 'grid'
                         ? 'bg-[var(--nx-primary)] text-white'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
-                    title="Visualizar em grade (com fotos)"
+                    title="Grade"
                   >
                     <LayoutGrid className="w-4 h-4" />
                   </button>
@@ -2984,49 +2993,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 6: CATÁLOGO DE PRODUTOS & INSUMOS (LISTA / GRADE + IMPORTAÇÃO + API PDV) */}
+        {/* ABA 6: CATÁLOGO DE PRODUTOS */}
         {activeTab === 'catalog' && (
           <div className="space-y-5 animate-fade-up">
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-[var(--nx-text)]">
-                  Catálogo de Produtos, Peças & Insumos
-                </h2>
-                <p className="text-xs text-[var(--nx-muted)]">
-                  Alterne entre lista resumida ou grade com fotos/vídeos enviados pelo bot no WhatsApp, importe planilhas ou sincronize preços com seu PDV.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Toggle Lista / Grade */}
-                <div className="flex rounded-md border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-surface)]">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold text-[var(--nx-text)]">Catálogo</h2>
+                <div className="flex rounded-lg border border-[var(--nx-border-strong)] p-1 bg-[var(--nx-surface)] gap-1">
                   <button
                     type="button"
                     onClick={() => setCatalogViewMode('list')}
-                    className={`p-1.5 rounded transition-colors ${
+                    className={`p-1.5 rounded-md transition-colors ${
                       catalogViewMode === 'list'
                         ? 'bg-[var(--nx-primary)] text-white'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
-                    title="Visualizar em linhas (resumido)"
+                    title="Linhas"
                   >
                     <List className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setCatalogViewMode('grid')}
-                    className={`p-1.5 rounded transition-colors ${
+                    className={`p-1.5 rounded-md transition-colors ${
                       catalogViewMode === 'grid'
                         ? 'bg-[var(--nx-primary)] text-white'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
-                    title="Visualizar em grade (com fotos e detalhes)"
+                    title="Grade"
                   >
                     <LayoutGrid className="w-4 h-4" />
                   </button>
                 </div>
+              </div>
 
-                {/* Upload de Planilha CSV/XLSX */}
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -3034,13 +3035,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     setImportModalOpen(true);
                   }}
                   className="nx-btn-sort"
-                  title="Importar estoque via planilha CSV ou Excel"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  Importar Planilha
+                  Importar
                 </button>
 
-                {/* Botão Atualizar Preços (PDV / API Própria) */}
                 <button
                   type="button"
                   onClick={() => {
@@ -3048,11 +3047,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     setSyncModalOpen(true);
                   }}
                   className="nx-btn-sort"
-                  title="Sincronizar preços com provedor externo ou API PDV"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${syncLoading ? 'animate-spin' : ''}`} />
                   Atualizar Preços
                 </button>
+
+                <div className="hidden sm:block h-6 w-px bg-[var(--nx-border)] mx-0.5" />
 
                 {renderMedPetToolbar({
                   searchPlaceholder: 'Buscar SKU, EAN, produto, marca...',
@@ -3789,8 +3789,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </button>
               </div>
 
-              <form onSubmit={handleSaveService} className="space-y-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <form onSubmit={handleSaveService} className="space-y-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="nx-field">
                     <input
                       type="text"
@@ -3799,7 +3799,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       value={srvForm.name}
                       onChange={(e) => setSrvForm({ ...srvForm, name: e.target.value })}
                     />
-                    <label>Nome do serviço (ex: Banho & Tosa)</label>
+                    <label>Nome do serviço *</label>
                   </div>
 
                   <div className="nx-field">
@@ -3810,11 +3810,47 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       value={srvForm.category}
                       onChange={(e) => setSrvForm({ ...srvForm, category: e.target.value })}
                     />
-                    <label>Categoria (ex: Estética, Clínica)</label>
+                    <label>Categoria</label>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div className="nx-field">
+                    <input
+                      type="text"
+                      placeholder=" "
+                      value={srvForm.sku}
+                      onChange={(e) => setSrvForm({ ...srvForm, sku: e.target.value })}
+                    />
+                    <label>SKU (opcional)</label>
+                  </div>
+
+                  <div className="nx-field">
+                    <select
+                      value={srvForm.unit}
+                      onChange={(e) => setSrvForm({ ...srvForm, unit: e.target.value })}
+                    >
+                      <option value="serviço">Por serviço</option>
+                      <option value="hora">Por hora</option>
+                      <option value="metro">Por metro</option>
+                      <option value="visita">Por visita</option>
+                      <option value="diária">Por diária</option>
+                    </select>
+                    <label>Unidade</label>
+                  </div>
+
+                  <div className="nx-field">
+                    <input
+                      type="text"
+                      placeholder=" "
+                      value={srvForm.brand}
+                      onChange={(e) => setSrvForm({ ...srvForm, brand: e.target.value })}
+                    />
+                    <label>Linha / Equipamento (opcional)</label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   <div className="nx-field">
                     <input
                       type="number"
@@ -3853,8 +3889,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </div>
                 </div>
 
+                <MediaFieldBox
+                  tenantSlug={selectedTenant?.slug || ''}
+                  imageUrl={srvForm.imageUrl}
+                  videoUrl={srvForm.videoUrl}
+                  onChange={({ imageUrl, videoUrl }) =>
+                    setSrvForm((prev) => ({ ...prev, imageUrl, videoUrl }))
+                  }
+                />
+
                 {/* Construtor de Tabela de Preço e Tempo por Porte / Complexidade (Feature 2) */}
-                <div className="p-3.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] mb-4 space-y-2.5">
+                <div className="p-3.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] space-y-2.5">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div>
                       <div className="text-xs font-bold text-[var(--nx-text)]">
@@ -4706,15 +4751,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             role="dialog"
             aria-modal="true"
           >
-            <div className="flex items-center justify-between mb-3.5">
-              <div>
-                <h2 className="text-base font-bold text-[var(--nx-text)]">
-                  {editingCatalog ? 'Editar Características do Produto' : 'Novo Produto / Insumo'}
-                </h2>
-                <p className="text-[11px] text-[var(--nx-muted)]">
-                  Preencha apenas os campos que desejar. Fotos e vídeos são usados pelo bot no WhatsApp.
-                </p>
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-[var(--nx-text)]">
+                {editingCatalog ? 'Editar Produto' : 'Novo Produto'}
+              </h2>
               <button
                 type="button"
                 onClick={() => setCatModalOpen(false)}
@@ -4724,8 +4764,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleAddCatalog} className="space-y-0.5">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <form onSubmit={handleAddCatalog} className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div className="nx-field">
                   <input
                     type="text"
@@ -4743,7 +4783,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     value={newCatalog.ean}
                     onChange={(e) => setNewCatalog({ ...newCatalog, ean: e.target.value })}
                   />
-                  <label>Código EAN / Barras (opcional)</label>
+                  <label>Código EAN / Barras</label>
                 </div>
                 <div className="nx-field">
                   <select
@@ -4772,10 +4812,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   value={newCatalog.name}
                   onChange={(e) => setNewCatalog({ ...newCatalog, name: e.target.value })}
                 />
-                <label>Nome / Descrição do produto *</label>
+                <label>Nome do produto *</label>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
                 <div className="nx-field">
                   <input
                     type="text"
@@ -4783,7 +4823,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     value={newCatalog.brand}
                     onChange={(e) => setNewCatalog({ ...newCatalog, brand: e.target.value })}
                   />
-                  <label>Marca (opcional)</label>
+                  <label>Marca</label>
                 </div>
                 <div className="nx-field">
                   <input
@@ -4803,7 +4843,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     value={newCatalog.price}
                     onChange={(e) => setNewCatalog({ ...newCatalog, price: e.target.value })}
                   />
-                  <label>Preço unitário (R$) *</label>
+                  <label>Preço (R$) *</label>
                 </div>
                 <div className="nx-field">
                   <input
@@ -4814,17 +4854,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     value={newCatalog.stockQty}
                     onChange={(e) => setNewCatalog({ ...newCatalog, stockQty: e.target.value })}
                   />
-                  <label>Qtd. em estoque *</label>
+                  <label>Estoque *</label>
                 </div>
               </div>
 
-              {/* Peso e Dimensões (Opcionais) */}
-              <div className="p-3 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] mb-3">
-                <div className="text-[11px] font-semibold text-[var(--nx-muted)] mb-2">
-                  Peso & Dimensões para Frete / Logística (Opcional)
+              <div className="p-3.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] space-y-2.5">
+                <div className="text-xs font-semibold text-[var(--nx-text)]">
+                  Peso & Dimensões
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div className="nx-field !mb-0">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="nx-field">
                     <input
                       type="number"
                       step="0.01"
@@ -4834,7 +4873,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     />
                     <label>Peso (kg)</label>
                   </div>
-                  <div className="nx-field !mb-0">
+                  <div className="nx-field">
                     <input
                       type="number"
                       step="0.1"
@@ -4844,7 +4883,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     />
                     <label>Compr. (cm)</label>
                   </div>
-                  <div className="nx-field !mb-0">
+                  <div className="nx-field">
                     <input
                       type="number"
                       step="0.1"
@@ -4854,7 +4893,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     />
                     <label>Largura (cm)</label>
                   </div>
-                  <div className="nx-field !mb-0">
+                  <div className="nx-field">
                     <input
                       type="number"
                       step="0.1"
@@ -4867,27 +4906,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
               </div>
 
-              {/* Mídia: Fotos e Vídeos para o Bot WhatsApp */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="nx-field">
-                  <input
-                    type="url"
-                    placeholder=" "
-                    value={newCatalog.imageUrl}
-                    onChange={(e) => setNewCatalog({ ...newCatalog, imageUrl: e.target.value })}
-                  />
-                  <label>URL da Imagem principal (opcional)</label>
-                </div>
-                <div className="nx-field">
-                  <input
-                    type="url"
-                    placeholder=" "
-                    value={newCatalog.videoUrl}
-                    onChange={(e) => setNewCatalog({ ...newCatalog, videoUrl: e.target.value })}
-                  />
-                  <label>URL do Vídeo p/ Bot WhatsApp (.mp4, opcional)</label>
-                </div>
-              </div>
+              <MediaFieldBox
+                tenantSlug={selectedTenant?.slug || ''}
+                imageUrl={newCatalog.imageUrl}
+                videoUrl={newCatalog.videoUrl}
+                onChange={({ imageUrl, videoUrl }) =>
+                  setNewCatalog((prev) => ({ ...prev, imageUrl, videoUrl }))
+                }
+              />
 
               <div className="nx-field">
                 <textarea
@@ -4896,10 +4922,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   value={newCatalog.description}
                   onChange={(e) => setNewCatalog({ ...newCatalog, description: e.target.value })}
                 />
-                <label>Detalhes técnicos / observações (opcional)</label>
+                <label>Observações</label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-[var(--nx-border)]">
+              <div className="flex justify-end gap-3 pt-3 border-t border-[var(--nx-border)]">
                 <button
                   type="button"
                   onClick={() => setCatModalOpen(false)}

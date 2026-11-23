@@ -18,7 +18,7 @@ const businessModuleService = require('./modules/business/businessModuleService'
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 // =========================================================================
 // 1. HEALTH & WEBHOOKS PÚBLICOS
@@ -486,6 +486,64 @@ app.post('/api/tenants/:slug/test-chat', async (req, res) => {
   } catch (err) {
     logger.error({ err: err.message }, 'Erro no endpoint de test-chat');
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// =========================================================================
+// 7B. UPLOAD DE MÍDIAS (FOTOS ATÉ 5MB / VÍDEOS ATÉ 15MB)
+// =========================================================================
+const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+
+app.post('/api/tenants/:slug/media/upload', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { fileName = 'arquivo', mimeType = '', fileBase64 = '' } = req.body || {};
+    if (!fileBase64) {
+      return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado.' });
+    }
+
+    const match = String(fileBase64).match(/^data:([^;]+);base64,(.+)$/);
+    const resolvedMime = (match ? match[1] : mimeType).toLowerCase();
+    const rawB64 = match ? match[2] : String(fileBase64);
+    const buffer = Buffer.from(rawB64, 'base64');
+
+    const isVideo = resolvedMime.startsWith('video/');
+    const isImage = resolvedMime.startsWith('image/');
+    if (!isImage && !isVideo) {
+      return res.status(400).json({
+        success: false,
+        error: 'Formato não suportado. Envie uma imagem (JPG/PNG/WebP) ou vídeo (MP4/WebM).'
+      });
+    }
+
+    const maxBytes = isVideo ? 15 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (buffer.length > maxBytes) {
+      return res.status(400).json({
+        success: false,
+        error: isVideo
+          ? 'Vídeo excede o limite máximo de 15 MB.'
+          : 'Imagem excede o limite máximo de 5 MB.'
+      });
+    }
+
+    const extFromName = path.extname(String(fileName)).replace(/[^a-zA-Z0-9.]/g, '').toLowerCase();
+    const fallbackExt = isVideo ? '.mp4' : '.jpg';
+    const safeExt = extFromName && extFromName.length <= 5 ? extFromName : fallbackExt;
+    const safeFileName = `${req.tenant.slug}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}${safeExt}`;
+
+    fs.writeFileSync(path.join(uploadsDir, safeFileName), buffer);
+
+    res.json({
+      success: true,
+      url: `/uploads/${safeFileName}`,
+      mediaType: isVideo ? 'video' : 'image',
+      sizeBytes: buffer.length
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
   }
 });
 
