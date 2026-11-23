@@ -258,7 +258,7 @@
 .nx-field label {
   position: absolute;
   left: 14px;
-  top: 50%;
+  top: 26px;
   transform: translateY(-50%);
   font-size: 14px;
   font-weight: 400;
@@ -309,7 +309,7 @@
 .nx-field-suffix {
   position: absolute;
   right: 12px;
-  top: 50%;
+  top: 26px;
   transform: translateY(-50%);
   background: none;
   border: none;
@@ -663,7 +663,12 @@
 }
 
 .nx-modal-main .nx-field label {
+  top: 23px;
   font-size: 13px;
+}
+
+.nx-modal-main .nx-field-suffix {
+  top: 23px;
 }
 
 .nx-modal-main .nx-field input:focus ~ label,

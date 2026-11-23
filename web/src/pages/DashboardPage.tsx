@@ -37,11 +37,13 @@ import {
   Video,
   Image as ImageIcon,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Key
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
 import { MediaFieldBox } from '../components/MediaFieldBox';
+import NeoxyLogo from '../components/NeoxyLogo';
 
 interface DashboardPageProps {
   user: any;
@@ -127,6 +129,45 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Chave API Gemini (IA & Visão de Fotos)
+  const [aiKeyStatus, setAiKeyStatus] = useState<{ configured: boolean; masked: string }>({
+    configured: false,
+    masked: ''
+  });
+  const [aiKeyInput, setAiKeyInput] = useState('');
+  const [savingAiKey, setSavingAiKey] = useState(false);
+
+  useEffect(() => {
+    apiFetch('/api/system/ai-key/status')
+      .then((res) => {
+        if (res.success) {
+          setAiKeyStatus({ configured: Boolean(res.configured), masked: res.masked || '' });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleSaveAiKey(e: React.FormEvent) {
+    e.preventDefault();
+    if (!aiKeyInput.trim()) return;
+    setSavingAiKey(true);
+    try {
+      const res = await apiFetch('/api/system/ai-key', {
+        method: 'POST',
+        body: JSON.stringify({ apiKey: aiKeyInput.trim() })
+      });
+      setAiKeyStatus({ configured: true, masked: res.masked || '' });
+      setAiKeyInput('');
+      setToast('Chave API Gemini salva e ativada imediatamente.');
+      setTimeout(() => setToast(null), 3500);
+    } catch (err: any) {
+      setToast(err.message || 'Erro ao salvar chave API.');
+      setTimeout(() => setToast(null), 3500);
+    } finally {
+      setSavingAiKey(false);
+    }
+  }
 
   // Dados dos módulos
   const [metrics, setMetrics] = useState<any>(null);
@@ -1748,30 +1789,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       )}
 
-      {/* SIDEBAR ERP COLAPSÁVEL */}
+      {/* SIDEBAR ERP COLAPSÁVEL (FIXA NA VIEWPORT SEM SCROLLAR PARA SAIR) */}
       <aside
         className={`w-full ${
           sidebarCollapsed ? 'md:w-[74px]' : 'md:w-64'
-        } bg-[var(--nx-surface)] border-b md:border-b-0 md:border-r border-[var(--nx-border)] flex flex-col justify-between shrink-0 transition-all duration-200`}
+        } md:sticky md:top-0 md:h-screen bg-[var(--nx-surface)] border-b md:border-b-0 md:border-r border-[var(--nx-border)] flex flex-col justify-between shrink-0 transition-all duration-200`}
       >
-        <div className={sidebarCollapsed ? 'p-3' : 'p-4 sm:p-5'}>
+        <div className={`${sidebarCollapsed ? 'p-3' : 'p-4 sm:p-5'} flex-1 overflow-y-auto min-h-0`}>
           <div
             className={`flex items-center ${
               sidebarCollapsed ? 'flex-col gap-3' : 'justify-between'
-            } mb-5 pb-4 border-b border-[var(--nx-border)]`}
+            } mb-4 pb-4 border-b border-[var(--nx-border)]`}
           >
-            <div className="flex items-center gap-2.5">
-              <div
-                className="w-8 h-8 rounded-md bg-[var(--nx-primary)] text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0 cursor-pointer"
-                onClick={() => setActiveTab('overview')}
-                title="Neoxy.ai"
-              >
-                NX
-              </div>
-              {!sidebarCollapsed && (
-                <div>
-                  <div className="font-bold text-sm text-[var(--nx-text)] leading-none">Neoxy.ai</div>
-                  <div className="text-[11px] text-[var(--nx-subtle)] mt-0.5">Operação</div>
+            <div
+              className="flex items-center gap-2.5 cursor-pointer"
+              onClick={() => setActiveTab('overview')}
+              title="Neoxy.ai"
+            >
+              {sidebarCollapsed ? (
+                <div className="w-8 h-8 rounded-md bg-[var(--nx-primary)] text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
+                  NX
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  <NeoxyLogo height={16} className="text-[var(--nx-text)]" />
+                  <span className="text-[10px] text-[var(--nx-subtle)] mt-1">Operação</span>
                 </div>
               )}
             </div>
@@ -3529,6 +3571,55 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   })}
                 </div>
               </div>
+
+              {/* Card de Chave API Gemini (IA & Visão de Fotos) */}
+              <form
+                onSubmit={handleSaveAiKey}
+                className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-6 space-y-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] flex items-center justify-center shrink-0">
+                      <Key className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--nx-text)]">
+                        Chave API Gemini (IA & Visão de Fotos)
+                      </h3>
+                      <p className="text-[11px] text-[var(--nx-muted)]">
+                        Salva diretamente no arquivo <code className="font-mono">.env</code> local e ativa na hora.
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0 ${
+                      aiKeyStatus.configured
+                        ? 'bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] border border-[var(--nx-accent-border)]'
+                        : 'bg-[var(--nx-error-bg)] text-[var(--nx-error)] border border-[var(--nx-error)]/30'
+                    }`}
+                  >
+                    {aiKeyStatus.configured ? `Ativa (${aiKeyStatus.masked})` : 'Não configurada'}
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="password"
+                    value={aiKeyInput}
+                    onChange={(e) => setAiKeyInput(e.target.value)}
+                    placeholder="Cole sua chave AIzaSy..."
+                    className="flex-1 px-3.5 py-2.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={savingAiKey || !aiKeyInput.trim()}
+                    className="nx-btn-primary px-5 py-2.5 text-xs shrink-0 disabled:opacity-50"
+                  >
+                    {savingAiKey ? 'Salvando...' : 'Salvar Chave'}
+                  </button>
+                </div>
+              </form>
             </div>
 
             {/* Coluna Direita: Parâmetros de Atendimento, Regras & Expediente */}

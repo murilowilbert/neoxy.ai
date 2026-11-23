@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
+import NeoxyLogo from '../components/NeoxyLogo';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register';
@@ -272,15 +273,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
             {/* Marca no topo da vitrine */}
             <div className="relative z-10 p-6 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-md bg-[var(--nx-primary)] text-white flex items-center justify-center font-bold text-xs shadow-md">
-                  NX
-                </div>
+              <div className="flex items-center gap-3">
+                <NeoxyLogo height={18} className="text-white" />
                 <div>
-                  <span className="font-bold text-base tracking-tight text-white block leading-none">
-                    Neoxy.ai
-                  </span>
-                  <span className="text-[11px] text-white/75">
+                  <span className="text-[11px] text-white/75 block leading-none">
                     Sistema Operacional de Atendimento
                   </span>
                 </div>
@@ -412,8 +408,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
               {/* MODO LOGIN */}
               {mode === 'login' && (
-                <form onSubmit={handleSubmit} noValidate className="space-y-1">
-                  <div className="nx-field">
+                <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+                  <div className="nx-field !mb-0">
                     <input
                       id={emailId}
                       type="email"
@@ -463,7 +459,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     )}
                   </div>
 
-                  <div className="nx-field">
+                  <div className="nx-field !mb-0">
                     <input
                       id={passwordId}
                       type={showPass ? 'text' : 'password'}
@@ -500,7 +496,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <button
                     type="submit"
                     disabled={loading}
-                    className="nx-btn-primary w-full py-3 px-4 text-sm mt-2"
+                    className="nx-btn-primary w-full py-3 px-4 text-sm mt-1"
                   >
                     {loading ? (
                       <>
@@ -517,7 +513,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               {/* MODO CRIAR CONTA / ETAPA 1: CAIXAS QUADRADAS 2x2 */}
               {mode === 'register' && registerStep === 1 && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3.5">
                     {BUSINESS_PROFILES.map((profile) => {
                       const Icon = profile.icon;
                       const isActive = businessType === profile.type;
@@ -566,8 +562,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
               {/* MODO CRIAR CONTA / ETAPA 2: DADOS DA CONTA */}
               {mode === 'register' && registerStep === 2 && (
-                <form onSubmit={handleSubmit} noValidate className="space-y-1">
-                  <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--nx-primary-soft)] border border-[var(--nx-border)] mb-3 text-xs">
+                <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--nx-primary-soft)] border border-[var(--nx-border)] text-xs">
                     <span className="font-semibold text-[var(--nx-primary)]">
                       Perfil: {activeProfile.title}
                     </span>
@@ -580,8 +576,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="nx-field">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="nx-field !mb-0">
                       <input
                         id={userNameId}
                         type="text"
@@ -601,7 +597,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                       )}
                     </div>
 
-                    <div className="nx-field">
+                    <div className="nx-field !mb-0">
                       <input
                         id={companyNameId}
                         type="text"
@@ -622,7 +618,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     </div>
                   </div>
 
-                  <div className="nx-field">
+                  <div className="nx-field !mb-0">
                     <input
                       id={emailId}
                       type="email"
@@ -670,7 +666,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     )}
                   </div>
 
-                  <div className="nx-field">
+                  <div className="nx-field !mb-0">
                     <input
                       id={passwordId}
                       type={showPass ? 'text' : 'password'}

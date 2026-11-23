@@ -548,6 +548,51 @@ app.post('/api/tenants/:slug/media/upload', requireAuth, requireTenantAccess, as
 });
 
 // =========================================================================
+// 7B. CONFIGURAÇÃO DA CHAVE API GEMINI (IA & VISÃO DE FOTOS)
+// =========================================================================
+app.get('/api/system/ai-key/status', requireAuth, (req, res) => {
+  const raw = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim();
+  const configured = Boolean(raw && raw !== 'sua-chave-gemini-aqui' && raw.length >= 10);
+  const masked = configured ? `${raw.slice(0, 6)}...${raw.slice(-4)}` : '';
+  res.json({ success: true, configured, masked });
+});
+
+app.post('/api/system/ai-key', requireAuth, (req, res) => {
+  try {
+    const apiKey = String(req.body?.apiKey || '').trim();
+    if (!apiKey || apiKey.length < 15) {
+      return res.status(400).json({
+        success: false,
+        error: 'Informe uma chave válida do Google Gemini (começa com AIza...).'
+      });
+    }
+
+    process.env.GEMINI_API_KEY = apiKey;
+
+    const envPath = path.join(__dirname, '..', '.env');
+    let envContent = '';
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf8');
+    }
+
+    if (/^GEMINI_API_KEY=.*$/m.test(envContent)) {
+      envContent = envContent.replace(/^GEMINI_API_KEY=.*$/m, `GEMINI_API_KEY="${apiKey}"`);
+    } else {
+      const separator = envContent.length > 0 && !envContent.endsWith('\n') ? '\n' : '';
+      envContent = `${envContent}${separator}GEMINI_API_KEY="${apiKey}"\n`;
+    }
+
+    fs.writeFileSync(envPath, envContent, 'utf8');
+
+    const masked = `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}`;
+    logger.info({ masked }, 'GEMINI_API_KEY atualizada via painel');
+    res.json({ success: true, configured: true, masked });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// =========================================================================
 // 8. SERVIR FRONTEND WEB (LANDING PAGE + LOGIN + DASHBOARD ADAPTATIVO)
 // =========================================================================
 const webDistPath = path.join(__dirname, '..', 'web', 'dist');

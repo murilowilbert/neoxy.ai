@@ -4,15 +4,18 @@ const { geminiApiKey, logger } = require('../../config');
 
 class AIService {
   constructor() {
-    this.genAI = geminiApiKey ? new GoogleGenerativeAI(geminiApiKey) : null;
+    this.cachedKey = null;
+    this.genAI = null;
   }
 
   getModel(tenant) {
-    if (!this.genAI) {
-      if (!geminiApiKey) {
-        throw new Error('GEMINI_API_KEY não configurada no ambiente (.env).');
-      }
-      this.genAI = new GoogleGenerativeAI(geminiApiKey);
+    const activeKey = process.env.GEMINI_API_KEY || process.env.API_KEY || geminiApiKey;
+    if (!activeKey || activeKey === 'sua_chave_gemini_aqui') {
+      throw new Error('GEMINI_API_KEY não configurada. Informe sua chave em Perfil & Módulos -> Chave API Gemini.');
+    }
+    if (!this.genAI || this.cachedKey !== activeKey) {
+      this.cachedKey = activeKey;
+      this.genAI = new GoogleGenerativeAI(activeKey);
     }
 
     const modelName = tenant?.parsedSettings?.ai?.model || 'gemini-2.5-flash';
