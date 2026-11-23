@@ -461,11 +461,17 @@ async function deleteProfessional(tenantId, professionalId) {
  * Services CRUD (with Porte/Complexity Variants & Return Cycle Days)
  */
 async function listServices(tenantId) {
-  const list = await prisma.serviceItem.findMany({
-    where: { tenantId },
-    orderBy: { name: 'asc' }
-  });
-  return list.map(formatService);
+  const [list, activePromotions] = await Promise.all([
+    prisma.serviceItem.findMany({
+      where: { tenantId },
+      orderBy: { name: 'asc' }
+    }),
+    crmExtensions.getActivePromotions(tenantId).catch(() => [])
+  ]);
+  return crmExtensions.annotateServicesWithPromotions(
+    list.map(formatService),
+    activePromotions
+  );
 }
 
 async function createOrUpdateService(tenantId, data) {

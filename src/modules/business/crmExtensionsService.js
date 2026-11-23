@@ -200,6 +200,7 @@ async function getTenantAnalytics(tenantId) {
       itemType: 'MISSING',
       name: m.productName,
       searchCount: m.searchCount,
+      occurrences: parseJsonSafe(m.occurrences, []),
       lastRequested: m.lastRequested,
       inCatalog: false
     })),
@@ -288,6 +289,7 @@ async function upsertContact(tenantId, data) {
   const payload = {
     name: data.name ? String(data.name).trim() : null,
     pushName: data.pushName ? String(data.pushName).trim() : undefined,
+    avatarUrl: data.avatarUrl ? String(data.avatarUrl).trim() : undefined,
     aiBlocked: data.aiBlocked !== undefined ? Boolean(data.aiBlocked) : undefined,
     tags: JSON.stringify(tagsArr),
     notes: data.notes !== undefined ? (data.notes ? String(data.notes).trim() : null) : undefined,
@@ -304,6 +306,7 @@ async function upsertContact(tenantId, data) {
       phone,
       name: payload.name || null,
       pushName: payload.pushName || null,
+      avatarUrl: payload.avatarUrl || null,
       aiBlocked: Boolean(data.aiBlocked),
       tags: payload.tags || '[]',
       notes: payload.notes || null,
@@ -347,17 +350,23 @@ async function syncContactsFromWhatsApp(tenant) {
   if (instanceName) {
     const evoContacts = await evolutionClient.fetchContacts(instanceName);
     for (const c of evoContacts) {
+      let avatarUrl = c.avatarUrl || null;
+      if (!avatarUrl && syncedFromEvolution < 30) {
+        avatarUrl = await evolutionClient.fetchProfilePictureUrl(instanceName, c.phone);
+      }
       await prisma.whatsAppContact.upsert({
         where: { tenantId_phone: { tenantId, phone: c.phone } },
         update: {
           ...(c.pushName ? { pushName: c.pushName } : {}),
-          ...(c.name ? { name: c.name } : {})
+          ...(c.name ? { name: c.name } : {}),
+          ...(avatarUrl ? { avatarUrl } : {})
         },
         create: {
           tenantId,
           phone: c.phone,
           name: c.name || c.pushName || null,
           pushName: c.pushName || null,
+          avatarUrl,
           source: 'evolution_sync'
         }
       });
@@ -444,13 +453,15 @@ async function touchContact(tenantId, phoneRaw, name = null) {
 }
 
 // =========================================================================
-// 3. PROMOÇÕES & PRECIFICAÇÃO DINÂMICA (MANUAL OU PORCENTAGEM)
+// 3. PROMOÇÕES & PRECIFICAÇÃO DINÂMICA (PRODUTOS & SERVIÇOS — MANUAL OU %)
 // =========================================================================
 function formatPromotion(p) {
   if (!p) return p;
   return {
     ...p,
-    targetItemIds: parseJsonSafe(p.targetItemIds, [])
+    appliesTo: p.appliesTo || 'PRODUCTS',
+    targetItemIds: parseJsonSafe(p.targetItemIds, []),
+    targetServiceIds: parseJsonSafe(p.targetServiceIds, [])
   };
 }
 
@@ -472,8 +483,10 @@ function computePromotionalPrice(basePrice, promo) {
   return Number((base * (1 - pct / 100)).toFixed(2));
 }
 
-function doesPromotionApplyToItem(promo, item) {
+function doesPromotionApplyToProduct(promo, item) {
   if (!promo || !item) return false;
+  const appliesTo = promo.appliesTo || 'PRODUCTS';
+  if (appliesTo !== 'PRODUCTS' && appliesTo !== 'BOTH') return false;
   if (promo.scope === 'ALL') return true;
   if (promo.scope === 'CATEGORY') {
     return (
@@ -490,8 +503,28 @@ function doesPromotionApplyToItem(promo, item) {
   return false;
 }
 
+function doesPromotionApplyToService(promo, srv) {
+  if (!promo || !srv) return false;
+  const appliesTo = promo.appliesTo || 'PRODUCTS';
+  if (appliesTo !== 'SERVICES' && appliesTo !== 'BOTH') return false;
+  if (promo.scope === 'ALL') return true;
+  if (promo.scope === 'CATEGORY') {
+    return (
+      promo.targetCategory &&
+      String(srv.category || '').toLowerCase() === String(promo.targetCategory).toLowerCase()
+    );
+  }
+  if (promo.scope === 'PRODUCTS') {
+    const ids = Array.isArray(promo.targetServiceIds)
+      ? promo.targetServiceIds
+      : parseJsonSafe(promo.targetServiceIds, []);
+    return ids.includes(srv.id) || (srv.sku && ids.includes(srv.sku));
+  }
+  return false;
+}
+
 async function listPromotions(tenantId) {
-  const [promos, items] = await Promise.all([
+  const [promos, items, services] = await Promise.all([
     prisma.promotion.findMany({
       where: { tenantId },
       orderBy: [{ active: 'desc' }, { createdAt: 'desc' }]
@@ -499,21 +532,37 @@ async function listPromotions(tenantId) {
     prisma.catalogItem.findMany({
       where: { tenantId },
       select: { id: true, code: true, name: true, price: true, category: true }
+    }),
+    prisma.serviceItem.findMany({
+      where: { tenantId, active: true },
+      select: { id: true, sku: true, name: true, price: true, category: true }
     })
   ]);
 
   return promos.map((raw) => {
     const p = formatPromotion(raw);
-    const affected = items.filter((it) => doesPromotionApplyToItem(p, it));
-    return {
-      ...p,
-      affectedCount: affected.length,
-      sampleItems: affected.slice(0, 4).map((it) => ({
+    const affectedProducts = items.filter((it) => doesPromotionApplyToProduct(p, it));
+    const affectedServices = services.filter((sv) => doesPromotionApplyToService(p, sv));
+    const combined = [
+      ...affectedProducts.map((it) => ({
         id: it.id,
+        kind: 'PRODUCT',
         name: it.name,
         originalPrice: it.price,
         promoPrice: computePromotionalPrice(it.price, p)
+      })),
+      ...affectedServices.map((sv) => ({
+        id: sv.id,
+        kind: 'SERVICE',
+        name: sv.name,
+        originalPrice: sv.price,
+        promoPrice: computePromotionalPrice(sv.price, p)
       }))
+    ];
+    return {
+      ...p,
+      affectedCount: combined.length,
+      sampleItems: combined.slice(0, 5)
     };
   });
 }
@@ -522,6 +571,9 @@ async function upsertPromotion(tenantId, data) {
   const name = String(data.name || '').trim();
   if (!name) throw new Error('Informe o nome da promoção.');
 
+  const appliesTo = ['PRODUCTS', 'SERVICES', 'BOTH'].includes(data.appliesTo)
+    ? data.appliesTo
+    : 'PRODUCTS';
   const discountType = data.discountType === 'FIXED_PRICE' ? 'FIXED_PRICE' : 'PERCENT';
   const discountValue = Number(String(data.discountValue ?? 0).replace(',', '.'));
   if (!Number.isFinite(discountValue) || discountValue <= 0) {
@@ -534,15 +586,20 @@ async function upsertPromotion(tenantId, data) {
 
   const scope = ['ALL', 'CATEGORY', 'PRODUCTS'].includes(data.scope) ? data.scope : 'PRODUCTS';
   const targetIds = Array.isArray(data.targetItemIds) ? data.targetItemIds.filter(Boolean) : [];
+  const targetSvcIds = Array.isArray(data.targetServiceIds)
+    ? data.targetServiceIds.filter(Boolean)
+    : [];
 
   const payload = {
     name,
     description: data.description ? String(data.description).trim() : null,
+    appliesTo,
     discountType,
     discountValue,
     scope,
     targetCategory: scope === 'CATEGORY' && data.targetCategory ? String(data.targetCategory).trim() : null,
     targetItemIds: scope === 'PRODUCTS' ? JSON.stringify(targetIds) : null,
+    targetServiceIds: scope === 'PRODUCTS' ? JSON.stringify(targetSvcIds) : null,
     startsAt: data.startsAt ? new Date(data.startsAt) : null,
     endsAt: data.endsAt ? new Date(data.endsAt) : null,
     active: data.active !== undefined ? Boolean(data.active) : true
@@ -587,9 +644,9 @@ async function getActivePromotions(tenantId) {
   return promos.map(formatPromotion).filter((p) => isPromotionCurrentlyValid(p, now));
 }
 
-function annotateCatalogWithPromotions(items, activePromotions) {
-  if (!Array.isArray(items) || !activePromotions || activePromotions.length === 0) {
-    return items.map((item) => ({
+function annotateListWithPromotions(list, activePromotions, matchFn) {
+  if (!Array.isArray(list) || !activePromotions || activePromotions.length === 0) {
+    return (list || []).map((item) => ({
       ...item,
       effectivePrice: item.price,
       discountPct: 0,
@@ -597,12 +654,12 @@ function annotateCatalogWithPromotions(items, activePromotions) {
     }));
   }
 
-  return items.map((item) => {
+  return list.map((item) => {
     let bestPrice = Number(item.price) || 0;
     let bestPromo = null;
 
     for (const promo of activePromotions) {
-      if (!doesPromotionApplyToItem(promo, item)) continue;
+      if (!matchFn(promo, item)) continue;
       const candidate = computePromotionalPrice(item.price, promo);
       if (candidate < bestPrice) {
         bestPrice = candidate;
@@ -629,6 +686,14 @@ function annotateCatalogWithPromotions(items, activePromotions) {
         : null
     };
   });
+}
+
+function annotateCatalogWithPromotions(items, activePromotions) {
+  return annotateListWithPromotions(items, activePromotions, doesPromotionApplyToProduct);
+}
+
+function annotateServicesWithPromotions(services, activePromotions) {
+  return annotateListWithPromotions(services, activePromotions, doesPromotionApplyToService);
 }
 
 // =========================================================================
@@ -818,13 +883,41 @@ async function recordExistingDemand(tenantId, { itemType = 'PRODUCT', itemName, 
   });
 }
 
-async function recordMissedDemand(tenantId, productName) {
+async function recordMissedDemand(tenantId, productName, occurrence = null) {
   const cleanName = String(productName || '').trim();
-  if (!cleanName || cleanName.length < 3) return null;
+  if (!cleanName || cleanName.length < 2) return null;
+
+  const existing = await prisma.missedDemand.findUnique({
+    where: { tenantId_productName: { tenantId, productName: cleanName } }
+  });
+
+  const prevList = existing ? parseJsonSafe(existing.occurrences, []) : [];
+  const nextList = Array.isArray(prevList) ? [...prevList] : [];
+
+  if (occurrence && occurrence.customerPhone) {
+    nextList.unshift({
+      customerPhone: normalizePhone(occurrence.customerPhone),
+      customerName: occurrence.customerName || occurrence.customerPhone,
+      messageSnippet: String(occurrence.messageSnippet || '').trim() || cleanName,
+      requestedAt: new Date().toISOString()
+    });
+  }
+
+  const trimmed = nextList.slice(0, 15);
+
   return prisma.missedDemand.upsert({
     where: { tenantId_productName: { tenantId, productName: cleanName } },
-    update: { searchCount: { increment: 1 }, lastRequested: new Date() },
-    create: { tenantId, productName: cleanName, searchCount: 1 }
+    update: {
+      searchCount: { increment: 1 },
+      lastRequested: new Date(),
+      occurrences: JSON.stringify(trimmed)
+    },
+    create: {
+      tenantId,
+      productName: cleanName,
+      searchCount: 1,
+      occurrences: JSON.stringify(trimmed)
+    }
   });
 }
 
@@ -843,6 +936,7 @@ module.exports = {
   deletePromotion,
   getActivePromotions,
   annotateCatalogWithPromotions,
+  annotateServicesWithPromotions,
   listQuickReplies,
   upsertQuickReply,
   deleteQuickReply,

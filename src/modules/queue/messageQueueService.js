@@ -173,6 +173,19 @@ class MessageQueueService {
         activePromotions
       });
 
+      // 5.5 Salva oportunidades/itens não cadastrados vinculados a esta conversa
+      if (Array.isArray(aiResult.missedDemands) && aiResult.missedDemands.length > 0) {
+        for (const term of aiResult.missedDemands) {
+          await crmExtensions
+            .recordMissedDemand(tenant.id, term, {
+              customerPhone,
+              customerName: session.customerName || customerPhone,
+              messageSnippet: consolidatedText.slice(0, 220)
+            })
+            .catch(() => {});
+        }
+      }
+
       // 6. Verifica silêncio inteligente
       if (aiResult.isNoResponse) {
         logger.info({ tenantId: tenant.id, customerPhone }, 'Tag [NO_RESPONSE] detectada. Silêncio inteligente aplicado.');
@@ -335,6 +348,18 @@ class MessageQueueService {
       imageParts: mediaItems,
       activePromotions
     });
+
+    if (Array.isArray(aiResult.missedDemands) && aiResult.missedDemands.length > 0) {
+      for (const term of aiResult.missedDemands) {
+        await crmExtensions
+          .recordMissedDemand(tenant.id, term, {
+            customerPhone,
+            customerName: customerPhone,
+            messageSnippet: String(text || '[Foto enviada]').slice(0, 220)
+          })
+          .catch(() => {});
+      }
+    }
 
     if (!aiResult.isNoResponse) {
       await chatSessionService.appendMessage({

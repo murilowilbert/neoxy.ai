@@ -225,19 +225,21 @@ ${storeInfo.phone ? `- Telefone comercial: ${storeInfo.phone}\n` : ''}- Entregas
 - Horário padrão da semana: ${scheduleLine}
 ${socialEntries.length > 0 ? `- Canais e Links Oficiais: ${socialEntries.join(' | ')}\n` : ''}${exceptionsBlock ? `\n# FERIADOS E DATAS ESPECIAIS PROGRAMADOS\n${exceptionsBlock}\n` : ''}- Informações Adicionais: ${storeInfo.about || ''}
 ${nicheSection}
-# REGRAS DE CATÁLOGO, SERVIÇOS E PROMOÇÕES (ZERO INVENÇÃO)
-- Ofereça ESTRITAMENTE o que consta no contexto do estabelecimento.
-- NUNCA invente marcas, preços, serviços ou produtos que não estão no contexto.
+# REGRAS DE CATÁLOGO, SERVIÇOS E PROMOÇÕES (ZERO INVENÇÃO — OBRIGATÓRIO)
+- PROIBIÇÃO ABSOLUTA: Você SÓ pode mencionar, oferecer ou informar preço de produtos/serviços que apareçam EXPLICITAMENTE na seção "ITENS E SERVIÇOS CADASTRADOS" desta conversa.
+- NUNCA cite nomes de produtos, marcas, modelos ou preços da sua memória ou conhecimento geral (mesmo que sejam comuns no segmento da loja).
+- Se o cliente pedir uma categoria ampla (ex: "material hidráulico") e só houver 1 ou 2 itens relacionados na lista abaixo, ofereça SOMENTE aqueles itens exatos e pergunte se procura algo mais específico.
 - Se um item possuir preço promocional ativo no contexto, destaque a oferta com clareza (ex: de R$ 159,90 por *R$ 135,90*).
-- Se o cliente perguntar por algo específico que não está no contexto: Aja com naturalidade ("Vou verificar aqui com a nossa equipe para você!") e acione a tag [HANDOFF].
+- Se o cliente perguntar por um produto ou serviço que NÃO está listado no contexto abaixo: Diga de forma simpática que no momento não encontrou esse item no catálogo cadastrado e que vai verificar com a equipe, acione [HANDOFF] e adicione no final da mensagem a tag oculta [MISSED_DEMAND:Nome curto do item procurado].
 - FOTOS DO CATÁLOGO: Sempre que recomendar um produto do contexto que tenha o código, insira a tag {{COD:codigo_do_produto}} no final do parágrafo desse item para disparar a foto real.
 
 # MÁQUINA DE ESTADOS E TRIAGEM
-- Se o cliente fizer uma pergunta genérica (ex: "tem parafuso?", "tem horário?"): Faça UMA pergunta curta de afunilamento para entender a necessidade.
-- Não liste dezenas de itens de uma vez. Mostre no máximo 3 a 5 opções relevantes.
+- Se o cliente fizer uma pergunta genérica (ex: "tem parafuso?", "tem horário?"): Faça UMA pergunta curta de afunilamento para entender a necessidade, sem inventar itens fora da lista.
+- Não liste dezenas de itens de uma vez. Mostre no máximo 3 a 5 opções relevantes QUE ESTEJAM NA LISTA.
 
 # FECHAMENTO, SILÊNCIO E HANDOFF
 - Tag [HANDOFF]: Utilize no FINAL da mensagem quando a conversa precisar de intervenção humana (ex: separação de mercadoria, confirmação de agendamento complexo, análise de documento, desconto ou solicitação explícita de atendente).
+- Tag [MISSED_DEMAND:Nome do item]: Utilize no FINAL da mensagem (invisível ao cliente) sempre que o cliente solicitar um produto ou serviço que NÃO temos cadastrado no contexto abaixo.
 - Tag [NO_RESPONSE]: Se a conversa já foi encerrada ou o cliente já foi avisado da espera, e enviar apenas confirmações curtas ("ok", "obrigado", "valeu", "👍", "blz"), retorne ESTRITAMENTE a tag [NO_RESPONSE].
 `;
   }
@@ -259,12 +261,13 @@ ${nicheSection}
     }
 
     if (productItems.length > 0) {
-      stockSection += `### ESTOQUE ATUALIZADO:\n${JSON.stringify(productItems)}\n\n`;
+      stockSection += `### ITENS E SERVIÇOS CADASTRADOS (OFEREÇA APENAS O QUE ESTÁ AQUI):\n${JSON.stringify(productItems)}\n\n`;
     } else if (categoryItems.length === 0) {
-      stockSection += `### CONTEXTO DE PRODUTO:\n` +
-        `Nenhum produto específico pré-carregado no contexto imediato.\n` +
-        `- Se o cliente estiver buscando um produto que não está no contexto: Diga de forma natural que vai pedir para o balcão verificar.\n` +
-        `- Se o cliente estiver apenas saudando ou encerrando: Responda cordialmente sem inventar buscas.\n\n`;
+      stockSection += `### ITENS E SERVIÇOS CADASTRADOS:\n` +
+        `NENHUM item ou serviço correspondente encontrado no cadastro para esta busca.\n` +
+        `- PROIBIDO sugerir nomes de produtos, marcas ou preços inventados.\n` +
+        `- Se o cliente pediu um produto/serviço específico: diga com naturalidade que não encontrou esse item cadastrado no momento, que vai verificar com a equipe e inclua [MISSED_DEMAND:nome do item] + [HANDOFF].\n` +
+        `- Se o cliente estiver apenas saudando ou encerrando: responda cordialmente sem inventar produtos.\n\n`;
     }
 
     let promoSection = '';

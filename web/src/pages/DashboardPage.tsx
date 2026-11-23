@@ -198,11 +198,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     whatsapp: true,
     catalog: false,
+    services: false,
     profile: false
   });
   const [simPhone, setSimPhone] = useState('5551988887777');
   const [inboxReplyDrafts, setInboxReplyDrafts] = useState<Record<string, string>>({});
   const [sendingInboxPhone, setSendingInboxPhone] = useState<string | null>(null);
+  const [highlightedPhone, setHighlightedPhone] = useState<string | null>(null);
 
   // Busca, Filtro e Ordenação (Padrão MedPet)
   const [searchQuery, setSearchQuery] = useState('');
@@ -2115,7 +2117,83 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             )}
 
-            {/* Módulos Operacionais (Serviços, Agenda, Equipe, Retornos, Documentos) */}
+            {/* Grupo Expansível: Serviços (quando módulo services ativo) */}
+            {enabledModules.includes('services') && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (sidebarCollapsed) {
+                      setActiveTab('services');
+                    } else {
+                      setExpandedMenus((prev) => ({ ...prev, services: !prev.services }));
+                    }
+                  }}
+                  title="Serviços"
+                  aria-label="Serviços"
+                  className={`w-full flex items-center ${
+                    sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
+                  } rounded-lg text-xs font-medium transition-colors ${
+                    ['services', ...(enabledModules.includes('stock') ? [] : ['promotions'])].includes(activeTab)
+                      ? sidebarCollapsed
+                        ? 'bg-[var(--nx-primary)] text-white'
+                        : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
+                      : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Scissors className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && <span>Serviços</span>}
+                  </span>
+                  {!sidebarCollapsed && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-[11px] tabular-data opacity-80">{services.length}</span>
+                      {expandedMenus.services ? (
+                        <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                      )}
+                    </span>
+                  )}
+                </button>
+
+                {!sidebarCollapsed && expandedMenus.services && (
+                  <div className="nx-submenu-rail">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('services')}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                        activeTab === 'services'
+                          ? 'bg-[var(--nx-primary)] text-white'
+                          : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      <span>Grade de Serviços</span>
+                      <span className="text-[10px] tabular-data opacity-80">{services.length}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('promotions')}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                        activeTab === 'promotions'
+                          ? 'bg-[var(--nx-primary)] text-white'
+                          : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <Tag className="w-3 h-3" />
+                        Promoções & Ofertas
+                      </span>
+                      <span className="text-[10px] tabular-data opacity-80">
+                        {promotions.filter((p) => p.active).length}
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Módulos Operacionais (Agenda, Equipe, Retornos, Documentos) */}
             {[
               {
                 key: 'appointments',
@@ -2123,13 +2201,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 icon: Calendar,
                 count: appointments.length,
                 show: enabledModules.includes('appointments')
-              },
-              {
-                key: 'services',
-                label: 'Serviços',
-                icon: Scissors,
-                count: services.length,
-                show: enabledModules.includes('services')
               },
               {
                 key: 'professionals',
@@ -2350,12 +2421,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               metrics={metrics}
               enabledModules={enabledModules}
               onQuickCreateFromDemand={handleQuickCreateFromDemand}
+              onOpenConversation={(phone) => {
+                setHighlightedPhone(phone);
+                setExpandedMenus((p) => ({ ...p, whatsapp: true }));
+                setActiveTab('inbox');
+              }}
               onNavigateTab={(tab) => {
                 if (['inbox', 'contacts', 'quickreplies', 'radar'].includes(tab)) {
                   setExpandedMenus((p) => ({ ...p, whatsapp: true }));
                 }
                 if (['catalog', 'promotions'].includes(tab)) {
-                  setExpandedMenus((p) => ({ ...p, catalog: true }));
+                  setExpandedMenus((p) => ({ ...p, catalog: true, services: !enabledModules.includes('stock') }));
                 }
                 if (['settings', 'profile_hours'].includes(tab)) {
                   setExpandedMenus((p) => ({ ...p, profile: true }));
@@ -2877,7 +2953,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </div>
                         </td>
                         <td className="py-3 px-4 font-semibold text-[var(--nx-text)] tabular-data">
-                          R$ {Number(srv.price).toFixed(2)} / {srv.durationMinutes}m
+                          {srv.activePromotion ? (
+                            <div className="flex flex-col">
+                              <span className="text-[var(--nx-accent)] font-bold">
+                                R$ {Number(srv.effectivePrice).toFixed(2)} / {srv.durationMinutes}m
+                              </span>
+                              <span className="text-[10px] line-through text-[var(--nx-subtle)]">
+                                R$ {Number(srv.price).toFixed(2)} (-{srv.discountPct}%)
+                              </span>
+                            </div>
+                          ) : (
+                            <>R$ {Number(srv.price).toFixed(2)} / {srv.durationMinutes}m</>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-right space-x-2 whitespace-nowrap">
                           <button
@@ -2967,9 +3054,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
-                              R$ {Number(srv.price).toFixed(2)}
-                            </span>
+                            {srv.activePromotion ? (
+                              <>
+                                <div className="flex items-baseline justify-end gap-1.5">
+                                  <span className="text-base font-bold text-[var(--nx-accent)] tabular-data">
+                                    R$ {Number(srv.effectivePrice).toFixed(2)}
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] text-[10px] font-bold tabular-data">
+                                    -{srv.discountPct}%
+                                  </span>
+                                </div>
+                                <span className="block text-[10px] line-through text-[var(--nx-subtle)] tabular-data">
+                                  R$ {Number(srv.price).toFixed(2)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
+                                R$ {Number(srv.price).toFixed(2)}
+                              </span>
+                            )}
                             <span className="block text-[10px] text-[var(--nx-subtle)] tabular-data">
                               Base: {srv.durationMinutes} min
                             </span>
@@ -3649,23 +3752,54 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </p>
             </div>
 
+            {highlightedPhone && (
+              <div className="px-4 py-2.5 rounded-lg bg-[var(--nx-primary-soft)] border border-[var(--nx-primary)]/40 flex items-center justify-between gap-3 text-xs">
+                <span className="text-[var(--nx-text)]">
+                  Exibindo conversa destacada de{' '}
+                  <strong className="tabular-data">+{highlightedPhone}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setHighlightedPhone(null)}
+                  className="text-[var(--nx-primary)] font-semibold hover:underline"
+                >
+                  Limpar destaque
+                </button>
+              </div>
+            )}
+
             {inboxSessions.length === 0 ? (
               <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-8 text-center text-xs text-[var(--nx-subtle)]">
                 Nenhuma sessão registrada para este estabelecimento. Use o simulador na aba Resumo para iniciar uma conversa.
               </div>
             ) : (
               <div className="space-y-4">
-                {inboxSessions.map((session) => {
+                {[...inboxSessions]
+                  .sort((a, b) => {
+                    if (highlightedPhone && a.customerPhone === highlightedPhone) return -1;
+                    if (highlightedPhone && b.customerPhone === highlightedPhone) return 1;
+                    return 0;
+                  })
+                  .map((session) => {
                   const isPaused = session.state === 'HUMAN_HANDOFF';
+                  const isHighlighted = Boolean(
+                    highlightedPhone && session.customerPhone === highlightedPhone
+                  );
                   return (
                     <div
                       key={session.id}
-                      className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden"
+                      className={`bg-[var(--nx-surface)] border rounded-lg overflow-hidden ${
+                        isHighlighted
+                          ? 'border-[var(--nx-primary)] ring-2 ring-[var(--nx-primary-ring)]'
+                          : 'border-[var(--nx-border)]'
+                      }`}
                     >
                       <div className="px-4 py-3 bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-bold text-[var(--nx-text)] tabular-data">
-                            Cliente: {session.customerPhone}
+                            {session.customerName
+                              ? `${session.customerName} (+${session.customerPhone})`
+                              : `Cliente: +${session.customerPhone}`}
                           </span>
                           <span
                             className={`px-2 py-0.5 rounded text-[11px] font-medium ${
@@ -3815,12 +3949,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           />
         )}
 
-        {/* SUB-ABA CATÁLOGO: PROMOÇÕES & OFERTAS */}
+        {/* SUB-ABA CATÁLOGO / SERVIÇOS: PROMOÇÕES & OFERTAS */}
         {activeTab === 'promotions' && selectedTenant && (
           <PromotionsTab
             tenantSlug={selectedTenant.slug}
             promotions={promotions}
             catalog={catalog}
+            services={services}
+            enabledModules={enabledModules}
             onRefresh={() => loadTenantData(selectedTenant.slug)}
             onNotify={showToast}
           />

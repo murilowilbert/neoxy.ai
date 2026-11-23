@@ -9,8 +9,9 @@ async function ensureDatabaseReady() {
   try {
     const [userCount] = await Promise.all([
       prisma.user.count(),
-      prisma.whatsAppContact.count(),
-      prisma.promotion.count(),
+      prisma.whatsAppContact.findFirst({ select: { id: true, avatarUrl: true } }),
+      prisma.promotion.findFirst({ select: { id: true, appliesTo: true, targetServiceIds: true } }),
+      prisma.missedDemand.findFirst({ select: { id: true, occurrences: true } }),
       prisma.quickReply.count(),
       prisma.demandTracker.count()
     ]);
@@ -19,13 +20,31 @@ async function ensureDatabaseReady() {
       execSync('node prisma/seed.js', { cwd: PROJECT_ROOT, stdio: 'inherit' });
     }
   } catch (err) {
-    logger.warn('Schema local desatualizado ou tabelas ausentes. Executando prisma db push automaticamente...');
+    logger.warn('Schema local desatualizado ou colunas ausentes. Executando prisma db push automaticamente...');
     execSync('npx prisma db push --skip-generate', { cwd: PROJECT_ROOT, stdio: 'inherit' });
     const countAfterPush = await prisma.user.count().catch(() => 0);
     if (countAfterPush === 0) {
       execSync('node prisma/seed.js', { cwd: PROJECT_ROOT, stdio: 'inherit' });
     }
     logger.info('Banco de dados SQLite atualizado e pronto!');
+  }
+
+  // Migração automática: garante que Ferragens Demo consulte o banco local (e não a planilha legada externa)
+  try {
+    const ferragens = await prisma.tenant.findUnique({ where: { slug: 'ferragens-demo' } });
+    if (ferragens && typeof ferragens.settings === 'string' && ferragens.settings.includes('google_sheets_csv')) {
+      const parsed = JSON.parse(ferragens.settings);
+      if (parsed?.catalogSource?.type === 'google_sheets_csv') {
+        parsed.catalogSource = { type: 'database' };
+        await prisma.tenant.update({
+          where: { slug: 'ferragens-demo' },
+          data: { settings: JSON.stringify(parsed) }
+        });
+        logger.info('CatalogSource de ferragens-demo migrado automaticamente para banco de dados local.');
+      }
+    }
+  } catch {
+    // Silencioso se tenant não existir
   }
 }
 

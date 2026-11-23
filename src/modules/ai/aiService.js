@@ -110,7 +110,9 @@ class AIService {
   }
 
   parseModelResponse(rawText) {
-    if (!rawText) return { text: '', isHandoff: false, isNoResponse: false, photoCodes: [] };
+    if (!rawText) {
+      return { text: '', isHandoff: false, isNoResponse: false, photoCodes: [], missedDemands: [] };
+    }
 
     const isNoResponse = rawText.includes('[NO_RESPONSE]');
     const isHandoff = rawText.includes('[HANDOFF]');
@@ -123,10 +125,20 @@ class AIService {
       photoCodes.push(match[1].trim());
     }
 
+    // Extrai demandas não cadastradas detectadas pela IA: [MISSED_DEMAND:Serra Mármore]
+    const missedRegex = /\[MISSED_DEMAND:([^\]]+)\]/gi;
+    const missedDemands = [];
+    let mMatch;
+    while ((mMatch = missedRegex.exec(rawText)) !== null) {
+      const term = mMatch[1].trim();
+      if (term.length >= 2) missedDemands.push(term);
+    }
+
     // Limpa tags do texto final a ser enviado para o cliente
     let cleanText = rawText
       .replace(/\[NO_RESPONSE\]/g, '')
       .replace(/\[HANDOFF\]/g, '')
+      .replace(/\[MISSED_DEMAND:[^\]]+\]/gi, '')
       .replace(/\{\{COD:[^\}]+\}\}/g, '')
       .trim();
 
@@ -135,7 +147,8 @@ class AIService {
       rawText,
       isHandoff,
       isNoResponse,
-      photoCodes
+      photoCodes,
+      missedDemands
     };
   }
 }

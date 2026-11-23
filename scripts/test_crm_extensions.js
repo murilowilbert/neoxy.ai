@@ -161,7 +161,66 @@ async function run() {
     assert(sysPrompt.includes('Feriado de Natal'), 'Feriados programados devem constar no prompt');
     console.log('✅ 8. Perfil (Local, Redes Sociais, Horários & Feriados) injetado no prompt da IA.');
 
-    console.log('\n🎉 TODOS OS 8 TESTES DAS NOVAS EXTENSÕES CRM PASSARAM COM SUCESSO!');
+    // 9. Verificação Crítica: Ferragens Marlene busca APENAS itens cadastrados no banco (nunca planilha externa!)
+    const stockService = require('../src/modules/stock/stockService');
+    const aiService = require('../src/modules/ai/aiService');
+    const hidraulicaMatches = await stockService.searchProduct(refreshedTenant, 'gostaria de material hidraulico');
+    assert(
+      !hidraulicaMatches.some((item) => String(item['modelo/produto'] || '').includes('Mecanismo de Entrada')),
+      'Bot NUNCA pode retornar item externo não cadastrado (ex: Mecanismo Astra)'
+    );
+    assert(
+      hidraulicaMatches.every((item) => item.tipo === 'produto' || item.tipo === 'serviço'),
+      'Todos os itens retornados devem vir estritamente do banco de dados local'
+    );
+    const parsedMissed = aiService.parseModelResponse(
+      'Vou verificar com a equipe! [HANDOFF] [MISSED_DEMAND:Torneira Gourmet Inox]'
+    );
+    assert.strictEqual(parsedMissed.text, 'Vou verificar com a equipe!');
+    assert.deepStrictEqual(parsedMissed.missedDemands, ['Torneira Gourmet Inox']);
+    console.log('✅ 9. Guardrail Zero-Invenção + extração oculta de [MISSED_DEMAND] validados.');
+
+    // 10. Oportunidades (MissedDemand) retornando conversas vinculadas (occurrences)
+    const serraDemand = an.topMissedDemands.find((m) => m.name.includes('Serra'));
+    assert(serraDemand && Array.isArray(serraDemand.occurrences) && serraDemand.occurrences.length >= 1, 'Oportunidade deve listar conversas vinculadas');
+    console.log('✅ 10. Oportunidades expansíveis com conversas vinculadas validadas.');
+
+    // 11. Contatos com avatarUrl e pushName para seletor visual
+    const ctRes = await axios.get(`${baseUrl}/api/tenants/ferragens-demo/contacts`, auth);
+    assert(ctRes.data.contacts.some((c) => c.avatarUrl && c.pushName), 'Contatos devem retornar foto de perfil e pushName');
+    console.log('✅ 11. Contatos visuais (foto de perfil + pushName) validados.');
+
+    // 12. Promoções aplicadas a SERVIÇOS (Desentupidora Guri)
+    const guriLogin = await axios.post(`${baseUrl}/api/auth/login`, {
+      email: 'contato@desentupidoraguri.com.br',
+      password: 'neoxy123'
+    });
+    const guriAuth = { headers: { Authorization: `Bearer ${guriLogin.data.token}` } };
+    const guriSrvBefore = await axios.get(`${baseUrl}/api/tenants/desentupidora-guri/services`, guriAuth);
+    const firstSrv = guriSrvBefore.data.services[0];
+    assert(firstSrv, 'Desentupidora Guri deve possuir serviços');
+
+    const srvPromo = await axios.post(
+      `${baseUrl}/api/tenants/desentupidora-guri/promotions`,
+      {
+        name: 'Promoção Teste Serviço 20% OFF',
+        appliesTo: 'SERVICES',
+        discountType: 'PERCENT',
+        discountValue: 20,
+        scope: 'PRODUCTS',
+        targetServiceIds: [firstSrv.id],
+        active: true
+      },
+      guriAuth
+    );
+    const guriSrvAfter = await axios.get(`${baseUrl}/api/tenants/desentupidora-guri/services`, guriAuth);
+    const updatedSrv = guriSrvAfter.data.services.find((s) => s.id === firstSrv.id);
+    assert.strictEqual(updatedSrv.discountPct, 20, 'Desconto de 20% deve refletir no serviço');
+    assert.strictEqual(updatedSrv.effectivePrice, Number((firstSrv.price * 0.8).toFixed(2)));
+    await axios.delete(`${baseUrl}/api/tenants/desentupidora-guri/promotions/${srvPromo.data.promotion.id}`, guriAuth);
+    console.log('✅ 12. Promoções aplicadas a Serviços (Desentupidora Guri) validadas.');
+
+    console.log('\n🎉 TODOS OS 12 TESTES DAS EXTENSÕES CRM PASSARAM COM SUCESSO!');
   } finally {
     server.close();
   }

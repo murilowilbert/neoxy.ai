@@ -6,7 +6,7 @@ const { logger } = require('../../../config');
 
 // Cache em memória de itens de banco por tenant
 const tenantDbCaches = new Map();
-const CACHE_TTL_MS = 2 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 1000;
 
 class DatabaseStockAdapter extends StockAdapterInterface {
   async loadCatalog(tenant, forceRefresh = false) {
@@ -16,14 +16,17 @@ class DatabaseStockAdapter extends StockAdapterInterface {
       return cached;
     }
 
-    const [items, activePromotions] = await Promise.all([
+    const [items, services, activePromotions] = await Promise.all([
       prisma.catalogItem.findMany({ where: { tenantId } }),
+      prisma.serviceItem.findMany({ where: { tenantId, active: true } }),
       crmExtensions.getActivePromotions(tenantId).catch(() => [])
     ]);
 
-    const annotated = crmExtensions.annotateCatalogWithPromotions(items, activePromotions);
+    const annotatedProducts = crmExtensions.annotateCatalogWithPromotions(items, activePromotions);
+    const annotatedServices = crmExtensions.annotateServicesWithPromotions(services, activePromotions);
 
-    const normalizedItems = annotated.map(item => ({
+    const normalizedProducts = annotatedProducts.map(item => ({
+      tipo: 'produto',
       código: item.code,
       'modelo/produto': item.name,
       preço: item.price ? `R$${item.price.toFixed(2).replace('.', ',')}` : '',
@@ -39,14 +42,33 @@ class DatabaseStockAdapter extends StockAdapterInterface {
       _temFoto: item.hasPhoto
     }));
 
+    const normalizedServices = annotatedServices.map(srv => ({
+      tipo: 'serviço',
+      código: srv.sku || srv.id.slice(0, 8),
+      'modelo/produto': srv.name,
+      preço: srv.price ? `R$${srv.price.toFixed(2).replace('.', ',')}` : '',
+      ...(srv.activePromotion
+        ? {
+            preço_promocional: `R$${srv.effectivePrice.toFixed(2).replace('.', ',')}`,
+            promoção_ativa: `${srv.activePromotion.name} (${srv.discountPct}% OFF)`
+          }
+        : {}),
+      duração_min: srv.durationMinutes,
+      categoria_geral: srv.category || 'Serviços',
+      marca: srv.brand || '',
+      _temFoto: Boolean(srv.imageUrl)
+    }));
+
+    const normalizedItems = [...normalizedProducts, ...normalizedServices];
+
     const fuse = new Fuse(normalizedItems, {
       keys: [
         { name: 'modelo/produto', weight: 0.7 },
         { name: 'código', weight: 0.9 },
-        { name: 'categoria_geral', weight: 0.4 },
+        { name: 'categoria_geral', weight: 0.55 },
         { name: 'marca', weight: 0.5 }
       ],
-      threshold: 0.4
+      threshold: 0.38
     });
 
     const entry = { data: normalizedItems, fuse, lastFetch: Date.now() };

@@ -97,7 +97,23 @@ class EvolutionClient {
   }
 
   /**
-   * Busca lista de contatos da instância conectada na Evolution API v2.
+   * Busca URL da foto de perfil de um número via Evolution API v2.
+   */
+  async fetchProfilePictureUrl(instanceName, number) {
+    if (!instanceName || !number) return null;
+    try {
+      const cleanNumber = String(number).replace(/[^0-9]/g, '');
+      const response = await this.client.post(`/chat/fetchProfilePictureUrl/${instanceName}`, {
+        number: cleanNumber
+      });
+      return response.data?.profilePictureUrl || response.data?.picture || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Busca lista de contatos (com nome, pushName e foto de perfil) da instância na Evolution API v2.
    * Retorna [] silenciosamente se a instância estiver offline.
    */
   async fetchContacts(instanceName) {
@@ -115,7 +131,8 @@ class EvolutionClient {
           return {
             phone,
             pushName: c.pushName || c.name || null,
-            name: c.name || c.pushName || null
+            name: c.name || c.pushName || null,
+            avatarUrl: c.profilePicUrl || c.profilePictureUrl || c.imgUrl || null
           };
         })
         .filter((c) => c.phone.length >= 8);

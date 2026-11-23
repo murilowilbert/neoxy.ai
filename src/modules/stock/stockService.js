@@ -25,14 +25,11 @@ function cleanSearchQuery(query) {
 
 class StockService {
   getAdapter(tenant) {
-    const type = tenant.parsedSettings?.catalogSource?.type || 'google_sheets_csv';
-    switch (type) {
-      case 'database':
-        return databaseAdapter;
-      case 'google_sheets_csv':
-      default:
-        return googleSheetsAdapter;
+    const type = tenant.parsedSettings?.catalogSource?.type || 'database';
+    if (type === 'google_sheets_csv' && tenant.parsedSettings?.catalogSource?.url && tenant.slug !== 'ferragens-demo') {
+      return googleSheetsAdapter;
     }
+    return databaseAdapter;
   }
 
   async searchProduct(tenant, query) {

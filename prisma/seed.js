@@ -73,17 +73,8 @@ async function main() {
       ]
     },
     catalogSource: {
-      type: 'google_sheets_csv',
-      url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQrx6iAXiTOnLcp8kpL66zY0PGycvbZbai3qiNP8wqGLHMGhG3w4gMeRHXu8V4fsQ/pub?output=csv',
-      syncIntervalMinutes: 10,
-      hasPhotos: true,
-      mapping: {
-        code: 'Código',
-        name: 'Produto',
-        price: 'Preço de Venda',
-        stock: 'Quantidade',
-        category: 'Local'
-      }
+      type: 'database',
+      hasPhotos: true
     },
     features: {
       automaticHandoffHours: 6,
@@ -183,14 +174,70 @@ async function main() {
 
   await prisma.missedDemand.upsert({
     where: { tenantId_productName: { tenantId: ferragensTenant.id, productName: 'Serra Mármore Makita 110V' } },
-    update: { searchCount: 7 },
-    create: { tenantId: ferragensTenant.id, productName: 'Serra Mármore Makita 110V', searchCount: 7 }
+    update: {
+      searchCount: 7,
+      occurrences: JSON.stringify([
+        {
+          customerPhone: '5551991112233',
+          customerName: 'Carlos Pedreiro',
+          messageSnippet: 'Vocês têm Serra Mármore Makita 110V pronta entrega? Preciso para amanhã cedo na obra.',
+          requestedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+        },
+        {
+          customerPhone: '5551994445566',
+          customerName: 'Construtora Horizonte',
+          messageSnippet: 'Qual o valor da Serra Mármore Makita 110V ou Bosch para 3 unidades?',
+          requestedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString()
+        }
+      ])
+    },
+    create: {
+      tenantId: ferragensTenant.id,
+      productName: 'Serra Mármore Makita 110V',
+      searchCount: 7,
+      occurrences: JSON.stringify([
+        {
+          customerPhone: '5551991112233',
+          customerName: 'Carlos Pedreiro',
+          messageSnippet: 'Vocês têm Serra Mármore Makita 110V pronta entrega? Preciso para amanhã cedo na obra.',
+          requestedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+        },
+        {
+          customerPhone: '5551994445566',
+          customerName: 'Construtora Horizonte',
+          messageSnippet: 'Qual o valor da Serra Mármore Makita 110V ou Bosch para 3 unidades?',
+          requestedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString()
+        }
+      ])
+    }
   });
 
   await prisma.missedDemand.upsert({
     where: { tenantId_productName: { tenantId: ferragensTenant.id, productName: 'Cimento Queimado Cinza Urbano 5kg' } },
-    update: { searchCount: 4 },
-    create: { tenantId: ferragensTenant.id, productName: 'Cimento Queimado Cinza Urbano 5kg', searchCount: 4 }
+    update: {
+      searchCount: 4,
+      occurrences: JSON.stringify([
+        {
+          customerPhone: '5551997778899',
+          customerName: 'Juliana Arquiteta',
+          messageSnippet: 'Boa tarde! Vocês trabalham com Cimento Queimado pronto cor Cinza Urbano lata 5kg?',
+          requestedAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString()
+        }
+      ])
+    },
+    create: {
+      tenantId: ferragensTenant.id,
+      productName: 'Cimento Queimado Cinza Urbano 5kg',
+      searchCount: 4,
+      occurrences: JSON.stringify([
+        {
+          customerPhone: '5551997778899',
+          customerName: 'Juliana Arquiteta',
+          messageSnippet: 'Boa tarde! Vocês trabalham com Cimento Queimado pronto cor Cinza Urbano lata 5kg?',
+          requestedAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString()
+        }
+      ])
+    }
   });
 
   // =========================================================================
@@ -810,6 +857,8 @@ async function main() {
     {
       phone: '5551991112233',
       name: 'Carlos Pedreiro',
+      pushName: 'Carlos Obras & Reformas',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
       tags: ['VIP', 'Obra'],
       aiBlocked: false,
       notes: 'Cliente recorrente de materiais hidráulicos.'
@@ -817,6 +866,8 @@ async function main() {
     {
       phone: '5551992223344',
       name: 'Fornecedor Suvinil Sul',
+      pushName: 'Representante Suvinil RS',
+      avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=120&q=80',
       tags: ['Fornecedor'],
       aiBlocked: true,
       notes: 'Bloqueado para IA — negociação direta com gerência.'
@@ -824,6 +875,8 @@ async function main() {
     {
       phone: '5551993334455',
       name: 'Marlene (Pessoal / Família)',
+      pushName: 'Marlene',
+      avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80',
       tags: ['Família'],
       aiBlocked: true,
       notes: 'Número pessoal da diretoria.'
@@ -831,6 +884,8 @@ async function main() {
     {
       phone: '5551994445566',
       name: 'Construtora Horizonte',
+      pushName: 'Compras Horizonte',
+      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80',
       tags: ['Orçamento', 'Lead Quente'],
       aiBlocked: false,
       notes: 'Pediu cotação de tintas e fechaduras.'
@@ -842,6 +897,8 @@ async function main() {
       where: { tenantId_phone: { tenantId: ferragensTenant.id, phone: c.phone } },
       update: {
         name: c.name,
+        pushName: c.pushName,
+        avatarUrl: c.avatarUrl,
         tags: JSON.stringify(c.tags),
         aiBlocked: c.aiBlocked,
         notes: c.notes,
@@ -851,6 +908,8 @@ async function main() {
         tenantId: ferragensTenant.id,
         phone: c.phone,
         name: c.name,
+        pushName: c.pushName,
+        avatarUrl: c.avatarUrl,
         tags: JSON.stringify(c.tags),
         aiBlocked: c.aiBlocked,
         notes: c.notes,

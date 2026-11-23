@@ -114,6 +114,7 @@ model MissedDemand {
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   productName   String
   searchCount   Int      @default(1)
+  occurrences   String?  // JSON array: [{ customerPhone, customerName, messageSnippet, requestedAt }]
   lastRequested DateTime @default(now())
 
   @@unique([tenantId, productName])
@@ -258,6 +259,7 @@ model WhatsAppContact {
   phone         String
   name          String?
   pushName      String?
+  avatarUrl     String?   // URL da foto de perfil do WhatsApp
   aiBlocked     Boolean   @default(false) // Se true, a IA ignora mensagens deste contato
   tags          String?   // JSON array de etiquetas: ["VIP", "Fornecedor", "Família"]
   notes         String?
@@ -271,21 +273,23 @@ model WhatsAppContact {
 }
 
 model Promotion {
-  id             String    @id @default(uuid())
-  tenantId       String
-  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name           String
-  description    String?
-  discountType   String    @default("PERCENT") // "PERCENT" | "FIXED_PRICE"
-  discountValue  Float     @default(0.0)       // % de desconto ou preço promocional fixo
-  scope          String    @default("PRODUCTS") // "ALL" | "CATEGORY" | "PRODUCTS"
-  targetCategory String?
-  targetItemIds  String?   // JSON array de IDs de CatalogItem
-  startsAt       DateTime?
-  endsAt         DateTime?
-  active         Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  tenantId         String
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  appliesTo        String    @default("PRODUCTS") // "PRODUCTS" | "SERVICES" | "BOTH"
+  discountType     String    @default("PERCENT")  // "PERCENT" | "FIXED_PRICE"
+  discountValue    Float     @default(0.0)        // % de desconto ou preço promocional fixo
+  scope            String    @default("PRODUCTS") // "ALL" | "CATEGORY" | "PRODUCTS"
+  targetCategory   String?
+  targetItemIds    String?   // JSON array de IDs de CatalogItem
+  targetServiceIds String?   // JSON array de IDs de ServiceItem
+  startsAt         DateTime?
+  endsAt           DateTime?
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([tenantId, active])
 }

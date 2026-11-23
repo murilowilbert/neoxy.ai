@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   Trash2,
@@ -240,145 +241,147 @@ export const QuickRepliesTab: React.FC<QuickRepliesTabProps> = ({
         </div>
       )}
 
-      {modalOpen && (
-        <div className="nx-modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="nx-modal-main p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--nx-border)]">
-              <h3 className="text-base font-bold text-[var(--nx-text)]">
-                {editingId ? 'Editar Resposta Rápida' : 'Nova Resposta Rápida / Gatilho'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="p-1 rounded hover:bg-[var(--nx-surface-alt)] text-[var(--nx-muted)]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="nx-field">
-                  <input
-                    type="text"
-                    placeholder=" "
-                    value={form.shortcut}
-                    onChange={(e) => setForm((p) => ({ ...p, shortcut: e.target.value }))}
-                    required
-                  />
-                  <label>Atalho (ex: /pix)</label>
-                </div>
-                <div className="nx-field">
-                  <input
-                    type="text"
-                    placeholder=" "
-                    value={form.title}
-                    onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                    required
-                  />
-                  <label>Título</label>
-                </div>
-                <div className="nx-field">
-                  <select
-                    value={form.category}
-                    onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-                  >
-                    <option value="ATENDIMENTO">Atendimento</option>
-                    <option value="VENDAS">Vendas</option>
-                    <option value="FINANCEIRO">Financeiro</option>
-                    <option value="POS_VENDA">Pós-venda</option>
-                  </select>
-                  <label>Categoria</label>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] text-[var(--nx-muted)] mr-1">Variáveis:</span>
-                  {VARIABLES.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => insertVariable(v)}
-                      className="px-2 py-0.5 rounded bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] hover:border-[var(--nx-primary)] tabular-data text-[10px] text-[var(--nx-text)]"
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-                <div className="nx-field">
-                  <textarea
-                    placeholder=" "
-                    value={form.content}
-                    onChange={(e) => setForm((p) => ({ ...p, content: e.target.value }))}
-                    required
-                  />
-                  <label>Mensagem da resposta rápida</label>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] space-y-3">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div>
-                    <div className="text-xs font-bold text-[var(--nx-text)]">
-                      Disparo automático por palavra-chave no WhatsApp
-                    </div>
-                    <div className="text-[11px] text-[var(--nx-muted)]">
-                      Responde na hora sem consumir tokens da IA quando o cliente digitar um dos termos abaixo.
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={form.autoTrigger}
-                    onChange={(e) => setForm((p) => ({ ...p, autoTrigger: e.target.checked }))}
-                    className="w-4 h-4 accent-[var(--nx-primary)]"
-                  />
-                </label>
-
-                {form.autoTrigger && (
-                  <>
-                    <div className="nx-field">
-                      <input
-                        type="text"
-                        placeholder=" "
-                        value={form.triggerKeywords}
-                        onChange={(e) =>
-                          setForm((p) => ({ ...p, triggerKeywords: e.target.value }))
-                        }
-                      />
-                      <label>Palavras-chave separadas por vírgula (ex: pix, endereco, urgente)</label>
-                    </div>
-                    <label className="flex items-center gap-2 text-xs text-[var(--nx-text)] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.triggerHandoff}
-                        onChange={(e) =>
-                          setForm((p) => ({ ...p, triggerHandoff: e.target.checked }))
-                        }
-                        className="accent-[var(--nx-primary)]"
-                      />
-                      Pausar IA e acionar atendente humano após disparar este gatilho
-                    </label>
-                  </>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-2">
+      {modalOpen &&
+        createPortal(
+          <div className="nx-modal-backdrop" onClick={() => setModalOpen(false)}>
+            <div className="nx-modal-main p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--nx-border)]">
+                <h3 className="text-base font-bold text-[var(--nx-text)]">
+                  {editingId ? 'Editar Resposta Rápida' : 'Nova Resposta Rápida / Gatilho'}
+                </h3>
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-md border border-[var(--nx-border-strong)] text-xs font-medium text-[var(--nx-text)]"
+                  className="p-1 rounded hover:bg-[var(--nx-surface-alt)] text-[var(--nx-muted)]"
                 >
-                  Cancelar
-                </button>
-                <button type="submit" disabled={saving} className="nx-btn-primary px-5 py-2 text-xs">
-                  {saving ? 'Salvando...' : 'Salvar Atalho'}
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <form onSubmit={handleSave} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="nx-field !mb-0">
+                    <input
+                      type="text"
+                      placeholder=" "
+                      value={form.shortcut}
+                      onChange={(e) => setForm((p) => ({ ...p, shortcut: e.target.value }))}
+                      required
+                    />
+                    <label>Atalho (ex: /pix)</label>
+                  </div>
+                  <div className="nx-field !mb-0">
+                    <input
+                      type="text"
+                      placeholder=" "
+                      value={form.title}
+                      onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                      required
+                    />
+                    <label>Título</label>
+                  </div>
+                  <div className="nx-field !mb-0">
+                    <select
+                      value={form.category}
+                      onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+                    >
+                      <option value="ATENDIMENTO">Atendimento</option>
+                      <option value="VENDAS">Vendas</option>
+                      <option value="FINANCEIRO">Financeiro</option>
+                      <option value="POS_VENDA">Pós-venda</option>
+                    </select>
+                    <label>Categoria</label>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] text-[var(--nx-muted)] mr-1">Variáveis:</span>
+                    {VARIABLES.map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => insertVariable(v)}
+                        className="px-2 py-0.5 rounded bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] hover:border-[var(--nx-primary)] tabular-data text-[10px] text-[var(--nx-text)]"
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="nx-field !mb-0">
+                    <textarea
+                      placeholder=" "
+                      value={form.content}
+                      onChange={(e) => setForm((p) => ({ ...p, content: e.target.value }))}
+                      required
+                    />
+                    <label>Mensagem da resposta rápida</label>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] space-y-3">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div>
+                      <div className="text-xs font-bold text-[var(--nx-text)]">
+                        Disparo automático por palavra-chave no WhatsApp
+                      </div>
+                      <div className="text-[11px] text-[var(--nx-muted)]">
+                        Responde na hora sem consumir tokens da IA quando o cliente digitar um dos termos abaixo.
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={form.autoTrigger}
+                      onChange={(e) => setForm((p) => ({ ...p, autoTrigger: e.target.checked }))}
+                      className="w-4 h-4 accent-[var(--nx-primary)]"
+                    />
+                  </label>
+
+                  {form.autoTrigger && (
+                    <>
+                      <div className="nx-field !mb-0">
+                        <input
+                          type="text"
+                          placeholder=" "
+                          value={form.triggerKeywords}
+                          onChange={(e) =>
+                            setForm((p) => ({ ...p, triggerKeywords: e.target.value }))
+                          }
+                        />
+                        <label>Palavras-chave separadas por vírgula (ex: pix, endereco, urgente)</label>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-[var(--nx-text)] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={form.triggerHandoff}
+                          onChange={(e) =>
+                            setForm((p) => ({ ...p, triggerHandoff: e.target.checked }))
+                          }
+                          className="accent-[var(--nx-primary)]"
+                        />
+                        Pausar IA e acionar atendente humano após disparar este gatilho
+                      </label>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    className="px-4 py-2 rounded-md border border-[var(--nx-border-strong)] text-xs font-medium text-[var(--nx-text)]"
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={saving} className="nx-btn-primary px-5 py-2 text-xs">
+                    {saving ? 'Salvando...' : 'Salvar Atalho'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

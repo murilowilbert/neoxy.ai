@@ -6,7 +6,10 @@ import {
   Tag,
   Plus,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink
 } from 'lucide-react';
 
 interface HourBucket {
@@ -26,12 +29,20 @@ interface DayBucket {
   humanReplies: number;
 }
 
+export interface DemandOccurrence {
+  customerPhone: string;
+  customerName?: string;
+  messageSnippet?: string;
+  requestedAt?: string;
+}
+
 interface DemandItem {
   id: string;
   itemType: string;
   name: string;
   searchCount: number;
   inCatalog: boolean;
+  occurrences?: DemandOccurrence[];
 }
 
 export interface TenantAnalytics {
@@ -66,6 +77,7 @@ interface OverviewAnalyticsPanelProps {
   enabledModules: string[];
   onQuickCreateFromDemand: (name: string) => void;
   onNavigateTab: (tab: string) => void;
+  onOpenConversation?: (customerPhone: string) => void;
 }
 
 export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
@@ -73,10 +85,12 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
   metrics,
   enabledModules,
   onQuickCreateFromDemand,
-  onNavigateTab
+  onNavigateTab,
+  onOpenConversation
 }) => {
   const [chartRange, setChartRange] = useState<'today' | '7d'>('today');
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [expandedMissedId, setExpandedMissedId] = useState<string | null>(null);
 
   const aiVsHuman = analytics?.aiVsHuman || {
     totalConversations: metrics?.activeSessions || 0,
@@ -88,7 +102,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
     userMessagesTotal: 0
   };
 
-  // Para o gráfico de hoje, mostra janela operacional relevante ou todas 24h compactadas
   const series =
     chartRange === 'today'
       ? (analytics?.messagesByHourToday || []).filter((_, idx) => idx >= 7 && idx <= 22)
@@ -99,7 +112,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
     ...series.map((b) => Math.max(b.received, b.aiReplies + b.humanReplies))
   );
 
-  // Donut SVG math (r = 50, circumference = 314.16)
   const radius = 50;
   const circumference = 2 * Math.PI * radius;
   const aiRatio =
@@ -113,6 +125,21 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
   const topMissed = analytics?.topMissedDemands || metrics?.missedDemands || [];
   const maxExisting = Math.max(1, ...topExisting.map((d) => d.searchCount));
   const maxMissed = Math.max(1, ...topMissed.map((d: any) => d.searchCount || 1));
+
+  function formatRelativeTime(iso?: string) {
+    if (!iso) return '';
+    try {
+      const dt = new Date(iso);
+      return dt.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return '';
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -175,29 +202,31 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
 
         <button
           type="button"
-          onClick={() => onNavigateTab(enabledModules.includes('stock') ? 'promotions' : 'appointments')}
+          onClick={() =>
+            onNavigateTab(
+              enabledModules.includes('stock') || enabledModules.includes('services')
+                ? 'promotions'
+                : 'appointments'
+            )
+          }
           className="nx-kpi-tile text-left hover:border-[var(--nx-primary)] transition-colors"
         >
           <div className="flex items-center justify-between text-xs text-[var(--nx-muted)]">
-            <span>{enabledModules.includes('stock') ? 'Catálogo & Ofertas' : 'Agenda & OS'}</span>
+            <span>{enabledModules.includes('stock') ? 'Catálogo & Ofertas' : 'Serviços & Ofertas'}</span>
             <Tag className="w-4 h-4 text-[var(--nx-amber)]" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-3xl font-bold tabular-data text-[var(--nx-text)]">
               {enabledModules.includes('stock')
                 ? metrics?.totalCatalog ?? 0
-                : metrics?.totalAppointments ?? 0}
+                : metrics?.totalServices ?? 0}
             </span>
             <span className="text-xs text-[var(--nx-muted)]">
-              {enabledModules.includes('stock') ? 'produtos' : 'agendamentos'}
+              {enabledModules.includes('stock') ? 'produtos' : 'serviços'}
             </span>
           </div>
           <div className="mt-2 pt-2 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px] text-[var(--nx-subtle)]">
-            <span>
-              {enabledModules.includes('stock')
-                ? `${analytics?.activePromotionsCount ?? 0} promoções ativas`
-                : `${metrics?.readyForPickupCount ?? 0} prontos retirada`}
-            </span>
+            <span>{analytics?.activePromotionsCount ?? 0} promoções ativas</span>
             <span className="text-[var(--nx-primary)] font-medium">Abrir</span>
           </div>
         </button>
@@ -249,7 +278,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
               role="img"
               aria-label="Gráfico de mensagens recebidas e respondidas"
             >
-              {/* Linhas horizontais industriais */}
               {[0, 0.25, 0.5, 0.75, 1].map((step) => {
                 const y = 165 - step * 145;
                 const val = Math.round(maxBarValue * step);
@@ -278,7 +306,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                 );
               })}
 
-              {/* Colunas agrupadas */}
               {series.map((bucket, idx) => {
                 const slotWidth = 560 / Math.max(1, series.length);
                 const xStart = 32 + idx * slotWidth;
@@ -307,7 +334,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                       />
                     )}
 
-                    {/* Barra Recebidas */}
                     <rect
                       x={xStart + slotWidth * 0.16}
                       y={165 - hRec}
@@ -317,7 +343,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                       fill="var(--nx-primary)"
                     />
 
-                    {/* Barra Respondidas IA */}
                     <rect
                       x={xStart + slotWidth * 0.16 + barW + 2}
                       y={165 - hAi}
@@ -327,7 +352,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                       fill="var(--nx-accent)"
                     />
 
-                    {/* Barra Humano empilhada sobre IA */}
                     {bucket.humanReplies > 0 && (
                       <rect
                         x={xStart + slotWidth * 0.16 + barW + 2}
@@ -339,7 +363,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                       />
                     )}
 
-                    {/* Rótulo eixo X */}
                     {(chartRange === '7d' || idx % 2 === 0) && (
                       <text
                         x={xStart + slotWidth / 2}
@@ -356,7 +379,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
               })}
             </svg>
 
-            {/* Barra de leitura dinâmica ao passar o mouse */}
             <div className="mt-2 pt-2.5 border-t border-[var(--nx-border)] flex flex-wrap items-center justify-between gap-2 text-[11px]">
               <div className="flex items-center gap-4 text-[var(--nx-muted)]">
                 <span className="inline-flex items-center gap-1.5">
@@ -374,7 +396,7 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
               </div>
 
               {hoveredIdx !== null && series[hoveredIdx] && (
-                <div className="font-mono text-[11px] text-[var(--nx-text)] bg-[var(--nx-bg)] px-2.5 py-0.5 rounded border border-[var(--nx-border)] tabular-data">
+                <div className="text-[11px] text-[var(--nx-text)] bg-[var(--nx-bg)] px-2.5 py-0.5 rounded border border-[var(--nx-border)] tabular-data">
                   {series[hoveredIdx].label}: {series[hoveredIdx].received} rec /{' '}
                   {series[hoveredIdx].aiReplies} IA / {series[hoveredIdx].humanReplies} hum
                 </div>
@@ -395,7 +417,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
           </div>
 
           <div className="flex items-center gap-5 my-2">
-            {/* Donut Precision Ring */}
             <div className="relative w-32 h-32 shrink-0">
               <svg viewBox="0 0 128 128" className="w-full h-full -rotate-90">
                 <circle
@@ -438,7 +459,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
               </div>
             </div>
 
-            {/* Legenda Detalhada */}
             <div className="flex-1 space-y-3 min-w-0">
               <div className="p-2.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)]">
                 <div className="flex items-center justify-between text-xs">
@@ -474,7 +494,11 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
 
           <div className="mt-3 pt-3 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px]">
             <span className="text-[var(--nx-muted)]">
-              Total analisado: <strong className="tabular-data text-[var(--nx-text)]">{aiVsHuman.totalConversations}</strong> conversas
+              Total analisado:{' '}
+              <strong className="tabular-data text-[var(--nx-text)]">
+                {aiVsHuman.totalConversations}
+              </strong>{' '}
+              conversas
             </span>
             <button
               type="button"
@@ -487,7 +511,7 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
         </div>
       </div>
 
-      {/* ROW 2: ITENS & SERVIÇOS MAIS PROCURADOS (TEMOS VS NÃO TEMOS) */}
+      {/* ROW 2: ITENS & SERVIÇOS MAIS PROCURADOS (TEMOS VS OPORTUNIDADES EXPANSÍVEIS) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Col 6: Mais procurados que TEMOS */}
         <div className="lg:col-span-6 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
@@ -534,16 +558,16 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
           )}
         </div>
 
-        {/* Col 6: Procurados SEM CADASTRO (Oportunidade de compra/expansão) */}
+        {/* Col 6: Oportunidades que ainda não oferecemos (EXPANSÍVEL COM CONVERSAS SALVAS) */}
         <div className="lg:col-span-6 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
           <div className="flex items-center justify-between gap-2 mb-4">
             <div>
               <h3 className="text-sm font-bold text-[var(--nx-text)] flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-[var(--nx-amber)]" />
-                Procurados que ainda não temos
+                Oportunidades: itens que ainda não oferecemos
               </h3>
               <p className="text-[11px] text-[var(--nx-muted)]">
-                Demanda reprimida no WhatsApp. Clique para adicionar ao seu catálogo ou serviços.
+                Clique em qualquer item para expandir e ver em quais conversas de WhatsApp os clientes pediram.
               </p>
             </div>
           </div>
@@ -553,36 +577,123 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
               Nenhum item fora de catálogo solicitado recentemente.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {topMissed.map((item: any) => {
+                const rowId = item.id || item.name || item.term;
                 const label = item.name || item.productName || item.term;
                 const count = item.searchCount || 1;
                 const pct = Math.max(8, Math.round((count / maxMissed) * 100));
+                const occurrences: DemandOccurrence[] = Array.isArray(item.occurrences)
+                  ? item.occurrences
+                  : [];
+                const isExpanded = expandedMissedId === rowId;
+
                 return (
-                  <div key={item.id || label} className="space-y-1">
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-medium text-[var(--nx-text)] truncate">{label}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="px-2 py-0.5 rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] font-semibold text-[11px] tabular-data">
-                          {count}x
-                        </span>
+                  <div
+                    key={rowId}
+                    className={`rounded-lg border transition-colors ${
+                      isExpanded
+                        ? 'border-[var(--nx-amber)]/50 bg-[var(--nx-bg)]'
+                        : 'border-[var(--nx-border)] bg-[var(--nx-surface)] hover:border-[var(--nx-border-strong)]'
+                    }`}
+                  >
+                    <div className="p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
                         <button
                           type="button"
-                          onClick={() => onQuickCreateFromDemand(label)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] hover:text-[var(--nx-primary)] text-[11px] font-medium text-[var(--nx-text)] transition-colors"
-                          title="Cadastrar este item"
+                          onClick={() => setExpandedMissedId(isExpanded ? null : rowId)}
+                          className="flex items-center gap-2 min-w-0 text-left flex-1 group"
                         >
-                          <Plus className="w-3 h-3" />
-                          Cadastrar
+                          {isExpanded ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-[var(--nx-amber)] shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-[var(--nx-subtle)] group-hover:text-[var(--nx-text)] shrink-0" />
+                          )}
+                          <span className="font-semibold text-[var(--nx-text)] truncate">
+                            {label}
+                          </span>
+                          {occurrences.length > 0 && (
+                            <span className="text-[10px] text-[var(--nx-muted)] shrink-0">
+                              ({occurrences.length} conversa{occurrences.length > 1 ? 's' : ''})
+                            </span>
+                          )}
                         </button>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="px-2 py-0.5 rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] font-semibold text-[11px] tabular-data">
+                            {count}x
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onQuickCreateFromDemand(label)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:border-[var(--nx-primary)] hover:text-[var(--nx-primary)] text-[11px] font-medium text-[var(--nx-text)] transition-colors"
+                            title="Passar a oferecer este item"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Cadastrar
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="h-1.5 w-full bg-[var(--nx-surface-alt)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[var(--nx-amber)] rounded-full transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
                       </div>
                     </div>
-                    <div className="h-1.5 w-full bg-[var(--nx-surface-alt)] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[var(--nx-amber)] rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+
+                    {/* Conversas registradas onde o cliente pediu este item */}
+                    {isExpanded && (
+                      <div className="px-3 pb-3 pt-2 border-t border-[var(--nx-border)] space-y-2 animate-fade-up">
+                        {occurrences.length === 0 ? (
+                          <div className="text-[11px] text-[var(--nx-subtle)] py-1">
+                            Nenhuma conversa individual vinculada ainda. Próximas solicitações aparecerão aqui com link direto para o chat.
+                          </div>
+                        ) : (
+                          occurrences.map((occ, idx) => (
+                            <div
+                              key={`${occ.customerPhone}-${idx}`}
+                              className="p-2.5 rounded-md bg-[var(--nx-surface)] border border-[var(--nx-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                            >
+                              <div className="min-w-0 space-y-0.5">
+                                <div className="flex items-center gap-2 text-[11px]">
+                                  <span className="font-bold text-[var(--nx-text)]">
+                                    {occ.customerName || `+${occ.customerPhone}`}
+                                  </span>
+                                  <span className="text-[var(--nx-subtle)] tabular-data">
+                                    +{occ.customerPhone}
+                                  </span>
+                                  {occ.requestedAt && (
+                                    <span className="text-[10px] text-[var(--nx-subtle)] tabular-data">
+                                      {formatRelativeTime(occ.requestedAt)}
+                                    </span>
+                                  )}
+                                </div>
+                                {occ.messageSnippet && (
+                                  <p className="text-[11px] text-[var(--nx-muted)] leading-snug">
+                                    "{occ.messageSnippet}"
+                                  </p>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onOpenConversation
+                                    ? onOpenConversation(occ.customerPhone)
+                                    : onNavigateTab('inbox')
+                                }
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-[var(--nx-primary)] bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] text-[11px] font-semibold hover:opacity-90 shrink-0"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Ver conversa
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
