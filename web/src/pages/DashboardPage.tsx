@@ -377,10 +377,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     } catch {}
   }
 
+  function parseModules(raw: any): string[] {
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+
   async function loadTenantData(slug: string) {
     setLoading(true);
     try {
-      const mods: string[] = selectedTenant?.enabledModules || [];
+      const mods: string[] = parseModules(selectedTenant?.enabledModules);
       const [mRes, inboxRes] = await Promise.all([
         apiFetch(`/api/tenants/${slug}/metrics`),
         apiFetch(`/api/tenants/${slug}/inbox`)
@@ -427,7 +440,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   }
 
-  const enabledModules: string[] = selectedTenant?.enabledModules || [];
+  const enabledModules: string[] = parseModules(selectedTenant?.enabledModules);
 
   function toggleSmartChipText(currentText: string, snippet: string): string {
     let next = currentText || '';
@@ -1009,7 +1022,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }
 
   async function handleToggleModuleAdmin(tenant: any, moduleKey: string) {
-    const current: string[] = tenant.enabledModules || [];
+    const current: string[] = parseModules(tenant.enabledModules);
     const updated = current.includes(moduleKey)
       ? current.filter((m) => m !== moduleKey)
       : [...current, moduleKey];
@@ -2909,7 +2922,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </thead>
                 <tbody className="divide-y divide-[var(--nx-border)] text-xs">
                   {tenants.map((t) => {
-                    const mods: string[] = t.enabledModules || [];
+                    const mods: string[] = parseModules(t.enabledModules);
                     return (
                       <tr key={t.id}>
                         <td className="py-3 px-4 font-semibold text-[var(--nx-text)]">{t.name}</td>
