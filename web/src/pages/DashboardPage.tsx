@@ -1021,6 +1021,66 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   }
 
+  async function handleToggleSelfModule(moduleKey: string) {
+    if (!selectedTenant) return;
+    const current = parseModules(selectedTenant.enabledModules);
+    const updated = current.includes(moduleKey)
+      ? current.filter((m) => m !== moduleKey)
+      : [...current, moduleKey];
+
+    try {
+      const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/settings`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          enabledModules: updated
+        })
+      });
+      if (res.tenant) {
+        setSelectedTenant(res.tenant);
+      }
+      await onRefreshSession();
+      await loadTenantData(selectedTenant.slug);
+      showToast(
+        updated.includes(moduleKey)
+          ? `Funcionalidade ativada no seu painel.`
+          : `Funcionalidade ocultada do seu painel.`
+      );
+    } catch (err: any) {
+      showToast(err.message);
+    }
+  }
+
+  async function handleApplyProfilePreset(
+    presetType: 'SERVICES' | 'RETAIL' | 'OFFICE' | 'HYBRID'
+  ) {
+    if (!selectedTenant) return;
+    const presets: Record<string, string[]> = {
+      SERVICES: ['services', 'appointments', 'crm'],
+      RETAIL: ['stock', 'crm'],
+      OFFICE: ['appointments', 'documents', 'crm'],
+      HYBRID: ['stock', 'services', 'appointments', 'documents', 'crm']
+    };
+    const nextModules = presets[presetType] || ['crm'];
+
+    try {
+      const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/settings`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          businessType: presetType,
+          enabledModules: nextModules
+        })
+      });
+      if (res.tenant) {
+        setSelectedTenant(res.tenant);
+      }
+      await onRefreshSession();
+      await loadTenantData(selectedTenant.slug);
+      showToast('Perfil e módulos atualizados com sucesso.');
+    } catch (err: any) {
+      showToast(err.message);
+    }
+  }
+
   async function handleToggleModuleAdmin(tenant: any, moduleKey: string) {
     const current: string[] = parseModules(tenant.enabledModules);
     const updated = current.includes(moduleKey)
@@ -1696,7 +1756,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               }`}
             >
               <Settings className="w-4 h-4" />
-              Expediente & Regras IA
+              Perfil, Módulos & IA
             </button>
 
             {user.role === 'SUPER_ADMIN' && (
@@ -2835,65 +2895,195 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 9: CONFIGURAÇÕES DE EXPEDIENTE & PERSONA */}
+        {/* ABA 9: PERFIL DO NEGÓCIO, MÓDULOS PERSONALIZÁVEIS & REGRAS IA */}
         {activeTab === 'settings' && (
-          <form
-            onSubmit={handleSaveSettings}
-            className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-6 space-y-5 max-w-2xl animate-fade-up"
-          >
-            <div>
-              <h2 className="text-base font-bold text-[var(--nx-text)]">
-                Parâmetros de Atendimento, Regras & Expediente
-              </h2>
-              <p className="text-xs text-[var(--nx-muted)]">
-                Defina como o assistente se apresenta e quais políticas comerciais ele deve aplicar.
-              </p>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-up">
+            {/* Coluna Esquerda: Personalização de Módulos e Perfil */}
+            <div className="lg:col-span-7 space-y-5">
+              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-6 space-y-5">
+                <div>
+                  <h2 className="text-base font-bold text-[var(--nx-text)]">
+                    Personalizar Módulos & Funções do Painel
+                  </h2>
+                  <p className="text-xs text-[var(--nx-muted)]">
+                    Ative ou desative as ferramentas que fazem sentido para a sua operação. O menu lateral é atualizado na hora.
+                  </p>
+                </div>
+
+                {/* Perfis Prontos (Presets em 1 clique) */}
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--nx-subtle)] mb-2">
+                    Aplicar perfil rápido
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { key: 'SERVICES' as const, label: 'Serviços', desc: 'Agenda + Equipe' },
+                      { key: 'RETAIL' as const, label: 'Comércio', desc: 'Catálogo + Estoque' },
+                      { key: 'OFFICE' as const, label: 'Escritório', desc: 'Agenda + Contas' },
+                      { key: 'HYBRID' as const, label: 'Completo', desc: 'Todos os módulos' }
+                    ].map((preset) => {
+                      const active = selectedTenant?.businessType === preset.key;
+                      return (
+                        <button
+                          key={preset.key}
+                          type="button"
+                          onClick={() => handleApplyProfilePreset(preset.key)}
+                          className={`p-2.5 rounded-lg border text-left transition-all ${
+                            active
+                              ? 'border-[var(--nx-primary)] bg-[var(--nx-primary-soft)]'
+                              : 'border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)]'
+                          }`}
+                        >
+                          <div className="text-xs font-bold text-[var(--nx-text)]">{preset.label}</div>
+                          <div className="text-[10px] text-[var(--nx-muted)] mt-0.5">{preset.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Switches Individuais por Módulo */}
+                <div className="space-y-2.5">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--nx-subtle)]">
+                    Funções disponíveis para ativação
+                  </div>
+
+                  {[
+                    {
+                      key: 'services',
+                      title: 'Serviços, Portes & Equipe / Comissões',
+                      desc: 'Libera as abas "Serviços & Portes" (preço/tempo por porte) e "Equipe & Comissões".',
+                      icon: Scissors
+                    },
+                    {
+                      key: 'appointments',
+                      title: 'Agenda, Rastreio OS (4 Etapas) & Retornos',
+                      desc: 'Libera "Agenda & Rastreio OS" (checklist, voucher PDF, aviso WhatsApp) e "Retornos & Recorrência".',
+                      icon: Calendar
+                    },
+                    {
+                      key: 'stock',
+                      title: 'Catálogo de Produtos, Peças & Insumos',
+                      desc: 'Libera "Catálogo & Insumos" com controle de estoque e consulta automática no WhatsApp.',
+                      icon: Package
+                    },
+                    {
+                      key: 'documents',
+                      title: 'Recebimento de Contas, Boletos & Guias',
+                      desc: 'Libera "Contas & Documentos" para triagem de guias, notas fiscais e comprovantes.',
+                      icon: FileText
+                    }
+                  ].map((mod) => {
+                    const isEnabled = enabledModules.includes(mod.key);
+                    const Icon = mod.icon;
+                    return (
+                      <div
+                        key={mod.key}
+                        className={`p-3.5 rounded-lg border transition-colors flex items-center justify-between gap-4 ${
+                          isEnabled
+                            ? 'border-[var(--nx-accent-border)] bg-[var(--nx-accent-bg)]'
+                            : 'border-[var(--nx-border)] bg-[var(--nx-bg)]'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                              isEnabled
+                                ? 'bg-[var(--nx-accent)] text-white'
+                                : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border border-[var(--nx-border)]'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-[var(--nx-text)]">
+                              {mod.title}
+                            </div>
+                            <p className="text-[11px] text-[var(--nx-muted)] mt-0.5 leading-relaxed">
+                              {mod.desc}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSelfModule(mod.key)}
+                          role="switch"
+                          aria-checked={isEnabled}
+                          className={`px-3 py-1.5 rounded-md text-[11px] font-semibold border transition-colors shrink-0 ${
+                            isEnabled
+                              ? 'bg-[var(--nx-accent)] text-white border-[var(--nx-accent)]'
+                              : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border-[var(--nx-border-strong)] hover:text-[var(--nx-text)]'
+                          }`}
+                        >
+                          {isEnabled ? 'Ativado' : 'Ativar'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            <div className="nx-field">
-              <input
-                type="text"
-                placeholder=" "
-                value={attendantName}
-                onChange={(e) => setAttendantName(e.target.value)}
-              />
-              <label>Nome do atendente virtual</label>
-            </div>
+            {/* Coluna Direita: Parâmetros de Atendimento, Regras & Expediente */}
+            <form
+              onSubmit={handleSaveSettings}
+              className="lg:col-span-5 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-6 space-y-5 h-fit"
+            >
+              <div>
+                <h2 className="text-base font-bold text-[var(--nx-text)]">
+                  Expediente & Regras da IA
+                </h2>
+                <p className="text-xs text-[var(--nx-muted)]">
+                  Defina como o assistente se apresenta e quais políticas comerciais ele deve aplicar.
+                </p>
+              </div>
 
-            <div className="nx-field">
-              <input
-                type="text"
-                placeholder=" "
-                value={tone}
-                onChange={(e) => setTone(e.target.value)}
-              />
-              <label>Tom de voz e postura na conversa</label>
-            </div>
+              <div className="nx-field">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={attendantName}
+                  onChange={(e) => setAttendantName(e.target.value)}
+                />
+                <label>Nome do atendente virtual</label>
+              </div>
 
-            <div className="nx-field">
-              <textarea
-                rows={3}
-                placeholder=" "
-                value={deliveryPolicy}
-                onChange={(e) => setDeliveryPolicy(e.target.value)}
-              />
-              <label>Política de agendamento, preparo ou entregas</label>
-            </div>
+              <div className="nx-field">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={tone}
+                  onChange={(e) => setTone(e.target.value)}
+                />
+                <label>Tom de voz e postura na conversa</label>
+              </div>
 
-            <div className="nx-field">
-              <input
-                type="text"
-                placeholder=" "
-                value={paymentMethods}
-                onChange={(e) => setPaymentMethods(e.target.value)}
-              />
-              <label>Meios de pagamento aceitos</label>
-            </div>
+              <div className="nx-field">
+                <textarea
+                  rows={3}
+                  placeholder=" "
+                  value={deliveryPolicy}
+                  onChange={(e) => setDeliveryPolicy(e.target.value)}
+                />
+                <label>Política de agendamento, preparo ou entregas</label>
+              </div>
 
-            <button type="submit" className="nx-btn-primary px-5 py-2.5 text-xs">
-              Salvar configurações operacionais
-            </button>
-          </form>
+              <div className="nx-field">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={paymentMethods}
+                  onChange={(e) => setPaymentMethods(e.target.value)}
+                />
+                <label>Meios de pagamento aceitos</label>
+              </div>
+
+              <button type="submit" className="nx-btn-primary w-full py-2.5 text-xs">
+                Salvar configurações de atendimento
+              </button>
+            </form>
+          </div>
         )}
 
         {/* ABA 10: CONSOLE SUPER ADMIN */}
