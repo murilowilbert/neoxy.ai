@@ -16,7 +16,7 @@ module.exports = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   databaseUrl: process.env.DATABASE_URL,
-  geminiApiKey: process.env.GEMINI_API_KEY,
+  geminiApiKey: process.env.GEMINI_API_KEY || process.env.API_KEY,
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   evolutionApi: {
     baseUrl: process.env.EVOLUTION_API_URL || 'http://localhost:8080',

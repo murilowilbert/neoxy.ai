@@ -161,12 +161,35 @@ class MessageQueueService {
     }
   }
 
+  normalizeMediaPart(m) {
+    if (!m) return null;
+    if (m.inlineData?.data) return m;
+    if (typeof m === 'string' && m.startsWith('data:')) {
+      const match = m.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        return { inlineData: { mimeType: match[1], data: match[2] } };
+      }
+    }
+    if (m.base64) {
+      const clean = String(m.base64).includes(',')
+        ? String(m.base64).split(',')[1]
+        : String(m.base64);
+      return {
+        inlineData: {
+          mimeType: m.mimeType || 'image/jpeg',
+          data: clean
+        }
+      };
+    }
+    return null;
+  }
+
   /**
    * Processa uma mensagem imediatamente para fins de teste ou API síncrona.
    */
   async processQueueItemDirect({ tenant, customerPhone, text, media }) {
-    const queueKey = `direct:${tenant.id}:${customerPhone}`;
-    const mediaItems = media ? (Array.isArray(media) ? media : [media]) : [];
+    const rawList = media ? (Array.isArray(media) ? media : [media]) : [];
+    const mediaItems = rawList.map((m) => this.normalizeMediaPart(m)).filter(Boolean);
 
     const history = await chatSessionService.getRecentHistory(tenant.id, customerPhone, 10);
 
@@ -174,17 +197,25 @@ class MessageQueueService {
       tenantId: tenant.id,
       customerPhone,
       role: 'user',
-      content: text || ''
+      content: text || (mediaItems.length > 0 ? '[Foto enviada pelo cliente]' : ''),
+      mediaType: mediaItems.length > 0 ? 'image' : null
     });
 
     let stockContext = [];
     if (text) {
       stockContext = await stockService.searchProduct(tenant, text);
+    } else if (mediaItems.length > 0) {
+      // Quando o cliente envia apenas foto sem texto, busca amostra do catálogo para a IA cruzar
+      stockContext = await stockService.searchProduct(tenant, 'a');
     }
 
     const aiResult = await aiService.generateResponse({
       tenant,
-      customerText: text,
+      customerText:
+        text ||
+        (mediaItems.length > 0
+          ? 'Identifique o produto ou problema mostrado nesta foto e verifique como podemos ajudar.'
+          : ''),
       chatHistory: history,
       stockContext,
       imageParts: mediaItems
@@ -210,6 +241,8 @@ class MessageQueueService {
 
     return {
       ...aiResult,
+      replyText: aiResult.text,
+      imageAnalyzed: mediaItems.length > 0,
       matchedStockCount: stockContext.length,
       sampleMatchedStock: stockContext.slice(0, 3)
     };

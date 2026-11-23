@@ -298,6 +298,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [deliveryPolicy, setDeliveryPolicy] = useState('');
   const [paymentMethods, setPaymentMethods] = useState('');
   const [simMessage, setSimMessage] = useState('');
+  const [simImage, setSimImage] = useState<string | null>(null);
   const [simResult, setSimResult] = useState<any>(null);
   const [simLoading, setSimLoading] = useState(false);
 
@@ -1240,19 +1241,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   }
 
+  function handleSelectSimImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setSimImage(String(reader.result || ''));
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
   async function handleSimulateChat(e: React.FormEvent) {
     e.preventDefault();
-    if (!simMessage.trim()) return;
+    if (!simMessage.trim() && !simImage) return;
     setSimLoading(true);
     try {
       const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/test-chat`, {
         method: 'POST',
         body: JSON.stringify({
           message: simMessage,
+          media: simImage || undefined,
           customerPhone: '5551988887777'
         })
       });
       setSimResult(res.response);
+      setSimImage(null);
       loadTenantData(selectedTenant.slug);
     } catch (err: any) {
       showToast(err.message);
@@ -2095,18 +2107,52 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   Simulador de Atendimento WhatsApp ({selectedTenant?.name})
                 </h2>
                 <p className="text-xs text-[var(--nx-muted)] mb-4">
-                  Envie uma mensagem para testar como o assistente consulta seus serviços, variações de porte, horários ou produtos.
+                  Envie uma mensagem ou anexe uma foto de produto/peça para testar a identificação visual via Gemini + consulta ao catálogo.
                 </p>
 
+                {simImage && (
+                  <div className="mb-3 flex items-center gap-3 p-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+                    <img
+                      src={simImage}
+                      alt="Prévia da foto"
+                      className="w-12 h-12 rounded object-cover border border-[var(--nx-border)]"
+                    />
+                    <div className="flex-1 text-xs text-[var(--nx-muted)]">
+                      Foto anexada para identificação visual pela IA
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSimImage(null)}
+                      className="p-1 text-[var(--nx-subtle)] hover:text-[var(--nx-error)]"
+                      title="Remover foto"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
                 <form onSubmit={handleSimulateChat} className="flex gap-2 mb-4">
+                  <label
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] cursor-pointer shrink-0 transition-colors"
+                    title="Anexar foto para identificação pela IA"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                    Foto
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSelectSimImage}
+                      className="hidden"
+                    />
+                  </label>
                   <input
                     type="text"
                     value={simMessage}
                     onChange={(e) => setSimMessage(e.target.value)}
                     placeholder={
                       selectedTenant?.businessType === 'SERVICES'
-                        ? 'Ex: Quero agendar um banho e tosa para amanhã às 14h'
-                        : 'Ex: Vocês têm cimento CP-II 50kg em estoque?'
+                        ? 'Ex: Quero agendar um atendimento ou mande uma foto do problema'
+                        : 'Ex: Vocês têm essa peça? (ou anexe uma foto)'
                     }
                     className="flex-1 px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
                   />
@@ -2122,9 +2168,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                 {simResult && (
                   <div className="p-3.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs space-y-2 animate-fade-up">
-                    <div className="font-semibold text-[var(--nx-text)]">Resposta gerada:</div>
-                    <p className="text-[var(--nx-muted)] leading-relaxed">
-                      {simResult.replyText || JSON.stringify(simResult)}
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-[var(--nx-text)]">Resposta gerada:</span>
+                      {simResult.imageAnalyzed && (
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] text-[10px] font-semibold">
+                          Visão Computacional Ativa
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[var(--nx-muted)] leading-relaxed whitespace-pre-line">
+                      {simResult.replyText || simResult.text || JSON.stringify(simResult)}
                     </p>
                   </div>
                 )}

@@ -44,9 +44,10 @@ class WebhookController {
       const customerPhone = remoteJid.replace('@s.whatsapp.net', '').replace(/[^0-9]/g, '');
       if (!customerPhone) return;
 
-      // Extrai texto da mensagem
+      // Extrai texto e mídia (foto) da mensagem
       const messageContent = messageData.message || messageData;
       let text = '';
+      let media = null;
 
       if (messageContent.conversation) {
         text = messageContent.conversation;
@@ -56,11 +57,31 @@ class WebhookController {
         text = messageContent.imageMessage.caption;
       }
 
+      if (messageContent.imageMessage) {
+        const rawBase64 =
+          data?.base64 ||
+          messageData?.base64 ||
+          messageContent.imageMessage?.jpegThumbnail ||
+          null;
+        if (rawBase64) {
+          const cleanBase64 = String(rawBase64).includes(',')
+            ? String(rawBase64).split(',')[1]
+            : String(rawBase64);
+          media = {
+            inlineData: {
+              mimeType: messageContent.imageMessage.mimetype || 'image/jpeg',
+              data: cleanBase64
+            }
+          };
+        }
+      }
+
       // Enfileira com debounce
       await messageQueueService.enqueueMessage({
         tenant,
         customerPhone,
         text,
+        media,
         instanceName: instance
       });
     }
