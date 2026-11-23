@@ -68,20 +68,36 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Scrollbar limpa */
+/* Scrollbar personalizada estilo Neoxy (flutuante e arredondada) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--nx-border-strong) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 9px;
+  height: 9px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--nx-bg);
+  background: transparent;
+  margin: 6px 0;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--nx-border-strong);
-  border-radius: 3px;
+  background-color: var(--nx-border-strong);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--nx-muted);
+  background-color: var(--nx-primary);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Animacoes inspiradas no MedPet */
@@ -600,28 +616,63 @@
 
 .nx-modal-box {
   width: auto;
-  max-width: 100vw;
+  max-width: 96vw;
   display: flex;
   justify-content: center;
   align-items: stretch;
-  max-height: 86svh;
+  max-height: 92svh;
 }
 
 .nx-modal-main {
   background: var(--nx-surface);
   border: 1px solid var(--nx-border-strong);
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  width: 560px;
-  max-width: 92vw;
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  width: 660px;
+  max-width: 94vw;
   flex: none;
   display: flex;
   position: relative;
   z-index: 2;
   flex-direction: column;
   overflow-y: auto;
-  max-height: 86svh;
+  max-height: 92svh;
   animation: nxScaleIn 0.2s ease;
+}
+
+.nx-modal-main--wide {
+  width: 860px;
+  max-width: 95vw;
+}
+
+.nx-modal-main .nx-field {
+  margin-bottom: 11px;
+}
+
+.nx-modal-main .nx-field input,
+.nx-modal-main .nx-field select {
+  height: 46px;
+  padding: 18px 12px 5px;
+  font-size: 13px;
+}
+
+.nx-modal-main .nx-field textarea {
+  padding-top: 24px;
+  min-height: 70px;
+  font-size: 13px;
+}
+
+.nx-modal-main .nx-field label {
+  font-size: 13px;
+}
+
+.nx-modal-main .nx-field input:focus ~ label,
+.nx-modal-main .nx-field input:not(:placeholder-shown) ~ label,
+.nx-modal-main .nx-field select ~ label,
+.nx-modal-main .nx-field textarea:focus ~ label,
+.nx-modal-main .nx-field textarea:not(:placeholder-shown) ~ label {
+  top: 7px;
+  font-size: 10.5px;
 }
 
 .nx-modal-side-panel {

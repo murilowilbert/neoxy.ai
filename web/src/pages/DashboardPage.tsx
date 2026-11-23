@@ -1948,7 +1948,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       </aside>
 
       {/* ÁREA DE TRABALHO PRINCIPAL */}
-      <main className="flex-1 p-5 sm:p-8 overflow-y-auto max-w-6xl">
+      <main className="flex-1 p-5 sm:p-8 overflow-y-auto max-w-7xl">
         {selectedTenant && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-6 border-b border-[var(--nx-border)]">
             <div>
@@ -3775,7 +3775,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           }}
         >
           <div className="nx-modal-box" role="dialog" aria-modal="true">
-            <div className="nx-modal-main p-6 max-h-[90vh] overflow-y-auto">
+            <div className="nx-modal-main nx-modal-main--wide p-5 sm:p-6">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">
                   {editingService ? 'Editar Serviço & Variações' : 'Novo Serviço / Procedimento'}
@@ -4041,7 +4041,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           }}
         >
           <div className="nx-modal-box" role="dialog" aria-modal="true">
-            <div className="nx-modal-main p-6 max-h-[90vh] overflow-y-auto">
+            <div className="nx-modal-main nx-modal-main--wide p-5 sm:p-6">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">
                   {editingAppt ? 'Editar Ordem de Serviço & Vistoria' : 'Novo Agendamento / Ordem de Serviço'}
@@ -4702,11 +4702,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           }}
         >
           <div
-            className="nx-modal-main p-6 max-w-2xl max-h-[90vh] overflow-y-auto"
+            className="nx-modal-main nx-modal-main--wide p-5 sm:p-6"
             role="dialog"
             aria-modal="true"
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3.5">
               <div>
                 <h2 className="text-base font-bold text-[var(--nx-text)]">
                   {editingCatalog ? 'Editar Características do Produto' : 'Novo Produto / Insumo'}
@@ -4724,7 +4724,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleAddCatalog} className="space-y-1">
+            <form onSubmit={handleAddCatalog} className="space-y-0.5">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="nx-field">
                   <input
@@ -4775,7 +4775,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <label>Nome / Descrição do produto *</label>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="nx-field">
                   <input
                     type="text"
@@ -4783,7 +4783,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     value={newCatalog.brand}
                     onChange={(e) => setNewCatalog({ ...newCatalog, brand: e.target.value })}
                   />
-                  <label>Marca / Fabricante (opcional)</label>
+                  <label>Marca (opcional)</label>
                 </div>
                 <div className="nx-field">
                   <input
@@ -4794,9 +4794,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   />
                   <label>Categoria</label>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
                 <div className="nx-field">
                   <input
                     type="number"
