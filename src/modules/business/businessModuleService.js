@@ -1,4 +1,6 @@
 const prisma = require('../../database/prisma');
+const XLSX = require('xlsx');
+const axios = require('axios');
 
 function parseJsonSafe(raw, fallback) {
   if (!raw) return fallback;
@@ -8,6 +10,20 @@ function parseJsonSafe(raw, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function formatCatalogItem(item) {
+  if (!item) return item;
+  return {
+    ...item,
+    mediaGallery: parseJsonSafe(item.mediaGallery, [])
+  };
+}
+
+function toNullableFloat(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
 }
 
 function formatService(s) {
@@ -99,53 +115,270 @@ async function getTenantMetrics(tenantId) {
 }
 
 /**
- * Catalog / Stock CRUD
+ * Catalog / Stock CRUD + Importação de Planilha (CSV/XLSX) + Sincronização PDV
  */
-async function listCatalogItems(tenantId, search = '', limit = 50) {
+async function listCatalogItems(tenantId, search = '', limit = 200) {
   const where = { tenantId };
   if (search) {
     where.OR = [
       { name: { contains: search } },
       { code: { contains: search } },
+      { ean: { contains: search } },
+      { brand: { contains: search } },
       { category: { contains: search } }
     ];
   }
 
-  return prisma.catalogItem.findMany({
+  const list = await prisma.catalogItem.findMany({
     where,
     orderBy: { name: 'asc' },
     take: Number(limit)
   });
+  return list.map(formatCatalogItem);
 }
 
 async function upsertCatalogItem(tenantId, data) {
   const code = String(data.code || `ITEM-${Date.now()}`).trim();
-  return prisma.catalogItem.upsert({
+  const imageUrl = data.imageUrl ? String(data.imageUrl).trim() : null;
+  const videoUrl = data.videoUrl ? String(data.videoUrl).trim() : null;
+  const mediaGalleryJson = Array.isArray(data.mediaGallery)
+    ? JSON.stringify(data.mediaGallery.filter(Boolean))
+    : typeof data.mediaGallery === 'string' && data.mediaGallery.trim()
+    ? data.mediaGallery
+    : null;
+
+  const payload = {
+    code,
+    ean: data.ean ? String(data.ean).trim() : null,
+    name: String(data.name || '').trim(),
+    description: data.description ? String(data.description).trim() : null,
+    unit: data.unit ? String(data.unit).trim() : 'un',
+    price: Number(String(data.price ?? 0).replace(',', '.')) || 0,
+    stockQty: Number(String(data.stockQty ?? 0).replace(',', '.')) || 0,
+    category: data.category ? String(data.category).trim() : 'Geral',
+    brand: data.brand ? String(data.brand).trim() : null,
+    weightKg: toNullableFloat(data.weightKg),
+    lengthCm: toNullableFloat(data.lengthCm),
+    widthCm: toNullableFloat(data.widthCm),
+    heightCm: toNullableFloat(data.heightCm),
+    tags: data.tags ? String(data.tags).trim() : null,
+    imageUrl,
+    videoUrl,
+    mediaGallery: mediaGalleryJson,
+    hasPhoto: Boolean(imageUrl || videoUrl)
+  };
+
+  if (data.id) {
+    const updated = await prisma.catalogItem.update({
+      where: { id: data.id },
+      data: payload
+    });
+    return formatCatalogItem(updated);
+  }
+
+  const saved = await prisma.catalogItem.upsert({
     where: {
       tenantId_code: {
         tenantId,
         code
       }
     },
-    update: {
-      name: data.name,
-      description: data.description || null,
-      price: Number(data.price || 0),
-      stockQty: Number(data.stockQty || 0),
-      category: data.category || 'Geral',
-      brand: data.brand || null
-    },
+    update: payload,
     create: {
       tenantId,
-      code,
-      name: data.name,
-      description: data.description || null,
-      price: Number(data.price || 0),
-      stockQty: Number(data.stockQty || 0),
-      category: data.category || 'Geral',
-      brand: data.brand || null
+      ...payload
     }
   });
+  return formatCatalogItem(saved);
+}
+
+function normalizeImportedRow(rawRow, idx) {
+  const map = {};
+  for (const [k, v] of Object.entries(rawRow || {})) {
+    const key = String(k)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+    map[key] = v;
+  }
+
+  const name =
+    map.nome ||
+    map.produto ||
+    map.descricao ||
+    map.item ||
+    map.name ||
+    map.title ||
+    '';
+  if (!String(name).trim()) return null;
+
+  const code =
+    map.sku ||
+    map.codigo ||
+    map.cod ||
+    map.code ||
+    map.codigointerno ||
+    map.ref ||
+    `IMP-${Date.now()}-${idx}`;
+
+  return {
+    code: String(code).trim(),
+    ean: map.ean || map.gtin || map.codbarras || map.codigodebarras || null,
+    name: String(name).trim(),
+    unit: map.unidade || map.un || map.unit || 'un',
+    price: map.preco || map.valor || map.precovenda || map.price || 0,
+    stockQty: map.estoque || map.qtd || map.quantidade || map.saldo || map.stockqty || 0,
+    category: map.categoria || map.grupo || map.departamento || map.category || 'Geral',
+    brand: map.marca || map.fabricante || map.brand || null,
+    weightKg: map.peso || map.pesokg || map.weightkg || null,
+    lengthCm: map.comprimento || map.lengthcm || null,
+    widthCm: map.largura || map.widthcm || null,
+    heightCm: map.altura || map.heightcm || null,
+    imageUrl: map.imagem || map.foto || map.imageurl || map.urlimagem || null,
+    videoUrl: map.video || map.videourl || map.urlvideo || null,
+    description: map.observacao || map.detalhes || map.description || null
+  };
+}
+
+async function importCatalogItems(tenantId, { fileName = '', fileBase64 = '', rows = null }) {
+  let rawRows = Array.isArray(rows) ? rows : [];
+
+  if (fileBase64) {
+    const cleanBase64 = String(fileBase64).includes(',')
+      ? String(fileBase64).split(',')[1]
+      : String(fileBase64);
+    const buffer = Buffer.from(cleanBase64, 'base64');
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const firstSheet = workbook.SheetNames[0];
+    if (firstSheet) {
+      rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: '' });
+    }
+  }
+
+  let imported = 0;
+  let skipped = 0;
+  const savedItems = [];
+
+  for (let i = 0; i < rawRows.length; i++) {
+    const normalized = normalizeImportedRow(rawRows[i], i + 1);
+    if (!normalized) {
+      skipped++;
+      continue;
+    }
+    const item = await upsertCatalogItem(tenantId, normalized);
+    savedItems.push(item);
+    imported++;
+  }
+
+  return {
+    fileName,
+    totalRows: rawRows.length,
+    imported,
+    skipped,
+    items: savedItems
+  };
+}
+
+async function syncCatalogPrices(tenantId, { providerUrl, apiKey, items } = {}) {
+  let incomingRows = Array.isArray(items) ? items : [];
+
+  // 1. Se foi informada uma URL de provedor externo (ERP / PDV / Planilha CSV ou JSON), busca de lá
+  if (providerUrl && String(providerUrl).trim()) {
+    const headers = {};
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      headers['x-api-key'] = apiKey;
+    }
+    const resp = await axios.get(String(providerUrl).trim(), {
+      headers,
+      timeout: 12000,
+      responseType: 'arraybuffer'
+    });
+
+    const contentType = String(resp.headers['content-type'] || '').toLowerCase();
+    const text = Buffer.from(resp.data).toString('utf8').trim();
+
+    if (contentType.includes('json') || text.startsWith('{') || text.startsWith('[')) {
+      const parsed = JSON.parse(text);
+      incomingRows = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.items)
+        ? parsed.items
+        : Array.isArray(parsed.products)
+        ? parsed.products
+        : Array.isArray(parsed.data)
+        ? parsed.data
+        : [];
+    } else {
+      const wb = XLSX.read(Buffer.from(resp.data), { type: 'buffer' });
+      const firstSheet = wb.SheetNames[0];
+      if (firstSheet) {
+        incomingRows = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { defval: '' });
+      }
+    }
+  }
+
+  // 2. Se vieram itens (via PDV externo ou nossa API push), atualiza preços e estoque
+  if (incomingRows.length > 0) {
+    let updatedCount = 0;
+    let createdCount = 0;
+
+    for (let i = 0; i < incomingRows.length; i++) {
+      const norm = normalizeImportedRow(incomingRows[i], i + 1);
+      if (!norm) continue;
+
+      const existing = await prisma.catalogItem.findFirst({
+        where: {
+          tenantId,
+          OR: [
+            { code: norm.code },
+            ...(norm.ean ? [{ ean: String(norm.ean) }] : [])
+          ]
+        }
+      });
+
+      if (existing) {
+        await prisma.catalogItem.update({
+          where: { id: existing.id },
+          data: {
+            price: Number(String(norm.price).replace(',', '.')) || existing.price,
+            stockQty:
+              norm.stockQty !== undefined && norm.stockQty !== ''
+                ? Number(String(norm.stockQty).replace(',', '.'))
+                : existing.stockQty,
+            name: norm.name || existing.name,
+            ean: norm.ean ? String(norm.ean) : existing.ean,
+            brand: norm.brand || existing.brand,
+            category: norm.category || existing.category
+          }
+        });
+        updatedCount++;
+      } else {
+        await upsertCatalogItem(tenantId, norm);
+        createdCount++;
+      }
+    }
+
+    return {
+      source: providerUrl || 'api-push',
+      updatedCount,
+      createdCount,
+      syncedAt: new Date().toISOString()
+    };
+  }
+
+  // 3. Se nenhuma URL externa foi configurada ainda, verifica o catálogo atual e retorna diagnóstico
+  const existingCount = await prisma.catalogItem.count({ where: { tenantId } });
+  return {
+    source: 'local-check',
+    updatedCount: 0,
+    createdCount: 0,
+    existingCount,
+    syncedAt: new Date().toISOString(),
+    message:
+      'Catálogo verificado. Configure a URL do seu provedor PDV/ERP ou envie via API POST /api/v1/tenants/:slug/catalog/sync para atualizar preços automaticamente.'
+  };
 }
 
 async function deleteCatalogItem(tenantId, itemId) {
@@ -502,6 +735,8 @@ module.exports = {
   getTenantMetrics,
   listCatalogItems,
   upsertCatalogItem,
+  importCatalogItems,
+  syncCatalogPrices,
   deleteCatalogItem,
   listProfessionals,
   createOrUpdateProfessional,

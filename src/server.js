@@ -265,6 +265,73 @@ app.post('/api/tenants/:slug/catalog', requireAuth, requireTenantAccess, require
   }
 });
 
+// Upload de Planilha de Estoque (CSV / XLSX de outro sistema / PDV)
+app.post('/api/tenants/:slug/catalog/import', requireAuth, requireTenantAccess, requireModule('stock'), async (req, res) => {
+  try {
+    const result = await businessModuleService.importCatalogItems(req.tenant.id, req.body);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Botão "Atualizar Preços" (Puxa de provedor PDV / ERP / Planilha externa configurada)
+app.post('/api/tenants/:slug/catalog/sync-prices', requireAuth, requireTenantAccess, requireModule('stock'), async (req, res) => {
+  try {
+    const currentSettings = req.tenant.settings || {};
+    const savedPdv = currentSettings.pdvSync || {};
+    const providerUrl = req.body.providerUrl !== undefined ? req.body.providerUrl : savedPdv.providerUrl;
+    const apiKey = req.body.apiKey !== undefined ? req.body.apiKey : savedPdv.apiKey;
+
+    if (req.body.saveConfig) {
+      await tenantService.updateTenantSettings(req.params.slug, {
+        ...currentSettings,
+        pdvSync: {
+          ...savedPdv,
+          providerUrl: providerUrl || '',
+          apiKey: apiKey || '',
+          lastSyncedAt: new Date().toISOString()
+        }
+      });
+    }
+
+    const result = await businessModuleService.syncCatalogPrices(req.tenant.id, {
+      providerUrl,
+      apiKey,
+      items: req.body.items
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// API Própria Neoxy v1 para PDVs / ERPs externos empurrarem atualizações de preço e estoque
+app.post('/api/v1/tenants/:slug/catalog/sync', async (req, res) => {
+  try {
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    if (!tenant) {
+      return res.status(404).json({ success: false, error: 'Estabelecimento não encontrado.' });
+    }
+    const providedKey = req.headers['x-api-key'] || req.query.apiKey || '';
+    const expectedKey =
+      tenant.parsedSettings?.pdvSync?.apiKey ||
+      process.env.NEOXY_WEBHOOK_SECRET ||
+      'neoxy-super-secret';
+
+    if (providedKey !== expectedKey) {
+      return res.status(401).json({ success: false, error: 'Chave x-api-key inválida para sincronização PDV.' });
+    }
+
+    const result = await businessModuleService.syncCatalogPrices(tenant.id, {
+      items: Array.isArray(req.body) ? req.body : req.body.items || []
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 app.delete('/api/tenants/:slug/catalog/:itemId', requireAuth, requireTenantAccess, requireModule('stock'), async (req, res) => {
   try {
     await businessModuleService.deleteCatalogItem(req.tenant.id, req.params.itemId);

@@ -30,7 +30,12 @@ import {
   Users,
   Repeat,
   ClipboardList,
-  Bell
+  Bell,
+  LayoutGrid,
+  List,
+  Upload,
+  Video,
+  Image as ImageIcon
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
@@ -240,15 +245,42 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     item: any;
   } | null>(null);
 
-  // Formulários de Catálogo e Documentos
+  // Visualização Lista / Grade para Produtos e Serviços
+  const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid'>('list');
+  const [serviceViewMode, setServiceViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Formulários de Catálogo (Criar / Editar com todas características opcionais)
   const [catModalOpen, setCatModalOpen] = useState(false);
+  const [editingCatalog, setEditingCatalog] = useState<any | null>(null);
   const [newCatalog, setNewCatalog] = useState({
     code: '',
+    ean: '',
     name: '',
+    unit: 'un',
+    brand: '',
+    category: 'Insumos & Produtos',
     price: '',
     stockQty: '',
-    category: 'Insumos & Produtos'
+    weightKg: '',
+    lengthCm: '',
+    widthCm: '',
+    heightCm: '',
+    imageUrl: '',
+    videoUrl: '',
+    description: ''
   });
+
+  // Upload de Planilha de Estoque (CSV / XLSX)
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<any | null>(null);
+
+  // Sincronização de Preços / API PDV Externo
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [pdvProviderUrl, setPdvProviderUrl] = useState('');
+  const [pdvApiKey, setPdvApiKey] = useState('');
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncResult, setSyncResult] = useState<any | null>(null);
 
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [newDoc, setNewDoc] = useState({
@@ -340,6 +372,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       setTone(s.persona?.tone || 'humanizado, prestativo e objetivo');
       setDeliveryPolicy(s.rules?.deliveryPolicy || '');
       setPaymentMethods(s.rules?.paymentMethods || '');
+      setPdvProviderUrl(s.pdvSync?.providerUrl || '');
+      setPdvApiKey(s.pdvSync?.apiKey || '');
     }
   }, [selectedTenant?.slug]);
 
@@ -929,19 +963,123 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   }
 
+  function openCreateCatalog() {
+    setEditingCatalog(null);
+    setNewCatalog({
+      code: '',
+      ean: '',
+      name: '',
+      unit: 'un',
+      brand: '',
+      category: 'Insumos & Produtos',
+      price: '',
+      stockQty: '',
+      weightKg: '',
+      lengthCm: '',
+      widthCm: '',
+      heightCm: '',
+      imageUrl: '',
+      videoUrl: '',
+      description: ''
+    });
+    setCatModalOpen(true);
+  }
+
+  function openEditCatalog(item: any) {
+    setEditingCatalog(item);
+    setNewCatalog({
+      code: item.code || '',
+      ean: item.ean || '',
+      name: item.name || '',
+      unit: item.unit || 'un',
+      brand: item.brand || '',
+      category: item.category || 'Geral',
+      price: item.price !== undefined && item.price !== null ? String(item.price) : '',
+      stockQty: item.stockQty !== undefined && item.stockQty !== null ? String(item.stockQty) : '',
+      weightKg: item.weightKg !== undefined && item.weightKg !== null ? String(item.weightKg) : '',
+      lengthCm: item.lengthCm !== undefined && item.lengthCm !== null ? String(item.lengthCm) : '',
+      widthCm: item.widthCm !== undefined && item.widthCm !== null ? String(item.widthCm) : '',
+      heightCm: item.heightCm !== undefined && item.heightCm !== null ? String(item.heightCm) : '',
+      imageUrl: item.imageUrl || '',
+      videoUrl: item.videoUrl || '',
+      description: item.description || ''
+    });
+    setCatModalOpen(true);
+  }
+
   async function handleAddCatalog(e: React.FormEvent) {
     e.preventDefault();
     try {
       await apiFetch(`/api/tenants/${selectedTenant.slug}/catalog`, {
         method: 'POST',
-        body: JSON.stringify(newCatalog)
+        body: JSON.stringify({
+          id: editingCatalog?.id,
+          ...newCatalog
+        })
       });
-      setNewCatalog({ code: '', name: '', price: '', stockQty: '', category: 'Insumos & Produtos' });
       setCatModalOpen(false);
-      showToast('Item salvo no estoque.');
+      setEditingCatalog(null);
+      showToast(editingCatalog ? 'Produto atualizado com sucesso.' : 'Produto cadastrado no estoque.');
       loadTenantData(selectedTenant.slug);
     } catch (err: any) {
       showToast(err.message);
+    }
+  }
+
+  async function handleImportSpreadsheet(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportLoading(true);
+    setImportResult(null);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Falha ao ler o arquivo selecionado.'));
+        reader.readAsDataURL(file);
+      });
+      const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/catalog/import`, {
+        method: 'POST',
+        body: JSON.stringify({
+          fileName: file.name,
+          fileBase64: base64
+        })
+      });
+      setImportResult(res);
+      showToast(`Importação concluída: ${res.imported} itens atualizados/criados.`);
+      loadTenantData(selectedTenant.slug);
+    } catch (err: any) {
+      showToast(`Erro na importação: ${err.message}`);
+    } finally {
+      setImportLoading(false);
+      e.target.value = '';
+    }
+  }
+
+  async function handleSyncPrices(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setSyncLoading(true);
+    setSyncResult(null);
+    try {
+      const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/catalog/sync-prices`, {
+        method: 'POST',
+        body: JSON.stringify({
+          providerUrl: pdvProviderUrl,
+          apiKey: pdvApiKey,
+          saveConfig: true
+        })
+      });
+      setSyncResult(res);
+      showToast(
+        res.updatedCount || res.createdCount
+          ? `Preços sincronizados: ${res.updatedCount} atualizados, ${res.createdCount} novos.`
+          : res.message || 'Sincronização concluída.'
+      );
+      loadTenantData(selectedTenant.slug);
+    } catch (err: any) {
+      showToast(`Erro ao sincronizar preços: ${err.message}`);
+    } finally {
+      setSyncLoading(false);
     }
   }
 
@@ -1189,11 +1327,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const filteredCatalog = [...catalog]
     .filter((item) => {
+      if (filterBy !== 'all' && (item.category || 'Geral') !== filterBy) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
           item.name?.toLowerCase().includes(q) ||
           item.code?.toLowerCase().includes(q) ||
+          item.ean?.toLowerCase().includes(q) ||
+          item.brand?.toLowerCase().includes(q) ||
           item.category?.toLowerCase().includes(q)
         );
       }
@@ -1207,6 +1348,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     });
 
   const serviceCategories = Array.from(new Set(services.map((s) => s.category || 'Serviços')));
+  const catalogCategories = Array.from(new Set(catalog.map((c) => c.category || 'Geral')));
 
   // Totais da Equipe & Comissões
   const totalTeamRevenue = professionals.reduce((acc, p) => acc + Number(p.totalRevenue || 0), 0);
@@ -2284,134 +2426,255 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {/* ABA 3: SERVIÇOS, VARIAÇÕES POR PORTE & CICLO DE RETORNO (FEATURES 2 & 4) */}
         {activeTab === 'services' && (
-          <div className="space-y-6 animate-fade-up">
+          <div className="space-y-5 animate-fade-up">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">
-                  Grade de Serviços, Tabela por Porte & Ciclo de Retorno
+                  Grade de Serviços, Tabela por Porte & Mídia
                 </h2>
                 <p className="text-xs text-[var(--nx-muted)]">
-                  Configure preços e tempos por porte/complexidade, instruções de preparo e o ciclo de recorrência automática.
+                  Configure preços por porte, fotos/vídeos para o bot enviar no WhatsApp e o ciclo de recorrência.
                 </p>
               </div>
 
-              {renderMedPetToolbar({
-                searchPlaceholder: 'Buscar serviço, categoria, preparo...',
-                filterOptions: serviceCategories.map((c) => ({ key: c, label: c })),
-                primaryButtonLabel: 'Novo Serviço',
-                onPrimaryClick: openCreateService
-              })}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex rounded-md border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-surface)]">
+                  <button
+                    type="button"
+                    onClick={() => setServiceViewMode('list')}
+                    className={`p-1.5 rounded transition-colors ${
+                      serviceViewMode === 'list'
+                        ? 'bg-[var(--nx-primary)] text-white'
+                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                    }`}
+                    title="Visualizar em linhas (resumido)"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setServiceViewMode('grid')}
+                    className={`p-1.5 rounded transition-colors ${
+                      serviceViewMode === 'grid'
+                        ? 'bg-[var(--nx-primary)] text-white'
+                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                    }`}
+                    title="Visualizar em grade (com fotos)"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {renderMedPetToolbar({
+                  searchPlaceholder: 'Buscar serviço, categoria, SKU...',
+                  filterOptions: serviceCategories.map((c) => ({ key: c, label: c })),
+                  primaryButtonLabel: 'Novo Serviço',
+                  onPrimaryClick: openCreateService
+                })}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredServices.map((srv) => {
-                const srvVariants: ServiceVariant[] = Array.isArray(srv.variants)
-                  ? srv.variants
-                  : [];
+            {serviceViewMode === 'list' ? (
+              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] text-xs font-semibold text-[var(--nx-muted)]">
+                      <th className="py-3 px-4">SKU / Cód.</th>
+                      <th className="py-3 px-4">Serviço / Procedimento</th>
+                      <th className="py-3 px-4">Categoria</th>
+                      <th className="py-3 px-4">Mídia Bot</th>
+                      <th className="py-3 px-4">Base (R$ / Tempo)</th>
+                      <th className="py-3 px-4 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--nx-border)] text-xs">
+                    {filteredServices.map((srv) => (
+                      <tr key={srv.id} className="hover:bg-[var(--nx-bg)]">
+                        <td className="py-3 px-4 text-[var(--nx-muted)] tabular-data">
+                          {srv.sku || '-'}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-[var(--nx-text)]">{srv.name}</div>
+                          {srv.brand && (
+                            <div className="text-[11px] text-[var(--nx-subtle)]">{srv.brand}</div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-[var(--nx-muted)]">{srv.category || 'Serviços'}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5">
+                            {srv.imageUrl && (
+                              <span className="px-1.5 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] text-[10px] font-medium">
+                                Foto
+                              </span>
+                            )}
+                            {srv.videoUrl && (
+                              <span className="px-1.5 py-0.5 rounded bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] text-[10px] font-medium">
+                                Vídeo
+                              </span>
+                            )}
+                            {!srv.imageUrl && !srv.videoUrl && (
+                              <span className="text-[var(--nx-subtle)]">-</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-semibold text-[var(--nx-text)] tabular-data">
+                          R$ {Number(srv.price).toFixed(2)} / {srv.durationMinutes}m
+                        </td>
+                        <td className="py-3 px-4 text-right space-x-2 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => openEditService(srv)}
+                            className="p-1.5 rounded text-[var(--nx-muted)] hover:text-[var(--nx-primary)] transition-colors"
+                            title="Editar características do serviço"
+                          >
+                            <Edit3 className="w-4 h-4 inline" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget({ type: 'service', item: srv })}
+                            className="p-1.5 rounded text-[var(--nx-subtle)] hover:text-[var(--nx-error)] transition-colors"
+                            title="Excluir serviço"
+                          >
+                            <Trash2 className="w-4 h-4 inline" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredServices.map((srv) => {
+                  const srvVariants: ServiceVariant[] = Array.isArray(srv.variants)
+                    ? srv.variants
+                    : [];
 
-                return (
-                  <div
-                    key={srv.id}
-                    className="nx-card-interactive flex flex-col justify-between overflow-hidden animate-fade-up"
-                  >
-                    <div className="p-5">
-                      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)]">
-                            ● Ativo
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]">
-                            {srv.category || 'Serviços'}
-                          </span>
-                          {srv.returnCycleDays && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] tabular-data">
-                              Retorno: {srv.returnCycleDays} dias
+                  return (
+                    <div
+                      key={srv.id}
+                      className="nx-card-interactive flex flex-col justify-between overflow-hidden animate-fade-up"
+                    >
+                      {srv.imageUrl && (
+                        <div className="relative h-40 bg-[var(--nx-bg)] border-b border-[var(--nx-border)] overflow-hidden">
+                          <img
+                            src={srv.imageUrl}
+                            alt={srv.name}
+                            className="w-full h-full object-cover"
+                          />
+                          {srv.videoUrl && (
+                            <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/70 text-white text-[10px] font-semibold">
+                              <Video className="w-3 h-3" />
+                              Vídeo Bot
                             </span>
                           )}
                         </div>
-
-                        {enabledModules.includes('appointments') && (
-                          <button
-                            type="button"
-                            onClick={() => openCreateAppt({ serviceId: srv.id })}
-                            className="nx-icon-btn-pill nx-icon-btn-pill--blue"
-                          >
-                            <Calendar className="w-3.5 h-3.5" />
-                            <span className="nx-icon-btn-pill-text">Agendar este</span>
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="flex items-baseline justify-between gap-4 mb-3">
-                        <h3 className="text-base font-bold text-[var(--nx-text)]">{srv.name}</h3>
-                        <div className="text-right shrink-0">
-                          <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
-                            R$ {Number(srv.price).toFixed(2)}
-                          </span>
-                          <span className="block text-[10px] text-[var(--nx-subtle)] tabular-data">
-                            Base: {srv.durationMinutes} min
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Tabela de Preço e Tempo por Porte / Complexidade (Feature 2) */}
-                      {srvVariants.length > 0 && (
-                        <div className="mb-3 p-2.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)]">
-                          <div className="text-[10px] font-semibold uppercase text-[var(--nx-subtle)] mb-1.5">
-                            Variações de Porte / Complexidade (Clique para agendar)
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                            {srvVariants.map((v, i) => (
-                              <button
-                                key={i}
-                                type="button"
-                                onClick={() =>
-                                  openCreateAppt({ serviceId: srv.id, variant: v })
-                                }
-                                className="p-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:border-[var(--nx-primary)] hover:bg-[var(--nx-primary-soft)] text-left transition-colors"
-                              >
-                                <div className="text-[11px] font-semibold text-[var(--nx-text)] truncate">
-                                  {v.label}
-                                </div>
-                                <div className="text-[11px] font-bold text-[var(--nx-primary)] tabular-data mt-0.5">
-                                  R$ {Number(v.price).toFixed(2)}
-                                </div>
-                                <div className="text-[10px] text-[var(--nx-subtle)] tabular-data">
-                                  {v.durationMinutes} min
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
                       )}
+                      <div className="p-5">
+                        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)]">
+                              ● Ativo
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]">
+                              {srv.category || 'Serviços'}
+                            </span>
+                            {srv.returnCycleDays && (
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] tabular-data">
+                                Retorno: {srv.returnCycleDays} dias
+                              </span>
+                            )}
+                          </div>
 
-                      <p className="text-xs text-[var(--nx-muted)] leading-relaxed border-t border-[var(--nx-border)] pt-2.5">
-                        {srv.description || 'Nenhuma recomendação pré-atendimento cadastrada.'}
-                      </p>
-                    </div>
+                          {enabledModules.includes('appointments') && (
+                            <button
+                              type="button"
+                              onClick={() => openCreateAppt({ serviceId: srv.id })}
+                              className="nx-icon-btn-pill nx-icon-btn-pill--blue"
+                            >
+                              <Calendar className="w-3.5 h-3.5" />
+                              <span className="nx-icon-btn-pill-text">Agendar este</span>
+                            </button>
+                          )}
+                        </div>
 
-                    <div className="grid grid-cols-2 divide-x divide-[var(--nx-border)] border-t border-[var(--nx-border)] bg-[var(--nx-bg)] text-xs font-medium">
-                      <button
-                        type="button"
-                        onClick={() => openEditService(srv)}
-                        className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        Editar Portes & Preparo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget({ type: 'service', item: srv })}
-                        className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-error)] hover:bg-[var(--nx-error-bg)] transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Excluir
-                      </button>
+                        <div className="flex items-baseline justify-between gap-4 mb-2">
+                          <div>
+                            <h3 className="text-base font-bold text-[var(--nx-text)]">{srv.name}</h3>
+                            {(srv.sku || srv.brand) && (
+                              <div className="text-[11px] text-[var(--nx-subtle)] mt-0.5">
+                                {[srv.sku, srv.brand, srv.unit].filter(Boolean).join(' / ')}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
+                              R$ {Number(srv.price).toFixed(2)}
+                            </span>
+                            <span className="block text-[10px] text-[var(--nx-subtle)] tabular-data">
+                              Base: {srv.durationMinutes} min
+                            </span>
+                          </div>
+                        </div>
+
+                        {srvVariants.length > 0 && (
+                          <div className="mb-3 p-2.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+                            <div className="text-[10px] font-semibold uppercase text-[var(--nx-subtle)] mb-1.5">
+                              Variações de Porte / Complexidade (Clique para agendar)
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                              {srvVariants.map((v, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() =>
+                                    openCreateAppt({ serviceId: srv.id, variant: v })
+                                  }
+                                  className="p-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:border-[var(--nx-primary)] hover:bg-[var(--nx-primary-soft)] text-left transition-colors"
+                                >
+                                  <div className="text-[11px] font-semibold text-[var(--nx-text)] truncate">
+                                    {v.label}
+                                  </div>
+                                  <div className="text-[11px] font-bold text-[var(--nx-primary)] tabular-data mt-0.5">
+                                    R$ {Number(v.price).toFixed(2)}
+                                  </div>
+                                  <div className="text-[10px] text-[var(--nx-subtle)] tabular-data">
+                                    {v.durationMinutes} min
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-[var(--nx-muted)] leading-relaxed border-t border-[var(--nx-border)] pt-2.5">
+                          {srv.description || 'Nenhuma recomendação pré-atendimento cadastrada.'}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 divide-x divide-[var(--nx-border)] border-t border-[var(--nx-border)] bg-[var(--nx-bg)] text-xs font-medium">
+                        <button
+                          type="button"
+                          onClick={() => openEditService(srv)}
+                          className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          Editar Características & Portes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget({ type: 'service', item: srv })}
+                          className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-error)] hover:bg-[var(--nx-error-bg)] transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Excluir
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -2668,64 +2931,254 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 6: CATÁLOGO DE PRODUTOS & INSUMOS */}
+        {/* ABA 6: CATÁLOGO DE PRODUTOS & INSUMOS (LISTA / GRADE + IMPORTAÇÃO + API PDV) */}
         {activeTab === 'catalog' && (
-          <div className="space-y-6 animate-fade-up">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="space-y-5 animate-fade-up">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">
                   Catálogo de Produtos, Peças & Insumos
                 </h2>
                 <p className="text-xs text-[var(--nx-muted)]">
-                  Itens consultados em tempo real para resposta de orçamento e disponibilidade no WhatsApp.
+                  Alterne entre lista resumida ou grade com fotos/vídeos enviados pelo bot no WhatsApp, importe planilhas ou sincronize preços com seu PDV.
                 </p>
               </div>
 
-              {renderMedPetToolbar({
-                searchPlaceholder: 'Buscar por código SKU, produto, categoria...',
-                primaryButtonLabel: 'Novo Produto',
-                onPrimaryClick: () => setCatModalOpen(true)
-              })}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Toggle Lista / Grade */}
+                <div className="flex rounded-md border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-surface)]">
+                  <button
+                    type="button"
+                    onClick={() => setCatalogViewMode('list')}
+                    className={`p-1.5 rounded transition-colors ${
+                      catalogViewMode === 'list'
+                        ? 'bg-[var(--nx-primary)] text-white'
+                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                    }`}
+                    title="Visualizar em linhas (resumido)"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCatalogViewMode('grid')}
+                    className={`p-1.5 rounded transition-colors ${
+                      catalogViewMode === 'grid'
+                        ? 'bg-[var(--nx-primary)] text-white'
+                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                    }`}
+                    title="Visualizar em grade (com fotos e detalhes)"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Upload de Planilha CSV/XLSX */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportResult(null);
+                    setImportModalOpen(true);
+                  }}
+                  className="nx-btn-sort"
+                  title="Importar estoque via planilha CSV ou Excel"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Importar Planilha
+                </button>
+
+                {/* Botão Atualizar Preços (PDV / API Própria) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSyncResult(null);
+                    setSyncModalOpen(true);
+                  }}
+                  className="nx-btn-sort"
+                  title="Sincronizar preços com provedor externo ou API PDV"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncLoading ? 'animate-spin' : ''}`} />
+                  Atualizar Preços
+                </button>
+
+                {renderMedPetToolbar({
+                  searchPlaceholder: 'Buscar SKU, EAN, produto, marca...',
+                  filterOptions: catalogCategories.map((c) => ({ key: c, label: c })),
+                  primaryButtonLabel: 'Novo Produto',
+                  onPrimaryClick: openCreateCatalog
+                })}
+              </div>
             </div>
 
-            <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] text-xs font-semibold text-[var(--nx-muted)]">
-                    <th className="py-3 px-4">Código SKU</th>
-                    <th className="py-3 px-4">Descrição do Item</th>
-                    <th className="py-3 px-4">Categoria</th>
-                    <th className="py-3 px-4">Preço Unit.</th>
-                    <th className="py-3 px-4">Estoque</th>
-                    <th className="py-3 px-4 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--nx-border)] text-xs">
-                  {filteredCatalog.map((item) => (
-                    <tr key={item.id} className="hover:bg-[var(--nx-bg)]">
-                      <td className="py-3 px-4 text-[var(--nx-muted)] tabular-data font-medium">
-                        {item.code}
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-[var(--nx-text)]">{item.name}</td>
-                      <td className="py-3 px-4 text-[var(--nx-muted)]">{item.category}</td>
-                      <td className="py-3 px-4 font-semibold text-[var(--nx-text)] tabular-data">
-                        R$ {Number(item.price).toFixed(2)}
-                      </td>
-                      <td className="py-3 px-4 tabular-data">{item.stockQty} un.</td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => setDeleteTarget({ type: 'catalog', item })}
-                          className="text-[var(--nx-subtle)] hover:text-[var(--nx-error)] transition-colors"
-                          title="Remover item"
-                        >
-                          <Trash2 className="w-4 h-4 inline" />
-                        </button>
-                      </td>
+            {catalogViewMode === 'list' ? (
+              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] text-xs font-semibold text-[var(--nx-muted)]">
+                      <th className="py-3 px-4">SKU / EAN</th>
+                      <th className="py-3 px-4">Descrição do Item</th>
+                      <th className="py-3 px-4">Categoria</th>
+                      <th className="py-3 px-4">Mídia Bot</th>
+                      <th className="py-3 px-4">Preço Unit.</th>
+                      <th className="py-3 px-4">Estoque</th>
+                      <th className="py-3 px-4 text-right">Ações</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--nx-border)] text-xs">
+                    {filteredCatalog.map((item) => (
+                      <tr key={item.id} className="hover:bg-[var(--nx-bg)]">
+                        <td className="py-3 px-4 text-[var(--nx-muted)] tabular-data">
+                          <div className="font-semibold text-[var(--nx-text)]">{item.code}</div>
+                          {item.ean && (
+                            <div className="text-[10px] text-[var(--nx-subtle)]">EAN: {item.ean}</div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-[var(--nx-text)]">{item.name}</div>
+                          {item.brand && (
+                            <div className="text-[11px] text-[var(--nx-subtle)]">Marca: {item.brand}</div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-[var(--nx-muted)]">{item.category}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1">
+                            {item.imageUrl && (
+                              <span className="px-1.5 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] text-[10px] font-medium">
+                                Foto
+                              </span>
+                            )}
+                            {item.videoUrl && (
+                              <span className="px-1.5 py-0.5 rounded bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] text-[10px] font-medium">
+                                Vídeo
+                              </span>
+                            )}
+                            {!item.imageUrl && !item.videoUrl && (
+                              <span className="text-[var(--nx-subtle)]">-</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-semibold text-[var(--nx-text)] tabular-data">
+                          R$ {Number(item.price).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-4 tabular-data">
+                          {item.stockQty} {item.unit || 'un'}.
+                        </td>
+                        <td className="py-3 px-4 text-right space-x-2 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => openEditCatalog(item)}
+                            className="p-1.5 rounded text-[var(--nx-muted)] hover:text-[var(--nx-primary)] transition-colors"
+                            title="Editar características do produto"
+                          >
+                            <Edit3 className="w-4 h-4 inline" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget({ type: 'catalog', item })}
+                            className="p-1.5 rounded text-[var(--nx-subtle)] hover:text-[var(--nx-error)] transition-colors"
+                            title="Remover item"
+                          >
+                            <Trash2 className="w-4 h-4 inline" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCatalog.map((item) => {
+                  const hasDimensions = item.lengthCm || item.widthCm || item.heightCm;
+                  return (
+                    <div
+                      key={item.id}
+                      className="nx-card-interactive flex flex-col justify-between overflow-hidden animate-fade-up"
+                    >
+                      <div>
+                        <div className="relative h-44 bg-[var(--nx-bg)] border-b border-[var(--nx-border)] flex items-center justify-center overflow-hidden">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center gap-1.5 text-[var(--nx-subtle)]">
+                              <ImageIcon className="w-7 h-7 opacity-40" />
+                              <span className="text-[11px]">Sem foto cadastrada</span>
+                            </div>
+                          )}
+                          <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--nx-surface)] text-[var(--nx-text)] border border-[var(--nx-border)] shadow-sm">
+                            {item.category || 'Geral'}
+                          </span>
+                          {item.videoUrl && (
+                            <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/75 text-white text-[10px] font-semibold">
+                              <Video className="w-3 h-3" />
+                              Vídeo Bot
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="p-4 space-y-2">
+                          <div className="flex items-center justify-between text-[11px] text-[var(--nx-subtle)] tabular-data">
+                            <span>SKU: {item.code}</span>
+                            {item.brand && <span className="font-medium text-[var(--nx-muted)]">{item.brand}</span>}
+                          </div>
+
+                          <h3 className="text-sm font-bold text-[var(--nx-text)] leading-snug line-clamp-2">
+                            {item.name}
+                          </h3>
+
+                          <div className="flex items-baseline justify-between pt-1">
+                            <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
+                              R$ {Number(item.price).toFixed(2)}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] tabular-data">
+                              {item.stockQty} {item.unit || 'un'}
+                            </span>
+                          </div>
+
+                          {(item.ean || item.weightKg || hasDimensions) && (
+                            <div className="pt-2 border-t border-[var(--nx-border)] text-[10px] text-[var(--nx-muted)] space-y-0.5 tabular-data">
+                              {item.ean && <div>EAN: {item.ean}</div>}
+                              {(item.weightKg || hasDimensions) && (
+                                <div>
+                                  {item.weightKg ? `Peso: ${item.weightKg}kg` : ''}
+                                  {item.weightKg && hasDimensions ? ' / ' : ''}
+                                  {hasDimensions
+                                    ? `Dim.: ${item.lengthCm || 0}×${item.widthCm || 0}×${item.heightCm || 0} cm`
+                                    : ''}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 divide-x divide-[var(--nx-border)] border-t border-[var(--nx-border)] bg-[var(--nx-bg)] text-xs font-medium">
+                        <button
+                          type="button"
+                          onClick={() => openEditCatalog(item)}
+                          className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget({ type: 'catalog', item })}
+                          className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-error)] hover:bg-[var(--nx-error-bg)] transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -4186,7 +4639,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       )}
 
       {/* =================================================================== */}
-      {/* MODAL 5: NOVO ITEM DE CATÁLOGO / INSUMO                             */}
+      {/* MODAL 5: CRIAR / EDITAR PRODUTO COM CARACTERÍSTICAS OPCIONAIS       */}
       {/* =================================================================== */}
       {catModalOpen && (
         <div
@@ -4195,9 +4648,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             if (e.target === e.currentTarget) setCatModalOpen(false);
           }}
         >
-          <div className="nx-modal-main p-6 max-w-md" role="dialog" aria-modal="true">
+          <div
+            className="nx-modal-main p-6 max-w-2xl max-h-[90vh] overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+          >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-[var(--nx-text)]">Novo Produto / Insumo</h2>
+              <div>
+                <h2 className="text-base font-bold text-[var(--nx-text)]">
+                  {editingCatalog ? 'Editar Características do Produto' : 'Novo Produto / Insumo'}
+                </h2>
+                <p className="text-[11px] text-[var(--nx-muted)]">
+                  Preencha apenas os campos que desejar. Fotos e vídeos são usados pelo bot no WhatsApp.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setCatModalOpen(false)}
@@ -4206,17 +4670,47 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
             <form onSubmit={handleAddCatalog} className="space-y-1">
-              <div className="nx-field">
-                <input
-                  type="text"
-                  placeholder=" "
-                  required
-                  value={newCatalog.code}
-                  onChange={(e) => setNewCatalog({ ...newCatalog, code: e.target.value })}
-                />
-                <label>Código SKU (ex: INS-009)</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="nx-field">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    required
+                    value={newCatalog.code}
+                    onChange={(e) => setNewCatalog({ ...newCatalog, code: e.target.value })}
+                  />
+                  <label>Código SKU *</label>
+                </div>
+                <div className="nx-field">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    value={newCatalog.ean}
+                    onChange={(e) => setNewCatalog({ ...newCatalog, ean: e.target.value })}
+                  />
+                  <label>Código EAN / Barras (opcional)</label>
+                </div>
+                <div className="nx-field">
+                  <select
+                    value={newCatalog.unit}
+                    onChange={(e) => setNewCatalog({ ...newCatalog, unit: e.target.value })}
+                  >
+                    <option value="un">Unidade (un)</option>
+                    <option value="cx">Caixa (cx)</option>
+                    <option value="kg">Quilograma (kg)</option>
+                    <option value="m">Metro (m)</option>
+                    <option value="lt">Litro (lt)</option>
+                    <option value="bd">Balde (bd)</option>
+                    <option value="pct">Pacote (pct)</option>
+                    <option value="kit">Kit (kit)</option>
+                    <option value="par">Par (par)</option>
+                  </select>
+                  <label>Unidade de venda</label>
+                </div>
               </div>
+
               <div className="nx-field">
                 <input
                   type="text"
@@ -4225,8 +4719,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   value={newCatalog.name}
                   onChange={(e) => setNewCatalog({ ...newCatalog, name: e.target.value })}
                 />
-                <label>Descrição do produto</label>
+                <label>Nome / Descrição do produto *</label>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="nx-field">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    value={newCatalog.brand}
+                    onChange={(e) => setNewCatalog({ ...newCatalog, brand: e.target.value })}
+                  />
+                  <label>Marca / Fabricante (opcional)</label>
+                </div>
+                <div className="nx-field">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    value={newCatalog.category}
+                    onChange={(e) => setNewCatalog({ ...newCatalog, category: e.target.value })}
+                  />
+                  <label>Categoria</label>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="nx-field">
                   <input
@@ -4237,20 +4753,103 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     value={newCatalog.price}
                     onChange={(e) => setNewCatalog({ ...newCatalog, price: e.target.value })}
                   />
-                  <label>Preço (R$)</label>
+                  <label>Preço unitário (R$) *</label>
                 </div>
                 <div className="nx-field">
                   <input
                     type="number"
+                    step="0.01"
                     placeholder=" "
                     required
                     value={newCatalog.stockQty}
                     onChange={(e) => setNewCatalog({ ...newCatalog, stockQty: e.target.value })}
                   />
-                  <label>Qtd. em estoque</label>
+                  <label>Qtd. em estoque *</label>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 pt-3">
+
+              {/* Peso e Dimensões (Opcionais) */}
+              <div className="p-3 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] mb-3">
+                <div className="text-[11px] font-semibold text-[var(--nx-muted)] mb-2">
+                  Peso & Dimensões para Frete / Logística (Opcional)
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="nx-field !mb-0">
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder=" "
+                      value={newCatalog.weightKg}
+                      onChange={(e) => setNewCatalog({ ...newCatalog, weightKg: e.target.value })}
+                    />
+                    <label>Peso (kg)</label>
+                  </div>
+                  <div className="nx-field !mb-0">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder=" "
+                      value={newCatalog.lengthCm}
+                      onChange={(e) => setNewCatalog({ ...newCatalog, lengthCm: e.target.value })}
+                    />
+                    <label>Compr. (cm)</label>
+                  </div>
+                  <div className="nx-field !mb-0">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder=" "
+                      value={newCatalog.widthCm}
+                      onChange={(e) => setNewCatalog({ ...newCatalog, widthCm: e.target.value })}
+                    />
+                    <label>Largura (cm)</label>
+                  </div>
+                  <div className="nx-field !mb-0">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder=" "
+                      value={newCatalog.heightCm}
+                      onChange={(e) => setNewCatalog({ ...newCatalog, heightCm: e.target.value })}
+                    />
+                    <label>Altura (cm)</label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mídia: Fotos e Vídeos para o Bot WhatsApp */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="nx-field">
+                  <input
+                    type="url"
+                    placeholder=" "
+                    value={newCatalog.imageUrl}
+                    onChange={(e) => setNewCatalog({ ...newCatalog, imageUrl: e.target.value })}
+                  />
+                  <label>URL da Imagem principal (opcional)</label>
+                </div>
+                <div className="nx-field">
+                  <input
+                    type="url"
+                    placeholder=" "
+                    value={newCatalog.videoUrl}
+                    onChange={(e) => setNewCatalog({ ...newCatalog, videoUrl: e.target.value })}
+                  />
+                  <label>URL do Vídeo p/ Bot WhatsApp (.mp4, opcional)</label>
+                </div>
+              </div>
+
+              <div className="nx-field">
+                <textarea
+                  rows={2}
+                  placeholder=" "
+                  value={newCatalog.description}
+                  onChange={(e) => setNewCatalog({ ...newCatalog, description: e.target.value })}
+                />
+                <label>Detalhes técnicos / observações (opcional)</label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[var(--nx-border)]">
                 <button
                   type="button"
                   onClick={() => setCatModalOpen(false)}
@@ -4258,11 +4857,177 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="nx-btn-primary px-4 py-2 text-xs">
-                  Salvar produto
+                <button type="submit" className="nx-btn-primary px-5 py-2 text-xs">
+                  {editingCatalog ? 'Salvar alterações' : 'Cadastrar produto'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* MODAL 5B: IMPORTAR PLANILHA DE ESTOQUE (CSV / XLSX DE OUTRO PDV)    */}
+      {/* =================================================================== */}
+      {importModalOpen && (
+        <div
+          className="nx-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setImportModalOpen(false);
+          }}
+        >
+          <div className="nx-modal-main p-6 max-w-lg" role="dialog" aria-modal="true">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-bold text-[var(--nx-text)]">
+                  Importar Estoque via Planilha (CSV / Excel)
+                </h2>
+                <p className="text-[11px] text-[var(--nx-muted)]">
+                  Envie a tabela exportada do seu ERP/PDV para cadastrar ou atualizar preços e estoque em lote.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(false)}
+                className="p-1.5 rounded-md text-[var(--nx-subtle)] hover:text-[var(--nx-text)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs text-[var(--nx-muted)] mb-4 space-y-1">
+              <div className="font-semibold text-[var(--nx-text)]">Colunas reconhecidas automaticamente:</div>
+              <p className="text-[11px] leading-relaxed">
+                <code>SKU / Codigo</code>, <code>EAN</code>, <code>Nome / Produto</code>, <code>Unidade</code>,{' '}
+                <code>Marca</code>, <code>Categoria</code>, <code>Preco / Valor</code>, <code>Estoque / Qtd</code>,{' '}
+                <code>Peso</code>, <code>Comprimento</code>, <code>Largura</code>, <code>Altura</code>,{' '}
+                <code>Imagem</code> e <code>Video</code>.
+              </p>
+            </div>
+
+            <label className="block w-full p-6 rounded-xl border-2 border-dashed border-[var(--nx-border-strong)] hover:border-[var(--nx-primary)] bg-[var(--nx-surface-alt)] text-center cursor-pointer transition-colors">
+              <Upload className="w-6 h-6 text-[var(--nx-primary)] mx-auto mb-2" />
+              <div className="text-xs font-bold text-[var(--nx-text)]">
+                {importLoading ? 'Processando planilha...' : 'Clique para selecionar arquivo .XLSX, .XLS ou .CSV'}
+              </div>
+              <div className="text-[11px] text-[var(--nx-muted)] mt-1">
+                Itens com mesmo código SKU serão atualizados automaticamente
+              </div>
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                disabled={importLoading}
+                onChange={handleImportSpreadsheet}
+                className="hidden"
+              />
+            </label>
+
+            {importResult && (
+              <div className="mt-4 p-3.5 rounded-lg bg-[var(--nx-accent-bg)] border border-[var(--nx-accent-border)] text-xs text-[var(--nx-accent)]">
+                <strong>Importação concluída ({importResult.fileName}):</strong> {importResult.imported} produtos
+                salvos/atualizados ({importResult.skipped} linhas ignoradas).
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4">
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(false)}
+                className="px-4 py-2 text-xs font-medium text-[var(--nx-muted)] border border-[var(--nx-border-strong)] rounded-md"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* MODAL 5C: ATUALIZAR PREÇOS / API DE SINCRONIZAÇÃO PDV EXTERNO       */}
+      {/* =================================================================== */}
+      {syncModalOpen && (
+        <div
+          className="nx-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSyncModalOpen(false);
+          }}
+        >
+          <div className="nx-modal-main p-6 max-w-lg max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-bold text-[var(--nx-text)]">
+                  Atualizar Preços & Integração API PDV
+                </h2>
+                <p className="text-[11px] text-[var(--nx-muted)]">
+                  Puxe preços atualizados de um provedor externo (ERP/PDV/Planilha) ou conecte via nossa API v1.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSyncModalOpen(false)}
+                className="p-1.5 rounded-md text-[var(--nx-subtle)] hover:text-[var(--nx-text)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSyncPrices} className="space-y-2">
+              <div className="nx-field">
+                <input
+                  type="url"
+                  placeholder=" "
+                  value={pdvProviderUrl}
+                  onChange={(e) => setPdvProviderUrl(e.target.value)}
+                />
+                <label>URL do Provedor PDV / ERP (JSON ou CSV público)</label>
+              </div>
+
+              <div className="nx-field">
+                <input
+                  type="text"
+                  placeholder=" "
+                  value={pdvApiKey}
+                  onChange={(e) => setPdvApiKey(e.target.value)}
+                />
+                <label>Token / API Key de autenticação (opcional)</label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={syncLoading}
+                className="nx-btn-primary w-full py-2.5 text-xs"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncLoading ? 'animate-spin' : ''}`} />
+                {syncLoading ? 'Sincronizando preços...' : 'Salvar e Atualizar Preços Agora'}
+              </button>
+            </form>
+
+            {syncResult && (
+              <div className="mt-4 p-3 rounded-lg bg-[var(--nx-accent-bg)] border border-[var(--nx-accent-border)] text-xs text-[var(--nx-accent)]">
+                {syncResult.message ? (
+                  <div>{syncResult.message}</div>
+                ) : (
+                  <div>
+                    <strong>Sincronizado:</strong> {syncResult.updatedCount} preços atualizados e{' '}
+                    {syncResult.createdCount} novos itens importados.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Documentação Rápida da API Própria Neoxy v1 para PDVs externos */}
+            <div className="mt-5 pt-4 border-t border-[var(--nx-border)] space-y-2">
+              <div className="text-xs font-bold text-[var(--nx-text)]">
+                Endpoint da API Neoxy (Para seu PDV empurrar preços automaticamente)
+              </div>
+              <div className="p-2.5 rounded bg-[var(--nx-bg)] border border-[var(--nx-border)] text-[11px] font-mono text-[var(--nx-primary)] break-all">
+                POST {window.location.origin}/api/v1/tenants/{selectedTenant?.slug}/catalog/sync
+              </div>
+              <div className="text-[11px] text-[var(--nx-muted)]">
+                Header: <code>x-api-key: {pdvApiKey || 'neoxy-super-secret'}</code> / Body JSON:{' '}
+                <code>{`{"items":[{"sku":"SKU-01","nome":"Produto","preco":99.90,"estoque":10}]}`}</code>
+              </div>
+            </div>
           </div>
         </div>
       )}

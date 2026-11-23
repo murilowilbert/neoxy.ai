@@ -628,6 +628,174 @@ async function main() {
     ]
   });
 
+  // =========================================================================
+  // 6. TENANT DE TESTE: DESENTUPIDORA GURI (SERVIÇOS 24H & HIDROJATEAMENTO)
+  // =========================================================================
+  const guriOwner = await prisma.user.upsert({
+    where: { email: 'contato@desentupidoraguri.com.br' },
+    update: { name: 'Desentupidora Guri', role: 'USER', passwordHash: defaultPassHash },
+    create: { name: 'Desentupidora Guri', email: 'contato@desentupidoraguri.com.br', role: 'USER', passwordHash: defaultPassHash }
+  });
+
+  const guriSettings = {
+    persona: {
+      attendantName: 'Equipe Desentupidora Guri',
+      tone: 'ágil, claro, técnico e prestativo para emergências 24h',
+      botIdentity: 'central de atendimento e despacho técnico',
+      forbiddenWords: ['sistema', 'robô', 'inteligência artificial']
+    },
+    businessHours: {
+      timezone: 'America/Sao_Paulo',
+      schedule: {
+        '0': [{ start: '00:00', end: '23:59' }],
+        '1': [{ start: '00:00', end: '23:59' }],
+        '2': [{ start: '00:00', end: '23:59' }],
+        '3': [{ start: '00:00', end: '23:59' }],
+        '4': [{ start: '00:00', end: '23:59' }],
+        '5': [{ start: '00:00', end: '23:59' }],
+        '6': [{ start: '00:00', end: '23:59' }]
+      },
+      exceptions: []
+    },
+    rules: {
+      deliveryPolicy: 'Atendimento emergencial em até 40 minutos com visita técnica e orçamento sem compromisso.',
+      paymentMethods: 'PIX, Cartão de Crédito em até 6x, Débito e Boleto para condomínios/empresas.'
+    }
+  };
+
+  const guriTenant = await prisma.tenant.upsert({
+    where: { slug: 'desentupidora-guri' },
+    update: {
+      name: 'Desentupidora Guri',
+      segment: 'Desentupimento 24h, Hidrojateamento & Caça-Vazamentos',
+      businessType: 'SERVICES',
+      enabledModules: JSON.stringify(['services', 'appointments', 'crm']),
+      settings: JSON.stringify(guriSettings),
+      active: true
+    },
+    create: {
+      slug: 'desentupidora-guri',
+      name: 'Desentupidora Guri',
+      segment: 'Desentupimento 24h, Hidrojateamento & Caça-Vazamentos',
+      businessType: 'SERVICES',
+      enabledModules: JSON.stringify(['services', 'appointments', 'crm']),
+      settings: JSON.stringify(guriSettings),
+      active: true
+    }
+  });
+
+  await prisma.tenantMember.upsert({
+    where: { userId_tenantId: { userId: guriOwner.id, tenantId: guriTenant.id } },
+    update: { role: 'OWNER' },
+    create: { userId: guriOwner.id, tenantId: guriTenant.id, role: 'OWNER' }
+  });
+  await prisma.tenantMember.upsert({
+    where: { userId_tenantId: { userId: superAdmin.id, tenantId: guriTenant.id } },
+    update: { role: 'OWNER' },
+    create: { userId: superAdmin.id, tenantId: guriTenant.id, role: 'OWNER' }
+  });
+
+  await prisma.appointment.deleteMany({ where: { tenantId: guriTenant.id } });
+  await prisma.serviceItem.deleteMany({ where: { tenantId: guriTenant.id } });
+  await prisma.professional.deleteMany({ where: { tenantId: guriTenant.id } });
+
+  const guriTech1 = await prisma.professional.create({
+    data: {
+      tenantId: guriTenant.id,
+      name: 'Equipe Móvel 01 (Carlos Guri)',
+      role: 'Técnico Hidráulico Sênior',
+      specialty: 'Desentupimento Roto-Rooter & Caça-Vazamento',
+      commissionPct: 30,
+      phone: '5551991001100'
+    }
+  });
+  const guriTech2 = await prisma.professional.create({
+    data: {
+      tenantId: guriTenant.id,
+      name: 'Caminhão Hidrojato 02',
+      role: 'Unidade Pesada',
+      specialty: 'Hidrojateamento Alta Pressão & Limpa Fossa',
+      commissionPct: 25,
+      phone: '5551991002200'
+    }
+  });
+
+  const guriSrv1 = await prisma.serviceItem.create({
+    data: {
+      tenantId: guriTenant.id,
+      sku: 'GURI-DES-01',
+      name: 'Desentupimento de Pia, Ralo ou Vaso Sanitário',
+      unit: 'serviço',
+      brand: 'Máquina K-500 / Roto-Rooter',
+      description: 'Desobstrução limpa sem quebrar piso ou azulejo, com garantia de 90 dias.',
+      durationMinutes: 45,
+      price: 180.00,
+      category: 'Desentupimento Residencial',
+      imageUrl: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=600&q=80',
+      returnCycleDays: 180,
+      variants: JSON.stringify([
+        { label: 'Residencial Simples (até 5m)', durationMinutes: 40, price: 180 },
+        { label: 'Tubulação Longa (5 a 15m)', durationMinutes: 70, price: 290 },
+        { label: 'Comercial / Condomínio', durationMinutes: 90, price: 420 }
+      ])
+    }
+  });
+
+  const guriSrv2 = await prisma.serviceItem.create({
+    data: {
+      tenantId: guriTenant.id,
+      sku: 'GURI-HIDRO-02',
+      name: 'Hidrojateamento de Alta Pressão & Caixa de Gordura',
+      unit: 'serviço',
+      brand: 'Caminhão Combinado Alta Pressão',
+      description: 'Remoção completa de gordura solidificada e raízes em redes de esgoto e pluviais.',
+      durationMinutes: 90,
+      price: 450.00,
+      category: 'Hidrojateamento & Limpeza',
+      imageUrl: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=600&q=80',
+      returnCycleDays: 90,
+      variants: JSON.stringify([
+        { label: 'Caixa de Gordura Residencial', durationMinutes: 60, price: 320 },
+        { label: 'Rede Pluvial / Condomínio', durationMinutes: 120, price: 680 }
+      ])
+    }
+  });
+
+  await prisma.appointment.create({
+    data: {
+      tenantId: guriTenant.id,
+      serviceId: guriSrv1.id,
+      professionalId: guriTech1.id,
+      customerName: 'Condomínio Residencial Bela Vista',
+      customerPhone: '5551988223344',
+      scheduledAt: new Date(Date.now() + 2 * 3600 * 1000),
+      status: 'CONFIRMED',
+      variantLabel: 'Comercial / Condomínio',
+      agreedPrice: 420,
+      agreedDuration: 90,
+      checkinChecklist: JSON.stringify(['Acesso à caixa de inspeção liberado', 'Orçamento aprovado pelo síndico']),
+      notes: 'Prumada da cozinha bloco B com escoamento lento.'
+    }
+  });
+
+  await prisma.appointment.create({
+    data: {
+      tenantId: guriTenant.id,
+      serviceId: guriSrv2.id,
+      professionalId: guriTech2.id,
+      customerName: 'Restaurante Sabor do Sul',
+      customerPhone: '5551988556677',
+      scheduledAt: new Date(Date.now() - 92 * 24 * 3600 * 1000),
+      status: 'COMPLETED',
+      variantLabel: 'Caixa de Gordura Residencial',
+      agreedPrice: 320,
+      agreedDuration: 60,
+      returnDueAt: new Date(Date.now() - 2 * 24 * 3600 * 1000),
+      returnNotified: false,
+      notes: 'Limpeza preventiva trimestral de caixa de gordura.'
+    }
+  });
+
   console.log('✅ Seed completo finalizado com sucesso!');
   console.log('--------------------------------------------------');
   console.log('🔑 Credenciais de Acesso (Senha padrão: neoxy123):');
@@ -635,6 +803,7 @@ async function main() {
   console.log('2. Comércio/Varejo (Ferragens Marlene): contato@ferragensmarlene.com.br');
   console.log('3. Serviços/Clínica (Pet Shop Amigo Fiel): contato@petshopamigofiel.com.br');
   console.log('4. Escritório/Contas (Prime Contabilidade): contato@primecontabil.com.br');
+  console.log('5. Serviços 24h (Desentupidora Guri): contato@desentupidoraguri.com.br');
   console.log('--------------------------------------------------');
 }
 

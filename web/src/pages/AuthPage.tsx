@@ -731,6 +731,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <button
                     type="button"
+                    onClick={() => fillDemo('contato@desentupidoraguri.com.br')}
+                    className="col-span-2 p-2 text-left rounded-md border border-[var(--nx-primary)] bg-[var(--nx-primary-soft)] hover:opacity-90 transition-opacity flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[var(--nx-primary)] truncate">Desentupidora Guri</div>
+                      <div className="text-[10px] text-[var(--nx-muted)] truncate">Serviços 24h / Hidrojateamento & Agenda</div>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[var(--nx-primary)] text-white shrink-0">
+                      Teste Novo
+                    </span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => fillDemo('contato@petshopamigofiel.com.br')}
                     className="p-2 text-left rounded-md border border-[var(--nx-accent-border)] bg-[var(--nx-accent-bg)] hover:opacity-90 transition-opacity"
                   >

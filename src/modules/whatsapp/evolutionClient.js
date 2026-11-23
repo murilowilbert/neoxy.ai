@@ -42,19 +42,33 @@ class EvolutionClient {
     }
   }
 
-  async sendMediaMessage(instanceName, number, mediaUrl, caption = '') {
+  detectMediaType(mediaUrl, explicitType) {
+    if (explicitType) return explicitType;
+    const lower = String(mediaUrl || '').toLowerCase();
+    if (/\.(mp4|mov|webm|mkv|avi)(\?|$)/.test(lower)) return 'video';
+    if (/\.(pdf|doc|docx|xls|xlsx|csv)(\?|$)/.test(lower)) return 'document';
+    return 'image';
+  }
+
+  async sendMediaMessage(instanceName, number, mediaUrl, caption = '', mediatype = null) {
     try {
       const cleanNumber = number.replace(/[^0-9]/g, '');
+      const resolvedType = this.detectMediaType(mediaUrl, mediatype);
       const response = await this.client.post(`/message/sendMedia/${instanceName}`, {
         number: cleanNumber,
+        mediatype: resolvedType,
         media: mediaUrl,
         caption
       });
       return response.data;
     } catch (err) {
-      logger.warn({ err: err.message, instanceName, number }, 'Falha ao enviar mídia via Evolution API');
+      logger.warn({ err: err.message, instanceName, number, mediaUrl }, 'Falha ao enviar mídia via Evolution API');
       return null;
     }
+  }
+
+  async sendVideoMessage(instanceName, number, videoUrl, caption = '') {
+    return this.sendMediaMessage(instanceName, number, videoUrl, caption, 'video');
   }
 
   async createInstance(instanceName) {
