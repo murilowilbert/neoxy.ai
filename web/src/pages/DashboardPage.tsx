@@ -269,7 +269,59 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [simResult, setSimResult] = useState<any>(null);
   const [simLoading, setSimLoading] = useState(false);
 
+  // Carrossel da Tela de Login (Super Admin)
+  const [authSlides, setAuthSlides] = useState<any[]>([]);
+  const [newSlide, setNewSlide] = useState({
+    title: '',
+    subtitle: '',
+    badge: 'Destaque',
+    imageUrl: ''
+  });
+
   const notifyEmailId = useId();
+
+  async function loadAuthSlides() {
+    if (user.role !== 'SUPER_ADMIN') return;
+    try {
+      const res = await apiFetch('/api/admin/auth-slides');
+      setAuthSlides(res.slides || []);
+    } catch {}
+  }
+
+  async function handleSaveAuthSlide(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newSlide.title.trim() || !newSlide.imageUrl.trim()) return;
+    try {
+      await apiFetch('/api/admin/auth-slides', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...newSlide,
+          sortOrder: authSlides.length + 1
+        })
+      });
+      setNewSlide({ title: '', subtitle: '', badge: 'Destaque', imageUrl: '' });
+      showToast('Banner adicionado ao carrossel de login.');
+      loadAuthSlides();
+    } catch (err: any) {
+      showToast(err.message);
+    }
+  }
+
+  async function handleDeleteAuthSlide(slideId: string) {
+    try {
+      await apiFetch(`/api/admin/auth-slides/${slideId}`, { method: 'DELETE' });
+      showToast('Banner removido do carrossel.');
+      loadAuthSlides();
+    } catch (err: any) {
+      showToast(err.message);
+    }
+  }
+
+  useEffect(() => {
+    if (user.role === 'SUPER_ADMIN') {
+      loadAuthSlides();
+    }
+  }, [user.role]);
 
   useEffect(() => {
     if (tenants.length > 0 && !selectedTenant) {
