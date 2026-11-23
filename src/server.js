@@ -272,6 +272,49 @@ app.post('/api/tenants/:slug/inbox/reply', requireAuth, requireTenantAccess, asy
   }
 });
 
+// Disparo rápido de avaliação pós-atendimento (Google Meu Negócio ou Enquete CSAT)
+app.post('/api/tenants/:slug/inbox/send-review', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { customerPhone, mode } = req.body || {};
+    if (!customerPhone) {
+      return res.status(400).json({ success: false, error: 'Informe o telefone do cliente.' });
+    }
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    const instanceName = req.tenant.whatsappAccounts?.[0]?.instanceName || null;
+    const result = await messageQueueService.dispatchReviewRequest(
+      tenant,
+      customerPhone,
+      instanceName,
+      mode || null
+    );
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Disparo rápido de Pin de Localização clicável no mapa do WhatsApp
+app.post('/api/tenants/:slug/inbox/send-location', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { customerPhone } = req.body || {};
+    if (!customerPhone) {
+      return res.status(400).json({ success: false, error: 'Informe o telefone do cliente.' });
+    }
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    const instanceName = req.tenant.whatsappAccounts?.[0]?.instanceName || null;
+    const result = await messageQueueService.dispatchLocationPin(tenant, customerPhone, instanceName);
+    if (result.type === 'none') {
+      return res.status(400).json({
+        success: false,
+        error: 'Configure o endereço, link do Google Maps ou latitude/longitude em Perfil -> Empresa & Horários.'
+      });
+    }
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // Analytics Executivo (Gráficos Mensagens/Dia, IA vs Humano, Top Procurados)
 app.get('/api/tenants/:slug/analytics', requireAuth, requireTenantAccess, async (req, res) => {
   try {
@@ -642,22 +685,24 @@ app.delete('/api/tenants/:slug/documents/:documentId', requireAuth, requireTenan
 app.post('/api/tenants/:slug/test-chat', async (req, res) => {
   try {
     const { slug } = req.params;
-    const { message, customerPhone = '5551999999999', media } = req.body;
+    const { message, customerPhone = '5551999999999', media, audio, document } = req.body;
 
     const tenant = await tenantService.getTenantBySlug(slug);
     if (!tenant) {
       return res.status(404).json({ success: false, error: `Tenant ${slug} não encontrado.` });
     }
 
-    if (!message && !media) {
-      return res.status(400).json({ success: false, error: 'Campo "message" obrigatório.' });
+    if (!message && !media && !audio && !document) {
+      return res.status(400).json({ success: false, error: 'Envie uma mensagem, foto, áudio ou documento.' });
     }
 
     const aiResult = await messageQueueService.processQueueItemDirect({
       tenant,
       customerPhone,
       text: message,
-      media
+      media,
+      audio,
+      document
     });
 
     res.json({

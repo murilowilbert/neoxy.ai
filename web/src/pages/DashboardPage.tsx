@@ -41,7 +41,10 @@ import {
   Key,
   ChevronRight,
   Tag,
-  Radio
+  Radio,
+  Mic,
+  MapPin,
+  ThumbsUp
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
@@ -382,8 +385,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [paymentMethods, setPaymentMethods] = useState('');
   const [simMessage, setSimMessage] = useState('');
   const [simImage, setSimImage] = useState<string | null>(null);
+  const [simAudio, setSimAudio] = useState<string | null>(null);
+  const [simAudioName, setSimAudioName] = useState<string>('');
+  const [simDocument, setSimDocument] = useState<{ base64: string; fileName: string; mimeType: string } | null>(null);
   const [simResult, setSimResult] = useState<any>(null);
   const [simLoading, setSimLoading] = useState(false);
+
+  const [botFeatures, setBotFeatures] = useState({
+    audioUnderstandingEnabled: true,
+    pdfReadingEnabled: true,
+    antiBanEnabled: true,
+    quotedRepliesEnabled: true,
+    reactionsEnabled: true,
+    locationPinEnabled: true,
+    sentimentAlertEnabled: true,
+    reviewMode: 'google_review' as 'google_review' | 'poll_csat' | 'both'
+  });
+  const [savingBotFeatures, setSavingBotFeatures] = useState(false);
 
   // Carrossel da Tela de Login (Super Admin)
   const [authSlides, setAuthSlides] = useState<any[]>([]);
@@ -451,13 +469,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   useEffect(() => {
     if (selectedTenant) {
       loadTenantData(selectedTenant.slug);
-      const s = selectedTenant.settings || {};
+      const s = selectedTenant.settings || selectedTenant.parsedSettings || {};
       setAttendantName(s.persona?.attendantName || 'Atendente');
       setTone(s.persona?.tone || 'humanizado, prestativo e objetivo');
       setDeliveryPolicy(s.rules?.deliveryPolicy || '');
       setPaymentMethods(s.rules?.paymentMethods || '');
       setPdvProviderUrl(s.pdvSync?.providerUrl || '');
       setPdvApiKey(s.pdvSync?.apiKey || '');
+      const bf = s.botFeatures || {};
+      setBotFeatures({
+        audioUnderstandingEnabled: bf.audioUnderstandingEnabled !== false,
+        pdfReadingEnabled: bf.pdfReadingEnabled !== false,
+        antiBanEnabled: bf.antiBanEnabled !== false,
+        quotedRepliesEnabled: bf.quotedRepliesEnabled !== false,
+        reactionsEnabled: bf.reactionsEnabled !== false,
+        locationPinEnabled: bf.locationPinEnabled !== false,
+        sentimentAlertEnabled: bf.sentimentAlertEnabled !== false,
+        reviewMode:
+          bf.reviewMode || (s.storeInfo?.googleReviewUrl ? 'google_review' : 'poll_csat')
+      });
     }
   }, [selectedTenant?.slug]);
 
@@ -1358,9 +1388,44 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     e.target.value = '';
   }
 
+  function handleSelectSimAudio(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Áudio excede o limite de 10 MB para simulação.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSimAudio(String(reader.result || ''));
+      setSimAudioName(file.name);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  function handleSelectSimDocument(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Documento excede o limite de 10 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSimDocument({
+        base64: String(reader.result || ''),
+        fileName: file.name,
+        mimeType: file.type || 'application/pdf'
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
   async function handleSimulateChat(e: React.FormEvent) {
     e.preventDefault();
-    if (!simMessage.trim() && !simImage) return;
+    if (!simMessage.trim() && !simImage && !simAudio && !simDocument) return;
     setSimLoading(true);
     try {
       const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/test-chat`, {
@@ -1368,11 +1433,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         body: JSON.stringify({
           message: simMessage,
           media: simImage || undefined,
+          audio: simAudio || undefined,
+          document: simDocument || undefined,
           customerPhone: simPhone.trim() || '5551988887777'
         })
       });
       setSimResult(res.response);
       setSimImage(null);
+      setSimAudio(null);
+      setSimAudioName('');
+      setSimDocument(null);
       loadTenantData(selectedTenant.slug);
     } catch (err: any) {
       showToast(err.message);
@@ -1397,6 +1467,70 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       showToast(err.message || 'Erro ao enviar resposta.');
     } finally {
       setSendingInboxPhone(null);
+    }
+  }
+
+  async function handleSendInboxReview(customerPhone: string) {
+    if (!selectedTenant) return;
+    try {
+      const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/inbox/send-review`, {
+        method: 'POST',
+        body: JSON.stringify({ customerPhone })
+      });
+      await loadTenantData(selectedTenant.slug);
+      showToast(
+        res.googleReviewUrl
+          ? 'Link de avaliação Google Meu Negócio enviado na conversa!'
+          : 'Enquete de avaliação CSAT enviada na conversa!'
+      );
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao enviar convite de avaliação.');
+    }
+  }
+
+  async function handleSendInboxLocation(customerPhone: string) {
+    if (!selectedTenant) return;
+    try {
+      const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/inbox/send-location`, {
+        method: 'POST',
+        body: JSON.stringify({ customerPhone })
+      });
+      await loadTenantData(selectedTenant.slug);
+      showToast(
+        res.type === 'native_pin'
+          ? 'Pin clicável no mapa enviado ao cliente!'
+          : 'Endereço / link do mapa enviado ao cliente!'
+      );
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao enviar localização.');
+    }
+  }
+
+  async function handleUpdateBotFeatures(patch: Partial<typeof botFeatures>) {
+    if (!selectedTenant) return;
+    const next = { ...botFeatures, ...patch };
+    setBotFeatures(next);
+    setSavingBotFeatures(true);
+    try {
+      const currentSettings = selectedTenant.settings || selectedTenant.parsedSettings || {};
+      const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/settings`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          settings: {
+            ...currentSettings,
+            botFeatures: next
+          }
+        })
+      });
+      if (res.tenant) {
+        setSelectedTenant(res.tenant);
+      }
+      await onRefreshSession();
+      showToast('Configurações inteligentes do bot atualizadas!');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao salvar recursos do bot.');
+    } finally {
+      setSavingBotFeatures(false);
     }
   }
 
@@ -2498,7 +2632,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     Simulador de Atendimento WhatsApp ({selectedTenant?.name})
                   </h2>
                   <p className="text-xs text-[var(--nx-muted)]">
-                    Teste perguntas de estoque, promoções, horários/feriados, gatilhos rápidos, fotos via Gemini ou números bloqueados no filtro de contatos.
+                    Teste perguntas, fotos, áudios de voz, PDFs/comprovantes PIX, alerta de sentimento, Pin de mapa e avaliação Google.
                   </p>
                 </div>
 
@@ -2514,30 +2648,67 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
               </div>
 
-              {simImage && (
-                <div className="mb-3 flex items-center gap-3 p-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)]">
-                  <img
-                    src={simImage}
-                    alt="Prévia da foto"
-                    className="w-12 h-12 rounded object-cover border border-[var(--nx-border)]"
-                  />
-                  <div className="flex-1 text-xs text-[var(--nx-muted)]">
-                    Foto anexada para identificação visual pela IA
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSimImage(null)}
-                    className="p-1 text-[var(--nx-subtle)] hover:text-[var(--nx-error)]"
-                    title="Remover foto"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+              {(simImage || simAudio || simDocument) && (
+                <div className="mb-3 flex flex-wrap items-center gap-2.5">
+                  {simImage && (
+                    <div className="flex items-center gap-2.5 p-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+                      <img
+                        src={simImage}
+                        alt="Prévia da foto"
+                        className="w-9 h-9 rounded object-cover border border-[var(--nx-border)]"
+                      />
+                      <span className="text-xs text-[var(--nx-text)]">Foto anexada</span>
+                      <button
+                        type="button"
+                        onClick={() => setSimImage(null)}
+                        className="p-1 text-[var(--nx-subtle)] hover:text-[var(--nx-error)]"
+                        title="Remover foto"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  {simAudio && (
+                    <div className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs">
+                      <Mic className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                      <span className="text-[var(--nx-text)] max-w-[160px] truncate">
+                        {simAudioName || 'Áudio anexado'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSimAudio(null);
+                          setSimAudioName('');
+                        }}
+                        className="p-0.5 text-[var(--nx-subtle)] hover:text-[var(--nx-error)]"
+                        title="Remover áudio"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  {simDocument && (
+                    <div className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs">
+                      <FileText className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                      <span className="text-[var(--nx-text)] max-w-[180px] truncate">
+                        {simDocument.fileName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSimDocument(null)}
+                        className="p-0.5 text-[var(--nx-subtle)] hover:text-[var(--nx-error)]"
+                        title="Remover documento"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              <form onSubmit={handleSimulateChat} className="flex gap-2 mb-3">
+              <form onSubmit={handleSimulateChat} className="flex flex-wrap sm:flex-nowrap gap-2 mb-3">
                 <label
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] cursor-pointer shrink-0 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] cursor-pointer shrink-0 transition-colors"
                   title="Anexar foto para identificação pela IA"
                 >
                   <ImageIcon className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
@@ -2549,21 +2720,47 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     className="hidden"
                   />
                 </label>
+                <label
+                  className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] cursor-pointer shrink-0 transition-colors"
+                  title="Anexar áudio (.ogg, .mp3, .wav, .m4a) para compreensão de voz"
+                >
+                  <Mic className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                  Áudio
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    onChange={handleSelectSimAudio}
+                    className="hidden"
+                  />
+                </label>
+                <label
+                  className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] cursor-pointer shrink-0 transition-colors"
+                  title="Anexar PDF / Comprovante PIX / Boleto para leitura inteligente"
+                >
+                  <FileText className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                  PDF
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleSelectSimDocument}
+                    className="hidden"
+                  />
+                </label>
                 <input
                   type="text"
                   value={simMessage}
                   onChange={(e) => setSimMessage(e.target.value)}
                   placeholder={
                     selectedTenant?.businessType === 'SERVICES'
-                      ? 'Ex: Quero agendar um atendimento ou mande uma foto do problema'
-                      : 'Ex: Qual o preço da ducha Lorenzetti? Vocês abrem no Natal?'
+                      ? 'Ex: Quero agendar um atendimento, onde vocês ficam? ou anexe áudio/PDF'
+                      : 'Ex: Qual o preço da ducha Lorenzetti? Onde fica a loja? ou anexe áudio/PDF'
                   }
-                  className="flex-1 px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                  className="flex-1 min-w-[200px] px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
                 />
                 <button
                   type="submit"
                   disabled={simLoading}
-                  className="nx-btn-primary px-4 py-2 text-xs"
+                  className="nx-btn-primary px-4 py-2 text-xs shrink-0"
                 >
                   <Send className="w-3.5 h-3.5" />
                   {simLoading ? 'Processando...' : 'Testar'}
@@ -2574,7 +2771,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <div className="p-3.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs space-y-2 animate-fade-up">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="font-semibold text-[var(--nx-text)]">Resposta gerada:</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {simResult.sentiment && (
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            simResult.sentiment === 'URGENT' || simResult.sentiment === 'FRUSTRATED'
+                              ? 'bg-[var(--nx-error)] text-white'
+                              : simResult.sentiment === 'POSITIVE'
+                              ? 'bg-[var(--nx-accent-bg)] text-[var(--nx-accent)]'
+                              : 'bg-[var(--nx-surface-alt)] text-[var(--nx-muted)]'
+                          }`}
+                        >
+                          Sentimento: {simResult.sentiment}
+                        </span>
+                      )}
                       {simResult.blockedByContactFilter && (
                         <span className="px-2 py-0.5 rounded bg-[var(--nx-error-bg)] text-[var(--nx-error)] text-[10px] font-semibold">
                           Bloqueado pelo Filtro de Contatos
@@ -2587,7 +2797,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       )}
                       {simResult.imageAnalyzed && (
                         <span className="px-2 py-0.5 rounded bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] text-[10px] font-semibold">
-                          Visão Computacional Ativa
+                          Visão de Foto
+                        </span>
+                      )}
+                      {simResult.audioAnalyzed && (
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] text-[10px] font-semibold">
+                          Áudio Compreendido
+                        </span>
+                      )}
+                      {simResult.documentAnalyzed && (
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] text-[10px] font-semibold">
+                          PDF Lido
+                        </span>
+                      )}
+                      {simResult.sideEffects?.documentSaved && (
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] text-[10px] font-semibold">
+                          Comprovante Salvo em Contas
+                        </span>
+                      )}
+                      {simResult.sideEffects?.locationSent && (
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] text-[10px] font-semibold">
+                          Pin de Mapa Enviado
+                        </span>
+                      )}
+                      {simResult.sideEffects?.pollSent && (
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] text-[10px] font-semibold">
+                          Enquete Enviada
+                        </span>
+                      )}
+                      {simResult.sideEffects?.reviewSent && (
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] text-[10px] font-semibold">
+                          Avaliação Enviada
                         </span>
                       )}
                     </div>
@@ -3778,10 +4018,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   .sort((a, b) => {
                     if (highlightedPhone && a.customerPhone === highlightedPhone) return -1;
                     if (highlightedPhone && b.customerPhone === highlightedPhone) return 1;
-                    return 0;
+                    const score = (x: any) =>
+                      x.sentiment === 'URGENT' ? 2 : x.sentiment === 'FRUSTRATED' ? 1 : 0;
+                    return score(b) - score(a);
                   })
                   .map((session) => {
                   const isPaused = session.state === 'HUMAN_HANDOFF';
+                  const isSentimentRed =
+                    session.sentiment === 'URGENT' || session.sentiment === 'FRUSTRATED';
                   const isHighlighted = Boolean(
                     highlightedPhone && session.customerPhone === highlightedPhone
                   );
@@ -3789,18 +4033,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <div
                       key={session.id}
                       className={`bg-[var(--nx-surface)] border rounded-lg overflow-hidden ${
-                        isHighlighted
+                        isSentimentRed
+                          ? 'border-[var(--nx-error)] ring-2 ring-[var(--nx-error)]/25'
+                          : isHighlighted
                           ? 'border-[var(--nx-primary)] ring-2 ring-[var(--nx-primary-ring)]'
                           : 'border-[var(--nx-border)]'
                       }`}
                     >
                       <div className="px-4 py-3 bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5 flex-wrap">
                           <span className="text-xs font-bold text-[var(--nx-text)] tabular-data">
                             {session.customerName
                               ? `${session.customerName} (+${session.customerPhone})`
                               : `Cliente: +${session.customerPhone}`}
                           </span>
+                          {isSentimentRed && (
+                            <span
+                              className="px-2 py-0.5 rounded bg-[var(--nx-error)] text-white text-[10px] font-bold"
+                              title={session.sentimentReason || undefined}
+                            >
+                              {session.sentiment === 'URGENT'
+                                ? 'Alerta Urgente'
+                                : 'Cliente Insatisfeito'}
+                            </span>
+                          )}
                           <span
                             className={`px-2 py-0.5 rounded text-[11px] font-medium ${
                               isPaused
@@ -3812,26 +4068,46 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </span>
                         </div>
 
-                        <button
-                          onClick={() => handleToggleHandoff(session.customerPhone, !isPaused)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-                            isPaused
-                              ? 'bg-[var(--nx-accent)] text-white'
-                              : 'bg-[var(--nx-primary)] text-white'
-                          }`}
-                        >
-                          {isPaused ? (
-                            <>
-                              <PlayCircle className="w-3.5 h-3.5" />
-                              Devolver para IA
-                            </>
-                          ) : (
-                            <>
-                              <PauseCircle className="w-3.5 h-3.5" />
-                              Assumir conversa (Pausar IA)
-                            </>
-                          )}
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleSendInboxLocation(session.customerPhone)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)] transition-colors"
+                            title="Enviar Pin de Localização clicável no mapa"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                            Enviar Pin
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSendInboxReview(session.customerPhone)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)] transition-colors"
+                            title="Enviar convite de avaliação (Google Meu Negócio / Enquete)"
+                          >
+                            <ThumbsUp className="w-3.5 h-3.5 text-[var(--nx-amber)]" />
+                            Pedir Avaliação
+                          </button>
+                          <button
+                            onClick={() => handleToggleHandoff(session.customerPhone, !isPaused)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
+                              isPaused
+                                ? 'bg-[var(--nx-accent)] text-white'
+                                : 'bg-[var(--nx-primary)] text-white'
+                            }`}
+                          >
+                            {isPaused ? (
+                              <>
+                                <PlayCircle className="w-3.5 h-3.5" />
+                                Devolver para IA
+                              </>
+                            ) : (
+                              <>
+                                <PauseCircle className="w-3.5 h-3.5" />
+                                Assumir conversa (Pausar IA)
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="p-4 space-y-2 max-h-60 overflow-y-auto bg-[var(--nx-bg)]">
@@ -4151,6 +4427,139 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </button>
                 </div>
               </form>
+
+              {/* Card de Recursos Inteligentes do Bot WhatsApp (7 Funções Configuráveis) */}
+              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-6 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--nx-text)]">
+                      Recursos Inteligentes do Bot WhatsApp
+                    </h3>
+                    <p className="text-[11px] text-[var(--nx-muted)]">
+                      Ative ou desative cada recurso de voz, PDF, anti-banimento, localização, avaliação e sentimento.
+                    </p>
+                  </div>
+                  {savingBotFeatures && (
+                    <span className="text-[11px] text-[var(--nx-primary)] font-semibold">
+                      Salvando...
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {[
+                    {
+                      key: 'audioUnderstandingEnabled' as const,
+                      title: 'Compreensão de Áudio',
+                      desc: 'Ouve e entende áudios (.ogg/.mp3) do WhatsApp via Gemini.',
+                      icon: Mic
+                    },
+                    {
+                      key: 'pdfReadingEnabled' as const,
+                      title: 'Leitura de PDF & PIX',
+                      desc: 'Lê boletos/comprovantes e registra em Contas & Documentos.',
+                      icon: FileText
+                    },
+                    {
+                      key: 'antiBanEnabled' as const,
+                      title: 'Ritmo Humano Anti-Ban',
+                      desc: 'Tempo proporcional de digitação, atraso de leitura e throttle.',
+                      icon: Clock
+                    },
+                    {
+                      key: 'quotedRepliesEnabled' as const,
+                      title: 'Citação de Mensagens',
+                      desc: 'Responde citando diretamente a mensagem enviada pelo cliente.',
+                      icon: MessageSquare
+                    },
+                    {
+                      key: 'reactionsEnabled' as const,
+                      title: 'Reações com Emoji',
+                      desc: 'Reage com joinha ou coração ao receber comprovantes e confirmações.',
+                      icon: ThumbsUp
+                    },
+                    {
+                      key: 'locationPinEnabled' as const,
+                      title: 'Pin no Mapa & vCard',
+                      desc: 'Envia localização clicável e cartão de contato quando solicitado.',
+                      icon: MapPin
+                    },
+                    {
+                      key: 'sentimentAlertEnabled' as const,
+                      title: 'Alerta Vermelho de Sentimento',
+                      desc: 'Detecta cliente irritado/urgente, pausa IA e alerta em vermelho.',
+                      icon: AlertCircle
+                    }
+                  ].map((feat) => {
+                    const active = Boolean(botFeatures[feat.key]);
+                    const Icon = feat.icon;
+                    return (
+                      <div
+                        key={feat.key}
+                        className={`p-3 rounded-lg border flex items-center justify-between gap-3 transition-colors ${
+                          active
+                            ? 'border-[var(--nx-accent-border)] bg-[var(--nx-accent-bg)]'
+                            : 'border-[var(--nx-border)] bg-[var(--nx-bg)]'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <Icon
+                            className={`w-4 h-4 mt-0.5 shrink-0 ${
+                              active ? 'text-[var(--nx-accent)]' : 'text-[var(--nx-muted)]'
+                            }`}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-[var(--nx-text)]">
+                              {feat.title}
+                            </div>
+                            <p className="text-[11px] text-[var(--nx-muted)] leading-snug mt-0.5">
+                              {feat.desc}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={active}
+                          onClick={() => handleUpdateBotFeatures({ [feat.key]: !active })}
+                          className={`px-2.5 py-1 rounded text-[11px] font-semibold border shrink-0 transition-colors ${
+                            active
+                              ? 'bg-[var(--nx-accent)] text-white border-[var(--nx-accent)]'
+                              : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border-[var(--nx-border-strong)]'
+                          }`}
+                        >
+                          {active ? 'Ativo' : 'Off'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Modo de Avaliação Pós-Atendimento (Google Meu Negócio vs Enquete CSAT) */}
+                <div className="pt-3 border-t border-[var(--nx-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-bold text-[var(--nx-text)]">
+                      Avaliação Pós-Atendimento
+                    </div>
+                    <p className="text-[11px] text-[var(--nx-muted)]">
+                      Escolha enviar o link direto do Google Meu Negócio (configurado em Empresa & Horários) ou uma enquete nativa no WhatsApp.
+                    </p>
+                  </div>
+                  <select
+                    value={botFeatures.reviewMode}
+                    onChange={(e) =>
+                      handleUpdateBotFeatures({
+                        reviewMode: e.target.value as 'google_review' | 'poll_csat' | 'both'
+                      })
+                    }
+                    className="px-3 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs font-medium text-[var(--nx-text)] shrink-0"
+                  >
+                    <option value="google_review">Link direto Google Meu Negócio</option>
+                    <option value="poll_csat">Enquete Nativa no WhatsApp (CSAT)</option>
+                    <option value="both">Google Meu Negócio + Enquete CSAT</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* Coluna Direita: Parâmetros de Atendimento, Regras & Expediente */}

@@ -709,8 +709,12 @@ async function listChatSessionsWithLastMessage(tenantId) {
         orderBy: { createdAt: 'asc' },
         take: 30
       });
+      const parsedState = parseJsonSafe(s.stateData, {});
       return {
         ...s,
+        sentiment: parsedState?.sentiment || 'NEUTRAL',
+        sentimentReason: parsedState?.sentimentReason || null,
+        flaggedAt: parsedState?.flaggedAt || null,
         messages
       };
     })

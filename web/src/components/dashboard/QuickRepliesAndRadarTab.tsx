@@ -31,6 +31,8 @@ export interface RadarItem {
   customerPhone: string;
   customerName: string;
   state: string;
+  sentiment?: 'POSITIVE' | 'NEUTRAL' | 'FRUSTRATED' | 'URGENT';
+  sentimentReason?: string | null;
   waitMinutes: number;
   lastMessageRole?: string | null;
   lastMessageText: string;
@@ -453,19 +455,31 @@ export const FollowUpRadarTab: React.FC<FollowUpRadarTabProps> = ({
         </div>
       ) : (
         <div className="space-y-3">
-          {radar.map((item) => (
+          {radar.map((item) => {
+            const isSentimentRed =
+              item.sentiment === 'URGENT' || item.sentiment === 'FRUSTRATED';
+            return (
             <div
               key={item.id}
-              className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              className={`bg-[var(--nx-surface)] border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                isSentimentRed
+                  ? 'border-[var(--nx-error)] ring-1 ring-[var(--nx-error)]/30'
+                  : 'border-[var(--nx-border)]'
+              }`}
             >
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-bold text-[var(--nx-text)]">
                     {item.customerName}
                   </span>
-                  <span className="tabular-data text-xs text-[var(--nx-muted)] tabular-data">
+                  <span className="tabular-data text-xs text-[var(--nx-muted)]">
                     +{item.customerPhone}
                   </span>
+                  {isSentimentRed && (
+                    <span className="px-2 py-0.5 rounded bg-[var(--nx-error)] text-white text-[10px] font-bold">
+                      {item.sentiment === 'URGENT' ? 'Alerta Urgente' : 'Cliente Insatisfeito'}
+                    </span>
+                  )}
                   <span
                     className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                       item.priority === 'URGENT'
@@ -510,7 +524,8 @@ export const FollowUpRadarTab: React.FC<FollowUpRadarTabProps> = ({
                 </a>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

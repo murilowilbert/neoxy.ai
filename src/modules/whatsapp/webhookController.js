@@ -1,6 +1,13 @@
 const tenantService = require('../tenants/tenantService');
 const messageQueueService = require('../queue/messageQueueService');
+const evolutionClient = require('./evolutionClient');
 const { logger } = require('../../config');
+
+function stripDataUrl(raw) {
+  if (!raw) return null;
+  const str = String(raw);
+  return str.includes(',') ? str.split(',')[1] : str;
+}
 
 class WebhookController {
   async handleEvolutionWebhook(req, res) {
@@ -15,7 +22,6 @@ class WebhookController {
 
     logger.debug({ event, instance }, 'Evento de webhook recebido da Evolution API');
 
-    // Resolve qual estabelecimento pertence a esta instância
     const tenant = await tenantService.getTenantByWhatsAppInstance(instance);
     if (!tenant) {
       logger.warn({ instance }, 'Instância de WhatsApp não mapeada para nenhum tenant no Neoxy');
@@ -27,7 +33,7 @@ class WebhookController {
       return;
     }
 
-    // Processa apenas novas mensagens recebidas
+    // Processa novas mensagens recebidas
     if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
       const messageData = data?.message || data;
       if (!messageData) return;
@@ -44,10 +50,13 @@ class WebhookController {
       const customerPhone = remoteJid.replace('@s.whatsapp.net', '').replace(/[^0-9]/g, '');
       if (!customerPhone) return;
 
-      // Extrai texto e mídia (foto) da mensagem
+      const pushName = messageData.pushName || data?.pushName || null;
       const messageContent = messageData.message || messageData;
+
       let text = '';
-      let media = null;
+      let imagePart = null;
+      let audioPart = null;
+      let documentPart = null;
 
       if (messageContent.conversation) {
         text = messageContent.conversation;
@@ -55,33 +64,94 @@ class WebhookController {
         text = messageContent.extendedTextMessage.text;
       } else if (messageContent.imageMessage?.caption) {
         text = messageContent.imageMessage.caption;
+      } else if (messageContent.documentMessage?.caption) {
+        text = messageContent.documentMessage.caption;
       }
 
+      // 1. Foto enviada pelo cliente (Visão Computacional)
       if (messageContent.imageMessage) {
-        const rawBase64 =
+        let rawBase64 =
           data?.base64 ||
           messageData?.base64 ||
           messageContent.imageMessage?.jpegThumbnail ||
           null;
+        let mimeType = messageContent.imageMessage.mimetype || 'image/jpeg';
+
+        if (!rawBase64 && key.id) {
+          const fetched = await evolutionClient.getMediaBase64(instance, key);
+          if (fetched?.base64) {
+            rawBase64 = fetched.base64;
+            if (fetched.mimeType) mimeType = fetched.mimeType;
+          }
+        }
+
         if (rawBase64) {
-          const cleanBase64 = String(rawBase64).includes(',')
-            ? String(rawBase64).split(',')[1]
-            : String(rawBase64);
-          media = {
+          imagePart = {
             inlineData: {
-              mimeType: messageContent.imageMessage.mimetype || 'image/jpeg',
-              data: cleanBase64
+              mimeType,
+              data: stripDataUrl(rawBase64)
             }
           };
         }
       }
 
-      // Enfileira com debounce
+      // 2. Áudio / Mensagem de Voz (Compreensão Nativa via Gemini)
+      if (messageContent.audioMessage) {
+        let rawBase64 = data?.base64 || messageData?.base64 || null;
+        let mimeType = (messageContent.audioMessage.mimetype || 'audio/ogg').split(';')[0].trim();
+
+        if (!rawBase64 && key.id) {
+          const fetched = await evolutionClient.getMediaBase64(instance, key);
+          if (fetched?.base64) {
+            rawBase64 = fetched.base64;
+            if (fetched.mimeType) mimeType = String(fetched.mimeType).split(';')[0].trim();
+          }
+        }
+
+        if (rawBase64) {
+          audioPart = {
+            inlineData: {
+              mimeType,
+              data: stripDataUrl(rawBase64)
+            }
+          };
+        }
+      }
+
+      // 3. Documento PDF / Comprovante / Boleto
+      if (messageContent.documentMessage) {
+        let rawBase64 = data?.base64 || messageData?.base64 || null;
+        let mimeType = (messageContent.documentMessage.mimetype || 'application/pdf').split(';')[0].trim();
+        const fileName = messageContent.documentMessage.fileName || 'documento.pdf';
+
+        if (!rawBase64 && key.id) {
+          const fetched = await evolutionClient.getMediaBase64(instance, key);
+          if (fetched?.base64) {
+            rawBase64 = fetched.base64;
+            if (fetched.mimeType) mimeType = String(fetched.mimeType).split(';')[0].trim();
+          }
+        }
+
+        if (rawBase64) {
+          documentPart = {
+            fileName,
+            inlineData: {
+              mimeType,
+              data: stripDataUrl(rawBase64)
+            }
+          };
+        }
+      }
+
       await messageQueueService.enqueueMessage({
         tenant,
         customerPhone,
+        pushName,
         text,
-        media,
+        media: imagePart,
+        audio: audioPart,
+        document: documentPart,
+        messageKey: key,
         instanceName: instance
       });
     }

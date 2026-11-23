@@ -40,6 +40,7 @@ class AIService {
     stockContext = [],
     imageParts = [],
     audioParts = [],
+    documentParts = [],
     activePromotions = []
   }) {
     const MAX_RETRIES = 3;
@@ -50,7 +51,11 @@ class AIService {
       tenant,
       stockContext,
       chatHistory,
-      imageParts.length > 0,
+      {
+        hasImages: imageParts.length > 0,
+        hasAudio: audioParts.length > 0,
+        hasDocuments: documentParts.length > 0
+      },
       activePromotions
     );
 
@@ -71,7 +76,7 @@ class AIService {
       }
     }
 
-    // Mensagem atual do usuário
+    // Mensagem atual do usuário (texto + imagens + áudio + PDFs/documentos)
     const currentParts = [];
     if (customerText) {
       currentParts.push({ text: customerText });
@@ -81,6 +86,13 @@ class AIService {
     }
     if (audioParts && audioParts.length > 0) {
       currentParts.push(...audioParts);
+    }
+    if (documentParts && documentParts.length > 0) {
+      for (const doc of documentParts) {
+        if (doc?.inlineData?.data) {
+          currentParts.push({ inlineData: doc.inlineData });
+        }
+      }
     }
 
     if (currentParts.length > 0) {
@@ -111,11 +123,77 @@ class AIService {
 
   parseModelResponse(rawText) {
     if (!rawText) {
-      return { text: '', isHandoff: false, isNoResponse: false, photoCodes: [], missedDemands: [] };
+      return {
+        text: '',
+        isHandoff: false,
+        isNoResponse: false,
+        photoCodes: [],
+        missedDemands: [],
+        sentiment: 'NEUTRAL',
+        reactionEmoji: null,
+        sendLocation: false,
+        sendVcard: false,
+        sendReview: false,
+        poll: null,
+        docExtract: null
+      };
     }
 
     const isNoResponse = rawText.includes('[NO_RESPONSE]');
     const isHandoff = rawText.includes('[HANDOFF]');
+    const sendLocation = /\[SEND_LOCATION\]/i.test(rawText);
+    const sendVcard = /\[SEND_VCARD\]/i.test(rawText);
+    const sendReview = /\[SEND_REVIEW\]/i.test(rawText);
+
+    // Termômetro de sentimento: [SENTIMENT:POSITIVE|NEUTRAL|FRUSTRATED|URGENT]
+    const sentimentMatch = rawText.match(/\[SENTIMENT:(POSITIVE|NEUTRAL|FRUSTRATED|URGENT)\]/i);
+    const sentiment = sentimentMatch ? sentimentMatch[1].toUpperCase() : 'NEUTRAL';
+
+    // Reação com emoji: [REACT:👍]
+    const reactMatch = rawText.match(/\[REACT:([^\]]+)\]/i);
+    const reactionEmoji = reactMatch ? reactMatch[1].trim() : null;
+
+    // Enquete nativa: [POLL:Pergunta|Opção 1|Opção 2|...]
+    let poll = null;
+    const pollMatch = rawText.match(/\[POLL:([^\]]+)\]/i);
+    if (pollMatch) {
+      const parts = pollMatch[1]
+        .split('|')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (parts.length >= 3) {
+        poll = {
+          name: parts[0],
+          values: parts.slice(1, 13)
+        };
+      }
+    }
+
+    // Extração estruturada de documento/comprovante: [DOC_EXTRACT:{...}]
+    let docExtract = null;
+    const docMatch = rawText.match(/\[DOC_EXTRACT:(\{[\s\S]*?\})\]/i);
+    if (docMatch) {
+      try {
+        const parsed = JSON.parse(docMatch[1]);
+        if (parsed && typeof parsed === 'object') {
+          docExtract = {
+            docType: String(parsed.docType || 'COMPROVANTE').toUpperCase(),
+            title: String(parsed.title || 'Documento recebido via WhatsApp').trim(),
+            amount:
+              parsed.amount !== undefined && parsed.amount !== null && parsed.amount !== ''
+                ? Number(String(parsed.amount).replace(',', '.'))
+                : null,
+            dueDate: parsed.dueDate ? String(parsed.dueDate).trim() : null,
+            summary: parsed.summary ? String(parsed.summary).trim() : null
+          };
+          if (docExtract.amount !== null && !Number.isFinite(docExtract.amount)) {
+            docExtract.amount = null;
+          }
+        }
+      } catch {
+        docExtract = null;
+      }
+    }
 
     // Extrai códigos de fotos recomendados pela IA: {{COD:12345}}
     const photoRegex = /\{\{COD:([^\}]+)\}\}/g;
@@ -134,12 +212,20 @@ class AIService {
       if (term.length >= 2) missedDemands.push(term);
     }
 
-    // Limpa tags do texto final a ser enviado para o cliente
+    // Limpa todas as tags internas do texto final a ser enviado para o cliente
     let cleanText = rawText
-      .replace(/\[NO_RESPONSE\]/g, '')
-      .replace(/\[HANDOFF\]/g, '')
+      .replace(/\[NO_RESPONSE\]/gi, '')
+      .replace(/\[HANDOFF\]/gi, '')
+      .replace(/\[SEND_LOCATION\]/gi, '')
+      .replace(/\[SEND_VCARD\]/gi, '')
+      .replace(/\[SEND_REVIEW\]/gi, '')
+      .replace(/\[SENTIMENT:[^\]]+\]/gi, '')
+      .replace(/\[REACT:[^\]]+\]/gi, '')
+      .replace(/\[POLL:[^\]]+\]/gi, '')
+      .replace(/\[DOC_EXTRACT:\{[\s\S]*?\}\]/gi, '')
       .replace(/\[MISSED_DEMAND:[^\]]+\]/gi, '')
       .replace(/\{\{COD:[^\}]+\}\}/g, '')
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
 
     return {
@@ -148,7 +234,14 @@ class AIService {
       isHandoff,
       isNoResponse,
       photoCodes,
-      missedDemands
+      missedDemands,
+      sentiment,
+      reactionEmoji,
+      sendLocation,
+      sendVcard,
+      sendReview,
+      poll,
+      docExtract
     };
   }
 }

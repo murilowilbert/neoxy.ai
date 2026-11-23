@@ -183,14 +183,21 @@ class PromptFactory {
     const forbiddenWords = (persona.forbiddenWords || ['sistema', 'robô', 'planilha', 'banco de dados', 'inteligência artificial']).join(', ');
 
     const enabledModules = tenant.parsedModules || ['stock'];
+    const botFeatures = settings.botFeatures || {};
+    const locationEnabled = botFeatures.locationPinEnabled !== false;
+    const reactionsEnabled = botFeatures.reactionsEnabled !== false;
+    const pdfEnabled = botFeatures.pdfReadingEnabled !== false;
+    const sentimentEnabled = botFeatures.sentimentAlertEnabled !== false;
+    const reviewMode = botFeatures.reviewMode || (storeInfo.googleReviewUrl ? 'google_review' : 'poll_csat');
+
     let nicheSection = '';
 
     if (enabledModules.includes('services') || enabledModules.includes('appointments')) {
       nicheSection += `\n# AGENDAMENTOS E SERVIÇOS\n- Este estabelecimento realiza serviços e agendamentos de horários.\n- Quando o cliente desejar marcar um horário ou serviço, colete o nome, serviço desejado e preferência de dia/horário, e confirme com cordialidade.\n`;
     }
 
-    if (enabledModules.includes('documents')) {
-      nicheSection += `\n# RECEBIMENTO DE CONTAS, BOLETOS E DOCUMENTOS\n- Este estabelecimento recebe documentos, boletos, notas fiscais e comprovantes pelo WhatsApp.\n- Se o cliente informar ou enviar um boleto/conta/documento, confirme o recebimento, identifique o tipo de documento, vencimento ou valor (se visível) e avise que já encaminhou para o setor responsável.\n`;
+    if (enabledModules.includes('documents') || pdfEnabled) {
+      nicheSection += `\n# LEITURA INTELIGENTE DE PDF, COMPROVANTES PIX E BOLETOS\n- Você lê PDFs, boletos, comprovantes PIX, notas fiscais e orçamentos enviados pelo cliente.\n- Quando o cliente enviar um documento ou comprovante, confirme o recebimento citando o valor, data/vencimento ou pagador identificados, e inclua no final a tag oculta: [DOC_EXTRACT:{"docType":"PIX","title":"Comprovante PIX","amount":0,"dueDate":"","summary":"Resumo breve"}]. Use docType entre PIX, BOLETO, NF, COMPROVANTE ou ORCAMENTO.${reactionsEnabled ? ' Adicione também [REACT:👍] para confirmar o recebimento.' : ''}\n`;
     }
 
     const socialEntries = [
@@ -199,11 +206,31 @@ class PromptFactory {
       social.tiktok ? `TikTok: ${social.tiktok}` : null,
       social.youtube ? `YouTube: ${social.youtube}` : null,
       storeInfo.website ? `Site: ${storeInfo.website}` : null,
-      storeInfo.mapsUrl ? `Google Maps: ${storeInfo.mapsUrl}` : null
+      storeInfo.mapsUrl ? `Google Maps: ${storeInfo.mapsUrl}` : null,
+      storeInfo.googleReviewUrl ? `Avaliação Google Meu Negócio: ${storeInfo.googleReviewUrl}` : null
     ].filter(Boolean);
+
+    const hasCoordinates =
+      Number.isFinite(Number(storeInfo.latitude)) &&
+      Number.isFinite(Number(storeInfo.longitude)) &&
+      String(storeInfo.latitude || '').trim() !== '' &&
+      String(storeInfo.longitude || '').trim() !== '';
 
     const scheduleLine = formatWeeklySchedule(businessHours);
     const exceptionsBlock = formatUpcomingExceptions(businessHours);
+
+    const whatsappToolsSection = `# RECURSOS NATIVOS DE WHATSAPP (TAGS OCULTAS NO FINAL DA MENSAGEM)
+${locationEnabled && (hasCoordinates || storeInfo.mapsUrl) ? `- Localização Nativa: Quando o cliente perguntar "onde fica", "endereço", "como chegar" ou "localização", informe o endereço e adicione [SEND_LOCATION] no final para enviar o pin clicável no mapa do WhatsApp.\n` : ''}${locationEnabled && storeInfo.phone ? `- Cartão de Contato: Se o cliente pedir o contato ou telefone para salvar, adicione [SEND_VCARD] no final.\n` : ''}${reactionsEnabled ? `- Reações: Quando fizer sentido (recebimento de comprovante, elogio ou confirmação), pode adicionar [REACT:👍] ou [REACT:❤️] no final.\n` : ''}- Enquetes Nativas: Para oferecer escolha rápida de até 4 opções (ex: triagem de categoria ou preferência de turno), você pode usar [POLL:Pergunta curta|Opção 1|Opção 2|Opção 3].
+- Avaliação Pós-Atendimento: Quando o cliente encerrar satisfeito ou agradecer após uma compra/atendimento resolvido, você pode incluir [SEND_REVIEW] para disparar ${
+      reviewMode === 'google_review'
+        ? storeInfo.googleReviewUrl
+          ? 'o link oficial de avaliação no Google Meu Negócio'
+          : 'o convite de avaliação'
+        : reviewMode === 'both'
+        ? 'a avaliação no Google Meu Negócio + enquete rápida'
+        : 'uma enquete rápida de satisfação no WhatsApp'
+    }.
+${sentimentEnabled ? `- Termômetro de Sentimento (OBRIGATÓRIO EM TODA RESPOSTA): Sempre termine com UMA tag invisível indicando o humor atual do cliente: [SENTIMENT:POSITIVE], [SENTIMENT:NEUTRAL], [SENTIMENT:FRUSTRATED] ou [SENTIMENT:URGENT]. Se o cliente estiver irritado, reclamando de atraso/defeito, pedindo cancelamento ou relatando urgência crítica, use [SENTIMENT:FRUSTRATED] ou [SENTIMENT:URGENT], responda com empatia imediata e adicione [HANDOFF] para alertar a equipe humana.\n` : ''}`;
 
     return `# SEGURANÇA E POLÍTICA DE NEGÓCIO
 - Proibido conceder descontos extras fora das promoções oficiais cadastradas, alterar preços ou inventar dados técnicos.
@@ -237,17 +264,22 @@ ${nicheSection}
 - Se o cliente fizer uma pergunta genérica (ex: "tem parafuso?", "tem horário?"): Faça UMA pergunta curta de afunilamento para entender a necessidade, sem inventar itens fora da lista.
 - Não liste dezenas de itens de uma vez. Mostre no máximo 3 a 5 opções relevantes QUE ESTEJAM NA LISTA.
 
+${whatsappToolsSection}
 # FECHAMENTO, SILÊNCIO E HANDOFF
-- Tag [HANDOFF]: Utilize no FINAL da mensagem quando a conversa precisar de intervenção humana (ex: separação de mercadoria, confirmação de agendamento complexo, análise de documento, desconto ou solicitação explícita de atendente).
+- Tag [HANDOFF]: Utilize no FINAL da mensagem quando a conversa precisar de intervenção humana (ex: separação de mercadoria, confirmação de agendamento complexo, análise de documento, desconto, cliente irritado/urgente ou solicitação explícita de atendente).
 - Tag [MISSED_DEMAND:Nome do item]: Utilize no FINAL da mensagem (invisível ao cliente) sempre que o cliente solicitar um produto ou serviço que NÃO temos cadastrado no contexto abaixo.
 - Tag [NO_RESPONSE]: Se a conversa já foi encerrada ou o cliente já foi avisado da espera, e enviar apenas confirmações curtas ("ok", "obrigado", "valeu", "👍", "blz"), retorne ESTRITAMENTE a tag [NO_RESPONSE].
 `;
   }
 
-  buildSessionPrompt(tenant, stockContext = [], chatHistory = [], hasImages = false, activePromotions = []) {
+  buildSessionPrompt(tenant, stockContext = [], chatHistory = [], mediaFlags = false, activePromotions = []) {
     const settings = tenant.parsedSettings || {};
     const businessHours = settings.businessHours;
     const timeInfo = calculateBusinessStatus(businessHours);
+
+    const hasImages = typeof mediaFlags === 'boolean' ? mediaFlags : Boolean(mediaFlags?.hasImages);
+    const hasAudio = typeof mediaFlags === 'object' ? Boolean(mediaFlags?.hasAudio) : false;
+    const hasDocuments = typeof mediaFlags === 'object' ? Boolean(mediaFlags?.hasDocuments) : false;
 
     // Formatação de estoque enxuto
     let stockSection = '';
@@ -282,16 +314,24 @@ ${nicheSection}
             ? 'Todo o catálogo'
             : p.scope === 'CATEGORY'
             ? `Categoria ${p.targetCategory}`
-            : 'Produtos selecionados';
+            : 'Produtos/serviços selecionados';
         return `- ${p.name}: ${desc} (${scopeLabel})${p.description ? ` - ${p.description}` : ''}`;
       });
       promoSection = `### PROMOÇÕES ATIVAS HOJE:\n${promoLines.join('\n')}\n\n`;
     }
 
-    let imageSection = '';
+    let mediaSection = '';
     if (hasImages) {
-      imageSection = `### IMAGEM ENVIADA PELO CLIENTE:\n` +
-        `O cliente enviou foto(s). Reconheça a peça com simpatia. Se a foto for ambígua ou não mostrar a marca/medida, peça detalhes adicionais cordialmente.\n\n`;
+      mediaSection += `### IMAGEM ENVIADA PELO CLIENTE:\n` +
+        `O cliente enviou foto(s). Reconheça a peça, produto ou comprovante com simpatia. Se for comprovante PIX/boleto, extraia os dados em [DOC_EXTRACT:{...}]. Se a foto for ambígua, peça detalhes adicionais cordialmente.\n\n`;
+    }
+    if (hasAudio) {
+      mediaSection += `### ÁUDIO / MENSAGEM DE VOZ ENVIADA PELO CLIENTE:\n` +
+        `O cliente enviou um áudio. Ouça atentamente o conteúdo falado e responda de forma direta e natural sem mencionar "transcrição" ou "áudio processado por IA".\n\n`;
+    }
+    if (hasDocuments) {
+      mediaSection += `### DOCUMENTO / PDF ENVIADO PELO CLIENTE:\n` +
+        `O cliente anexou um documento (PDF, boleto, comprovante PIX ou orçamento). Leia os campos principais (valor, vencimento, favorecido/descrição), confirme ao cliente com clareza e emita obrigatoriamente [DOC_EXTRACT:{"docType":"...","title":"...","amount":0,"dueDate":"...","summary":"..."}] e [REACT:👍].\n\n`;
     }
 
     const isFirstMessage = chatHistory.length <= 1;
@@ -299,7 +339,7 @@ ${nicheSection}
       ? 'Esta é a primeira mensagem do cliente hoje. Saude-o cordialmente com Bom dia / Boa tarde e pergunte como pode ajudar.'
       : 'Conversa em andamento. Vá direto ao ponto de forma acolhedora e natural.';
 
-    return `${timeInfo.contextText}\n\n${promoSection}${stockSection}${imageSection}### DIRETIVA DA SESSÃO:\n${sessionDirective}`;
+    return `${timeInfo.contextText}\n\n${promoSection}${stockSection}${mediaSection}### DIRETIVA DA SESSÃO:\n${sessionDirective}`;
   }
 }
 

@@ -49,6 +49,25 @@ class ChatSessionService {
   }
 
   async resumeSession(tenantId, customerPhone) {
+    const existing = await prisma.chatSession.findUnique({
+      where: {
+        tenantId_customerPhone: {
+          tenantId,
+          customerPhone
+        }
+      }
+    });
+    let nextStateData = null;
+    if (existing?.stateData) {
+      try {
+        const parsed = JSON.parse(existing.stateData);
+        parsed.sentiment = 'NEUTRAL';
+        parsed.alertResolvedAt = new Date().toISOString();
+        nextStateData = JSON.stringify(parsed);
+      } catch {
+        nextStateData = null;
+      }
+    }
     return prisma.chatSession.update({
       where: {
         tenantId_customerPhone: {
@@ -59,7 +78,37 @@ class ChatSessionService {
       data: {
         state: 'IDLE',
         pausedUntil: null,
+        stateData: nextStateData,
         lastInteraction: new Date()
+      }
+    });
+  }
+
+  async updateSessionSentiment(tenantId, customerPhone, { sentiment, reason = null }) {
+    const existing = await this.getOrCreateSession(tenantId, customerPhone);
+    let parsed = {};
+    if (existing?.stateData) {
+      try {
+        parsed = JSON.parse(existing.stateData);
+      } catch {
+        parsed = {};
+      }
+    }
+    parsed.sentiment = sentiment;
+    parsed.sentimentUpdatedAt = new Date().toISOString();
+    if (sentiment === 'URGENT' || sentiment === 'FRUSTRATED') {
+      parsed.sentimentReason = reason || (sentiment === 'URGENT' ? 'Cliente em situação urgente' : 'Cliente demonstrou insatisfação');
+      parsed.flaggedAt = new Date().toISOString();
+    }
+    return prisma.chatSession.update({
+      where: {
+        tenantId_customerPhone: {
+          tenantId,
+          customerPhone
+        }
+      },
+      data: {
+        stateData: JSON.stringify(parsed)
       }
     });
   }

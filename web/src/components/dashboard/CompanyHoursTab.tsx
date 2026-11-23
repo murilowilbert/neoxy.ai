@@ -47,6 +47,9 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [mapsUrl, setMapsUrl] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [googleReviewUrl, setGoogleReviewUrl] = useState('');
   const [phone, setPhone] = useState('');
   const [website, setWebsite] = useState('');
   const [instagram, setInstagram] = useState('');
@@ -70,7 +73,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const s = tenant?.parsedSettings || {};
+    const s = tenant?.parsedSettings || tenant?.settings || {};
     const info = s.storeInfo || {};
     const social = info.socialLinks || {};
     const bh = s.businessHours || {};
@@ -78,6 +81,9 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
     setAddress(info.address || '');
     setCity(info.city || '');
     setMapsUrl(info.mapsUrl || '');
+    setLatitude(info.latitude !== undefined && info.latitude !== null ? String(info.latitude) : '');
+    setLongitude(info.longitude !== undefined && info.longitude !== null ? String(info.longitude) : '');
+    setGoogleReviewUrl(info.googleReviewUrl || '');
     setPhone(info.phone || '');
     setWebsite(info.website || '');
     setInstagram(social.instagram || '');
@@ -93,6 +99,15 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
     setSchedule(initialSchedule);
     setExceptions(Array.isArray(bh.exceptions) ? bh.exceptions : []);
   }, [tenant]);
+
+  function handleMapsUrlChange(val: string) {
+    setMapsUrl(val);
+    const coordMatch = val.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || val.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (coordMatch) {
+      setLatitude(coordMatch[1]);
+      setLongitude(coordMatch[2]);
+    }
+  }
 
   function toggleDayOpen(dayKey: string) {
     setSchedule((prev) => {
@@ -203,12 +218,22 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
     e.preventDefault();
     setSaving(true);
     try {
-      const currentSettings = tenant?.parsedSettings || {};
+      const currentSettings = tenant?.parsedSettings || tenant?.settings || {};
+      const parsedLat = latitude.trim() !== '' && Number.isFinite(Number(latitude.replace(',', '.')))
+        ? Number(latitude.replace(',', '.'))
+        : null;
+      const parsedLng = longitude.trim() !== '' && Number.isFinite(Number(longitude.replace(',', '.')))
+        ? Number(longitude.replace(',', '.'))
+        : null;
+
       const updatedStoreInfo = {
         ...(currentSettings.storeInfo || {}),
         address: address.trim(),
         city: city.trim(),
         mapsUrl: mapsUrl.trim(),
+        latitude: parsedLat,
+        longitude: parsedLng,
+        googleReviewUrl: googleReviewUrl.trim(),
         phone: phone.trim(),
         website: website.trim(),
         socialLinks: {
@@ -237,7 +262,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
       });
 
       await onSaved();
-      onNotify('Endereço, redes sociais, horários e feriados salvos e sincronizados com o bot!');
+      onNotify('Endereço, avaliação Google, coordenadas, redes sociais e horários salvos!');
     } catch (err: any) {
       onNotify(err.message || 'Erro ao salvar configurações da empresa.');
     } finally {
@@ -251,10 +276,10 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
       <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-sm font-bold text-[var(--nx-text)]">
-            Localização, Redes Sociais, Horários & Feriados
+            Localização, Avaliação Google, Redes Sociais, Horários & Feriados
           </h2>
           <p className="text-xs text-[var(--nx-muted)]">
-            O bot do WhatsApp consulta estes dados em tempo real para responder endereço, redes, se a empresa está aberta agora e horários em feriados.
+            O bot do WhatsApp usa estes dados para enviar Pin no Mapa, link direto de avaliação no Google Meu Negócio e informar horários em feriados.
           </p>
         </div>
 
@@ -270,7 +295,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
           <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 space-y-4">
             <div className="flex items-center gap-2 text-sm font-bold text-[var(--nx-text)]">
               <MapPin className="w-4 h-4 text-[var(--nx-primary)]" />
-              Endereço & Contato Oficial
+              Endereço, Pin de Mapa & Avaliação Google
             </div>
 
             <div className="space-y-3">
@@ -301,7 +326,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                   />
-                  <label>Telefone comercial</label>
+                  <label>Telefone comercial (vCard)</label>
                 </div>
               </div>
 
@@ -310,10 +335,44 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   type="url"
                   placeholder=" "
                   value={mapsUrl}
-                  onChange={(e) => setMapsUrl(e.target.value)}
+                  onChange={(e) => handleMapsUrlChange(e.target.value)}
                 />
-                <label>Link Google Maps (ex: https://maps.app.goo.gl/...)</label>
+                <label>Link Google Maps (cola URL com @lat,lng para preencher o Pin)</label>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="nx-field !mb-0">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    value={latitude}
+                    onChange={(e) => setLatitude(e.target.value)}
+                  />
+                  <label>Latitude do Pin (ex: -29.574)</label>
+                </div>
+                <div className="nx-field !mb-0">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    value={longitude}
+                    onChange={(e) => setLongitude(e.target.value)}
+                  />
+                  <label>Longitude do Pin (ex: -50.791)</label>
+                </div>
+              </div>
+
+              <div className="nx-field !mb-0">
+                <input
+                  type="url"
+                  placeholder=" "
+                  value={googleReviewUrl}
+                  onChange={(e) => setGoogleReviewUrl(e.target.value)}
+                />
+                <label>Link de Avaliação Google Meu Negócio (g.page/r/.../review)</label>
+              </div>
+              <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed">
+                Quando configurado, o bot ou atendente pode enviar esse link direto no WhatsApp para o cliente avaliar sua empresa com 5 estrelas no Google.
+              </p>
 
               <div className="nx-field !mb-0">
                 <input

@@ -825,21 +825,31 @@ async function getFollowUpRadar(tenantId) {
       1,
       Math.round((now - new Date(s.lastInteraction).getTime()) / 60000)
     );
+    const parsedState = parseJsonSafe(s.stateData, {});
+    const sentiment = parsedState?.sentiment || 'NEUTRAL';
+    const isSentimentAlert = sentiment === 'URGENT' || sentiment === 'FRUSTRATED';
     const isHandoff = s.state === 'HUMAN_HANDOFF';
     const awaitingReply = lastMsg?.role === 'user';
 
-    if (isHandoff || awaitingReply || waitMinutes >= 60) {
+    if (isSentimentAlert || isHandoff || awaitingReply || waitMinutes >= 60) {
       items.push({
         id: s.id,
         customerPhone: s.customerPhone,
         customerName: s.customerName || s.customerPhone,
         state: s.state,
+        sentiment,
+        sentimentReason: parsedState?.sentimentReason || null,
         waitMinutes,
         lastMessageRole: lastMsg?.role || null,
         lastMessageText: lastMsg?.content || '',
         lastInteraction: s.lastInteraction,
-        priority: isHandoff ? 'URGENT' : awaitingReply ? 'HIGH' : 'FOLLOW_UP',
-        reason: isHandoff
+        priority: isSentimentAlert || isHandoff ? 'URGENT' : awaitingReply ? 'HIGH' : 'FOLLOW_UP',
+        reason: isSentimentAlert
+          ? parsedState?.sentimentReason ||
+            (sentiment === 'URGENT'
+              ? 'Alerta Urgente detectado pela IA — atenção imediata'
+              : 'Cliente insatisfeito / frustrado — prioridade humana')
+          : isHandoff
           ? 'Aguardando atendente humano (IA pausada)'
           : awaitingReply
           ? 'Última mensagem foi do cliente sem retorno'
@@ -847,6 +857,21 @@ async function getFollowUpRadar(tenantId) {
       });
     }
   }
+
+  // Prioriza alertas vermelhos de sentimento primeiro
+  items.sort((a, b) => {
+    const score = (x) =>
+      x.sentiment === 'URGENT'
+        ? 4
+        : x.sentiment === 'FRUSTRATED'
+        ? 3
+        : x.priority === 'URGENT'
+        ? 2
+        : x.priority === 'HIGH'
+        ? 1
+        : 0;
+    return score(b) - score(a);
+  });
 
   return items;
 }

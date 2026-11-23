@@ -220,7 +220,110 @@ async function run() {
     await axios.delete(`${baseUrl}/api/tenants/desentupidora-guri/promotions/${srvPromo.data.promotion.id}`, guriAuth);
     console.log('✅ 12. Promoções aplicadas a Serviços (Desentupidora Guri) validadas.');
 
-    console.log('\n🎉 TODOS OS 12 TESTES DAS EXTENSÕES CRM PASSARAM COM SUCESSO!');
+    // 13. Camada Anti-Ban (HumanEntropy + Jitter + Rate Limiter)
+    const antiBanService = require('../src/modules/whatsapp/antiBanService');
+    const shortTyping = antiBanService.computeTypingDelayMs('Oi!', refreshedTenant);
+    const longTyping = antiBanService.computeTypingDelayMs(
+      'Olá! Temos sim a ducha Lorenzetti 220V pronta entrega com garantia de 1 ano e parcelamento em até 3x sem juros.',
+      refreshedTenant
+    );
+    assert(shortTyping >= 900 && longTyping > shortTyping, 'Tempo de digitação deve escalar com o tamanho do texto');
+    const readDelay = antiBanService.computeReadDelayMs(refreshedTenant);
+    assert(readDelay >= 1200 && readDelay <= 3200, 'Read delay humano deve respeitar a janela configurada');
+    const rl = await antiBanService.enforceRateLimit(refreshedTenant);
+    assert(typeof rl.remaining === 'number' && rl.remaining >= 0, 'Rate limiter deve controlar envios por minuto');
+    console.log('✅ 13. Camada Anti-Ban (Ritmo Humano, Read Delay & Rate Limiter) validada.');
+
+    // 14. Parser Multimodal & Tags Nativas (SENTIMENT, REACT, LOCATION, VCARD, REVIEW, POLL, DOC_EXTRACT)
+    const parsedSmart = aiService.parseModelResponse(
+      'Recebi seu comprovante PIX de R$ 250,50! Segue nossa localização. ' +
+        '[DOC_EXTRACT:{"docType":"PIX","title":"PIX Pedido #42","amount":250.5,"dueDate":"23/11/2026","summary":"Pagamento confirmado"}] ' +
+        '[REACT:👍] [SEND_LOCATION] [SEND_VCARD] [SEND_REVIEW] ' +
+        '[POLL:Como prefere retirar?|Retirar na loja|Entrega motoboy] [SENTIMENT:URGENT]'
+    );
+    assert.strictEqual(parsedSmart.text, 'Recebi seu comprovante PIX de R$ 250,50! Segue nossa localização.');
+    assert.strictEqual(parsedSmart.sentiment, 'URGENT');
+    assert.strictEqual(parsedSmart.reactionEmoji, '👍');
+    assert.strictEqual(parsedSmart.sendLocation, true);
+    assert.strictEqual(parsedSmart.sendVcard, true);
+    assert.strictEqual(parsedSmart.sendReview, true);
+    assert.strictEqual(parsedSmart.poll.name, 'Como prefere retirar?');
+    assert.deepStrictEqual(parsedSmart.poll.values, ['Retirar na loja', 'Entrega motoboy']);
+    assert.strictEqual(parsedSmart.docExtract.docType, 'PIX');
+    assert.strictEqual(parsedSmart.docExtract.amount, 250.5);
+    console.log('✅ 14. Parser de Tags Nativas (PDF/PIX, Reação, Localização, Enquete, Review & Sentimento) validado.');
+
+    // 15. Side Effects: Auto-registro de Comprovante PDF + Alerta Vermelho de Sentimento em Inbox & Radar
+    const messageQueueService = require('../src/modules/queue/messageQueueService');
+    const prisma = require('../src/database/prisma');
+    const alertPhone = '5551966664444';
+    const fx = await messageQueueService.executeAiSideEffects({
+      tenant: refreshedTenant,
+      customerPhone: alertPhone,
+      customerName: 'Cliente Teste Urgente',
+      aiResult: {
+        ...parsedSmart,
+        sendLocation: false,
+        sendReview: false
+      },
+      instanceName: null
+    });
+    assert(fx.documentSaved && fx.documentSaved.id, 'DOC_EXTRACT deve criar DocumentSubmission automaticamente');
+    assert.strictEqual(fx.sentimentAlertTriggered, true, 'SENTIMENT:URGENT deve acionar alerta vermelho e handoff');
+
+    const inboxAfterAlert = await axios.get(`${baseUrl}/api/tenants/ferragens-demo/inbox`, auth);
+    const flaggedSession = inboxAfterAlert.data.sessions.find((s) => s.customerPhone === alertPhone);
+    assert(flaggedSession && flaggedSession.sentiment === 'URGENT', 'Inbox deve exibir sentimento URGENT');
+
+    const radarAfterAlert = await axios.get(`${baseUrl}/api/tenants/ferragens-demo/radar`, auth);
+    assert(
+      radarAfterAlert.data.radar[0]?.customerPhone === alertPhone &&
+        radarAfterAlert.data.radar[0]?.sentiment === 'URGENT',
+      'Radar deve priorizar alerta vermelho de sentimento no topo'
+    );
+    await prisma.documentSubmission.delete({ where: { id: fx.documentSaved.id } });
+    console.log('✅ 15. Extração automática de PDF/PIX + Alerta Vermelho de Sentimento em Inbox & Radar validados.');
+
+    // 16. Disparo Direto de Link Google Meu Negócio + Pin de Localização via Inbox
+    await axios.put(
+      `${baseUrl}/api/tenants/ferragens-demo/settings`,
+      {
+        settings: {
+          storeInfo: {
+            ...updatedStoreInfo,
+            latitude: -29.5741,
+            longitude: -50.7912,
+            googleReviewUrl: 'https://g.page/r/ferragensmarlene/review'
+          },
+          botFeatures: {
+            reviewMode: 'google_review'
+          }
+        }
+      },
+      auth
+    );
+    const reviewRes = await axios.post(
+      `${baseUrl}/api/tenants/ferragens-demo/inbox/send-review`,
+      { customerPhone: alertPhone },
+      auth
+    );
+    assert.strictEqual(reviewRes.data.success, true);
+    assert(reviewRes.data.sentParts.includes('google_review'), 'Deve disparar link direto do Google Meu Negócio');
+
+    const locRes = await axios.post(
+      `${baseUrl}/api/tenants/ferragens-demo/inbox/send-location`,
+      { customerPhone: alertPhone },
+      auth
+    );
+    assert.strictEqual(locRes.data.success, true);
+    assert.strictEqual(locRes.data.type, 'native_pin', 'Deve disparar Pin nativo quando latitude/longitude existem');
+
+    // Limpa sessão temporária de teste
+    await prisma.chatMessage.deleteMany({ where: { tenantId: refreshedTenant.id, customerPhone: alertPhone } });
+    await prisma.chatSession.deleteMany({ where: { tenantId: refreshedTenant.id, customerPhone: alertPhone } });
+    console.log('✅ 16. Disparo de Avaliação Google Meu Negócio + Pin Nativo de Localização validados.');
+
+    console.log('\n🎉 TODOS OS 16 TESTES DAS EXTENSÕES CRM & BOT WHATSAPP PASSARAM COM SUCESSO!');
   } finally {
     server.close();
   }
