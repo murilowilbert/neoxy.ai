@@ -12,25 +12,37 @@ export function setToken(token: string | null) {
   }
 }
 
-export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+export async function apiFetch(
+  endpoint: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+) {
+  const { timeoutMs = 10000, ...fetchOptions } = options;
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {})
+    ...((fetchOptions.headers as Record<string, string>) || {})
   };
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(endpoint, {
-    ...options,
-    headers
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.success === false) {
-    throw new Error(data.error || `Erro HTTP ${res.status}`);
+  try {
+    const res = await fetch(endpoint, {
+      ...fetchOptions,
+      headers,
+      signal: controller.signal
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) {
+      throw new Error(data.error || `Erro HTTP ${res.status}`);
+    }
+    return data;
+  } finally {
+    clearTimeout(timer);
   }
-  return data;
 }

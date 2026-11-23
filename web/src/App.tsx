@@ -19,7 +19,7 @@ export function App() {
       return;
     }
     try {
-      const res = await apiFetch('/api/auth/me');
+      const res = await apiFetch('/api/auth/me', { timeoutMs: 4000 });
       setUser(res.user);
       setTenants(res.tenants || []);
       setView('dashboard');
