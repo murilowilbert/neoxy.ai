@@ -4,6 +4,7 @@ import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AppBootSkeleton } from './components/Skeleton';
+import { useCardSpotlight } from './hooks/useCardSpotlight';
 import { apiFetch, getToken, setToken } from './lib/api';
 
 class AppErrorBoundary extends Component<
@@ -53,6 +54,7 @@ class AppErrorBoundary extends Component<
 }
 
 export function App() {
+  useCardSpotlight();
   const [view, setView] = useState<'landing' | 'login' | 'register' | 'dashboard'>('landing');
   const [prefillEmail, setPrefillEmail] = useState<string>('');
   const [user, setUser] = useState<any>(null);

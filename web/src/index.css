@@ -355,28 +355,214 @@
   flex-shrink: 0;
 }
 
-/* ─── Cartão Interativo com Hierarquia Visual (Referência Imagem 5) ── */
-.nx-card-interactive {
-  background: var(--nx-surface);
-  border: 1px solid var(--nx-border);
-  border-radius: 16px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-  transition: border-color 0.2s ease, box-shadow 0.22s ease, transform 0.2s ease;
+/* ─── Cartão Interativo Premium (Luz Superior + Borda Especular + Spotlight Linear/Vercel) ── */
+.nx-card-interactive,
+.nx-spotlight-card {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F9F9F7 100%);
+  border: 1px solid rgba(10, 10, 11, 0.09);
+  border-radius: 20px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 4px 18px rgba(10, 10, 11, 0.045),
+    0 1px 3px rgba(10, 10, 11, 0.03);
+  transition:
+    border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-:root.dark .nx-card-interactive {
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+:root.dark .nx-card-interactive,
+:root.dark .nx-spotlight-card,
+.nx-spotlight-card--dark {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052) 0%, rgba(255, 255, 255, 0.014) 55%, rgba(255, 255, 255, 0.005) 100%),
+    #111114;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 10px 30px rgba(0, 0, 0, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.30);
+}
+
+/* Camada 1: Borda iluminada por proximidade do cursor (mask-composite: exclude) */
+.nx-card-interactive::before,
+.nx-spotlight-card::before,
+.nx-kpi-tile::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.25px;
+  background: radial-gradient(
+    280px circle at var(--nx-mx, -500px) var(--nx-my, -500px),
+    rgba(132, 204, 22, 0.78),
+    rgba(17, 17, 19, 0.24) 42%,
+    transparent 74%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: var(--nx-spot-active, 0);
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.32s ease;
+}
+
+:root.dark .nx-card-interactive::before,
+:root.dark .nx-spotlight-card::before,
+:root.dark .nx-kpi-tile::before,
+.nx-spotlight-card--dark::before {
+  background: radial-gradient(
+    300px circle at var(--nx-mx, -500px) var(--nx-my, -500px),
+    rgba(212, 255, 0, 0.82),
+    rgba(255, 255, 255, 0.36) 38%,
+    transparent 72%
+  );
+}
+
+/* Camada 2: Brilho radial interno suave que segue o cursor no hover */
+.nx-card-interactive::after,
+.nx-spotlight-card::after,
+.nx-kpi-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    420px circle at var(--nx-mx, 50%) var(--nx-my, 0%),
+    rgba(212, 255, 0, 0.13),
+    rgba(255, 253, 101, 0.05) 42%,
+    transparent 72%
+  );
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.3s ease;
+}
+
+:root.dark .nx-card-interactive::after,
+:root.dark .nx-spotlight-card::after,
+:root.dark .nx-kpi-tile::after,
+.nx-spotlight-card--dark::after {
+  background: radial-gradient(
+    440px circle at var(--nx-mx, 50%) var(--nx-my, 0%),
+    rgba(212, 255, 0, 0.095),
+    rgba(255, 255, 255, 0.032) 38%,
+    transparent 70%
+  );
+}
+
+.nx-card-interactive > *,
+.nx-spotlight-card > *,
+.nx-kpi-tile > * {
+  position: relative;
+  z-index: 1;
+}
+
+.nx-card-interactive:hover::after,
+.nx-spotlight-card:hover::after,
+.nx-kpi-tile:hover::after {
+  opacity: 1;
 }
 
 .nx-card-interactive:hover {
-  border-color: var(--nx-border-strong);
-  box-shadow: 0 0 0 3px var(--nx-primary-ring), 0 12px 28px rgba(0, 0, 0, 0.08);
+  border-color: rgba(10, 10, 11, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 16px 36px rgba(10, 10, 11, 0.09),
+    0 2px 8px rgba(10, 10, 11, 0.04);
   transform: translateY(-2px);
 }
 
-:root.dark .nx-card-interactive:hover {
-  border-color: var(--nx-volt-border);
-  box-shadow: 0 0 0 2px var(--nx-primary-ring), 0 14px 32px rgba(0, 0, 0, 0.55);
+:root.dark .nx-card-interactive:hover,
+.nx-spotlight-card--dark:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 20px 44px rgba(0, 0, 0, 0.65),
+    0 0 28px rgba(212, 255, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+/* ─── Bloco de Ícone Elevado com Bisel Especular (Fiel à Referência) ── */
+.nx-icon-tile {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--nx-text);
+  background: linear-gradient(180deg, #FFFFFF 0%, #F1F1EE 100%);
+  border: 1px solid rgba(10, 10, 11, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 6px 14px rgba(10, 10, 11, 0.08),
+    0 1px 3px rgba(10, 10, 11, 0.05);
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    color 0.25s ease;
+}
+
+.nx-icon-tile--sm {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+}
+
+:root.dark .nx-icon-tile,
+.nx-icon-tile--dark {
+  color: #FAFAFA;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.03) 100%),
+    #1B1B1F;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 10px 22px rgba(0, 0, 0, 0.50),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.nx-card-interactive:hover .nx-icon-tile,
+.nx-spotlight-card:hover .nx-icon-tile,
+.nx-kpi-tile:hover .nx-icon-tile {
+  transform: translateY(-1px) scale(1.03);
+  border-color: rgba(132, 204, 22, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 8px 20px rgba(189, 254, 1, 0.22),
+    0 2px 6px rgba(10, 10, 11, 0.06);
+}
+
+:root.dark .nx-card-interactive:hover .nx-icon-tile,
+:root.dark .nx-spotlight-card:hover .nx-icon-tile,
+:root.dark .nx-kpi-tile:hover .nx-icon-tile,
+.nx-spotlight-card--dark:hover .nx-icon-tile--dark {
+  color: #D4FF00;
+  border-color: rgba(212, 255, 0, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 10px 24px rgba(0, 0, 0, 0.58),
+    0 0 18px rgba(212, 255, 0, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-card-interactive,
+  .nx-spotlight-card,
+  .nx-kpi-tile,
+  .nx-icon-tile {
+    transition: none;
+  }
+  .nx-card-interactive:hover,
+  .nx-spotlight-card:hover,
+  .nx-kpi-tile:hover {
+    transform: none;
+  }
 }
 
 /* Escala tipográfica dedicada para Cards escaneáveis (24px / 16px / 14px / 16px) */
@@ -1075,23 +1261,45 @@
 
 /* ─── Estética Industrial-Moderna: KPI Telemetry Tiles & Submenu Rail ─── */
 .nx-kpi-tile {
-  background: var(--nx-surface);
-  border: 1px solid var(--nx-border);
-  border-top: 2px solid var(--nx-border-strong);
-  border-radius: 16px;
-  padding: 18px 20px;
-  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F9F9F7 100%);
+  border: 1px solid rgba(10, 10, 11, 0.09);
+  border-radius: 20px;
+  padding: 20px 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 4px 16px rgba(10, 10, 11, 0.04);
+  transition:
+    border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root.dark .nx-kpi-tile {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052) 0%, rgba(255, 255, 255, 0.012) 60%, rgba(255, 255, 255, 0.004) 100%),
+    #111114;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 10px 28px rgba(0, 0, 0, 0.44);
 }
 
 .nx-kpi-tile:hover {
-  border-top-color: var(--nx-volt);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-  transform: translateY(-1px);
+  border-color: rgba(10, 10, 11, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 14px 32px rgba(10, 10, 11, 0.08);
+  transform: translateY(-2px);
 }
 
 :root.dark .nx-kpi-tile:hover {
-  border-top-color: var(--nx-volt);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.50);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 16px 36px rgba(0, 0, 0, 0.62),
+    0 0 24px rgba(212, 255, 0, 0.06);
 }
 
 .nx-submenu-rail {

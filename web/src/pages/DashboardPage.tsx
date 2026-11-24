@@ -2576,24 +2576,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             />
 
             {enabledModules.includes('appointments') && (
-              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
+              <div className="nx-spotlight-card p-5">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] flex items-center justify-center shrink-0">
+                  <div className="flex items-start gap-3.5">
+                    <div className="nx-icon-tile">
                       <QrCode className="w-5 h-5" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-bold text-[var(--nx-text)]">
+                      <h2 className="text-base font-bold text-[var(--nx-text)]">
                         Check-in Rápido, Vistoria de Entrada & Validador de OS
                       </h2>
-                      <p className="text-xs text-[var(--nx-muted)]">
+                      <p className="text-xs text-[var(--nx-muted)] mt-0.5">
                         Informe o protocolo (#OS-XXXX), nome do cliente ou telefone para abrir o checklist de recepção e atualizar o rastreio.
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 w-full md:w-auto">
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] flex-1 md:w-72">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-full border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] flex-1 md:w-72">
                       <Search className="w-3.5 h-3.5 text-[var(--nx-subtle)]" />
                       <input
                         type="text"
@@ -2626,7 +2626,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             )}
 
             {/* Simulador de Atendimento WhatsApp */}
-            <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
+            <div className="nx-spotlight-card p-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-sm font-bold text-[var(--nx-text)]">
@@ -3250,15 +3250,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   return (
                     <div
                       key={srv.id}
-                      className="nx-card-interactive flex flex-col justify-between overflow-hidden animate-fade-up"
+                      className="nx-card-interactive group flex flex-col justify-between overflow-hidden animate-fade-up"
                     >
                       {srv.imageUrl && (
                         <div className="p-3.5 pb-0">
-                          <div className="relative h-44 rounded-xl bg-[var(--nx-bg)] overflow-hidden">
+                          <div className="relative h-44 rounded-xl bg-[var(--nx-bg)] ring-1 ring-inset ring-black/10 dark:ring-white/10 overflow-hidden">
                             <img
                               src={srv.imageUrl}
                               alt={srv.name}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                             />
                             {srv.videoUrl && (
                               <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/75 backdrop-blur-md text-white text-[10px] font-semibold">
@@ -3818,16 +3818,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   return (
                     <div
                       key={item.id}
-                      className="nx-card-interactive p-4 flex flex-col justify-between overflow-hidden animate-fade-up"
+                      className="nx-card-interactive group p-4 flex flex-col justify-between overflow-hidden animate-fade-up"
                     >
                       <div>
-                        {/* Mídia com bordas arredondadas internas (Referência Imagem 5) */}
-                        <div className="relative h-44 rounded-xl bg-[var(--nx-surface-alt)] flex items-center justify-center overflow-hidden mb-4">
+                        {/* Mídia com bordas arredondadas internas, contenção sutil e micro-zoom */}
+                        <div className="relative h-44 rounded-xl bg-[var(--nx-surface-alt)] ring-1 ring-inset ring-black/10 dark:ring-white/10 flex items-center justify-center overflow-hidden mb-4">
                           {item.imageUrl ? (
                             <img
                               src={item.imageUrl}
                               alt={item.name}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                             />
                           ) : (
                             <div className="flex flex-col items-center gap-1.5 text-[var(--nx-subtle)]">

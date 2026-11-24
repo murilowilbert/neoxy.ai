@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { ArrowUpRight, Calendar, Package, MessageSquare, Plus, Minus, Check } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Calendar,
+  Package,
+  MessageSquare,
+  Plus,
+  Minus,
+  Check,
+  Zap,
+  Eye,
+  ShieldCheck
+} from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import NeoxyLogo from '../components/NeoxyLogo';
 
@@ -285,18 +296,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 return (
                   <article
                     key={card.id}
-                    className="nx-card-interactive p-5 flex flex-col justify-between"
+                    className="nx-card-interactive group p-5 flex flex-col justify-between"
                   >
                     <div>
-                      {/* Mídia arredondada interna (padrão visual Imagem 5) */}
-                      <div className="relative h-44 rounded-xl overflow-hidden bg-[var(--nx-surface-alt)] mb-5">
+                      {/* Mídia arredondada interna com contenção sutil e micro-zoom no hover */}
+                      <div className="relative h-44 rounded-xl overflow-hidden bg-[var(--nx-surface-alt)] ring-1 ring-inset ring-black/10 dark:ring-white/10 mb-5">
                         <img
                           src={card.imageUrl}
                           alt={card.headline}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                         />
-                        <div className="absolute top-3 left-3 w-9 h-9 rounded-xl bg-[#0A0A0B]/80 backdrop-blur-md border border-white/15 flex items-center justify-center text-[#D4FF00]">
-                          <Icon className="w-4 h-4" />
+                        <div className="absolute top-3 left-3 nx-icon-tile nx-icon-tile--sm nx-icon-tile--dark !backdrop-blur-md">
+                          <Icon className="w-4 h-4 text-[#D4FF00]" />
                         </div>
                       </div>
 
@@ -311,7 +322,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <button
                         type="button"
                         onClick={() =>
-                          card.demoEmail ? onGoToLogin(card.demoEmail) : document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })
+                          card.demoEmail
+                            ? onGoToLogin(card.demoEmail)
+                            : document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })
                         }
                         className="nx-btn-secondary nx-card-btn-label px-4 py-2.5 flex-1"
                       >
@@ -329,10 +342,48 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 );
               })}
             </div>
+
+            {/* Faixa de Destaques — Cartões com Luz Superior, Borda Especular & Spotlight no Cursor */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              {[
+                {
+                  icon: Zap,
+                  title: 'Respostas instantâneas',
+                  body: 'Seu cliente recebe retorno em segundos no WhatsApp com preço real, disponibilidade e link de agendamento.'
+                },
+                {
+                  icon: Eye,
+                  title: 'Leitura de fotos, áudios e PDFs',
+                  body: 'A IA identifica peças em fotos enviadas, entende mensagens de voz e extrai dados de comprovantes.'
+                },
+                {
+                  icon: ShieldCheck,
+                  title: 'Assuma em 1 clique',
+                  body: 'Pause a IA em qualquer conversa instantaneamente para conduzir negociações sensíveis com sua equipe.'
+                }
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.title} className="nx-card-interactive p-6 flex flex-col gap-5">
+                    <div className="nx-icon-tile">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <h3 className="text-[20px] leading-snug font-bold tracking-tight text-[var(--nx-text)]">
+                        {item.title}
+                      </h3>
+                      <p className="text-[14px] leading-relaxed text-[var(--nx-muted)]">
+                        {item.body}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 
-        {/* Seção de Planos — Preto Real (#050506) + Destaque NEO Volt */}
+        {/* Seção de Planos — Preto Real (#050506) + Destaque NEO Volt + Cards Spotlight */}
         <section id="planos" className="bg-[#050506] text-white border-t border-[#1D1D21] relative overflow-hidden">
           <div
             aria-hidden="true"
@@ -364,10 +415,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {PLANS.map((plan) => (
                 <div
                   key={plan.name}
-                  className={`relative rounded-2xl p-7 flex flex-col justify-between border transition-all ${
+                  className={`nx-spotlight-card nx-spotlight-card--dark p-7 flex flex-col justify-between ${
                     plan.featured
-                      ? 'bg-[#111113] border-[#D4FF00]/70 shadow-[0_0_40px_rgba(212,255,0,0.12)]'
-                      : 'bg-[#0C0C0E] border-[#222226] hover:border-[#34343B]'
+                      ? '!border-[#D4FF00]/60 shadow-[0_0_42px_rgba(212,255,0,0.12)]'
+                      : ''
                   }`}
                 >
                   <div>
@@ -403,7 +454,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       {plan.description}
                     </p>
 
-                    <ul className="space-y-3 border-t border-[#222226] pt-6 mb-8">
+                    <ul className="space-y-3 border-t border-white/10 pt-6 mb-8">
                       {plan.features.map((feat) => (
                         <li key={feat} className="flex items-start gap-2.5 text-[14px] text-zinc-200">
                           <span
@@ -427,7 +478,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     className={`w-full py-3.5 px-5 rounded-full text-[16px] font-semibold transition-all ${
                       plan.featured
                         ? 'nx-btn-primary'
-                        : 'bg-[#18181B] hover:bg-[#232328] text-white border border-[#2E2E35]'
+                        : 'bg-[#1A1A1F] hover:bg-[#24242B] text-white border border-white/12'
                     }`}
                   >
                     {plan.cta}

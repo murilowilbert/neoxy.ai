@@ -261,37 +261,41 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* KPI TELEMETRY STRIP (INDUSTRIAL PRECISION) */}
+      {/* KPI TELEMETRY STRIP (STUDIO-LIT SPOTLIGHT TILES) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="nx-kpi-tile">
-          <div className="flex items-center justify-between text-xs text-[var(--nx-muted)]">
+          <div className="flex items-center justify-between text-xs font-medium text-[var(--nx-muted)]">
             <span>Mensagens hoje</span>
-            <MessageSquare className="w-4 h-4 text-[var(--nx-primary)]" />
+            <span className="nx-icon-tile nx-icon-tile--sm">
+              <MessageSquare className="w-4 h-4" />
+            </span>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
+          <div className="mt-2.5 flex items-baseline gap-2">
             <span className="text-3xl font-bold tabular-data text-[var(--nx-text)]">
               {analytics?.messagesToday.received ?? 0}
             </span>
             <span className="text-xs text-[var(--nx-muted)]">recebidas</span>
           </div>
-          <div className="mt-2 pt-2 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px] text-[var(--nx-subtle)]">
+          <div className="mt-3 pt-2.5 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px] text-[var(--nx-subtle)]">
             <span>IA respondeu: {analytics?.messagesToday.aiReplies ?? 0}</span>
             <span>Humano: {analytics?.messagesToday.humanReplies ?? 0}</span>
           </div>
         </div>
 
         <div className="nx-kpi-tile">
-          <div className="flex items-center justify-between text-xs text-[var(--nx-muted)]">
+          <div className="flex items-center justify-between text-xs font-medium text-[var(--nx-muted)]">
             <span>Autonomia da IA</span>
-            <Activity className="w-4 h-4 text-[var(--nx-accent)]" />
+            <span className="nx-icon-tile nx-icon-tile--sm text-[var(--nx-accent)]">
+              <Activity className="w-4 h-4" />
+            </span>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
+          <div className="mt-2.5 flex items-baseline gap-2">
             <span className="text-3xl font-bold tabular-data text-[var(--nx-text)]">
               {aiVsHuman.automationRatePct}%
             </span>
             <span className="text-xs text-[var(--nx-accent)] font-medium">100% IA</span>
           </div>
-          <div className="mt-2 pt-2 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px] text-[var(--nx-subtle)]">
+          <div className="mt-3 pt-2.5 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px] text-[var(--nx-subtle)]">
             <span>{aiVsHuman.aiOnlySessions} só IA</span>
             <span>{aiVsHuman.humanIntervenedSessions} com humano</span>
           </div>
@@ -300,21 +304,23 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
         <button
           type="button"
           onClick={() => onNavigateTab('contacts')}
-          className="nx-kpi-tile text-left hover:border-[var(--nx-primary)] transition-colors"
+          className="nx-kpi-tile text-left"
         >
-          <div className="flex items-center justify-between text-xs text-[var(--nx-muted)]">
+          <div className="flex items-center justify-between text-xs font-medium text-[var(--nx-muted)]">
             <span>Contatos & Filtro IA</span>
-            <Users className="w-4 h-4 text-[var(--nx-primary)]" />
+            <span className="nx-icon-tile nx-icon-tile--sm">
+              <Users className="w-4 h-4" />
+            </span>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
+          <div className="mt-2.5 flex items-baseline gap-2">
             <span className="text-3xl font-bold tabular-data text-[var(--nx-text)]">
               {analytics?.totalContactsCount ?? metrics?.activeSessions ?? 0}
             </span>
             <span className="text-xs text-[var(--nx-muted)]">contatos</span>
           </div>
-          <div className="mt-2 pt-2 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px] text-[var(--nx-subtle)]">
+          <div className="mt-3 pt-2.5 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px] text-[var(--nx-subtle)]">
             <span>{analytics?.blockedContactsCount ?? 0} bloqueados p/ IA</span>
-            <span className="text-[var(--nx-primary)] font-medium">Gerenciar</span>
+            <span className="text-[var(--nx-volt-ink)] font-semibold">Gerenciar</span>
           </div>
         </button>
 
@@ -327,13 +333,15 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                 : 'appointments'
             )
           }
-          className="nx-kpi-tile text-left hover:border-[var(--nx-primary)] transition-colors"
+          className="nx-kpi-tile text-left"
         >
-          <div className="flex items-center justify-between text-xs text-[var(--nx-muted)]">
+          <div className="flex items-center justify-between text-xs font-medium text-[var(--nx-muted)]">
             <span>{enabledModules.includes('stock') ? 'Catálogo & Ofertas' : 'Serviços & Ofertas'}</span>
-            <Tag className="w-4 h-4 text-[var(--nx-amber)]" />
+            <span className="nx-icon-tile nx-icon-tile--sm text-[var(--nx-amber)]">
+              <Tag className="w-4 h-4" />
+            </span>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
+          <div className="mt-2.5 flex items-baseline gap-2">
             <span className="text-3xl font-bold tabular-data text-[var(--nx-text)]">
               {enabledModules.includes('stock')
                 ? metrics?.totalCatalog ?? 0
@@ -343,9 +351,9 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
               {enabledModules.includes('stock') ? 'produtos' : 'serviços'}
             </span>
           </div>
-          <div className="mt-2 pt-2 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px] text-[var(--nx-subtle)]">
+          <div className="mt-3 pt-2.5 border-t border-[var(--nx-border)] flex items-center justify-between text-[11px] text-[var(--nx-subtle)]">
             <span>{analytics?.activePromotionsCount ?? 0} promoções ativas</span>
-            <span className="text-[var(--nx-primary)] font-medium">Abrir</span>
+            <span className="text-[var(--nx-volt-ink)] font-semibold">Abrir</span>
           </div>
         </button>
       </div>
@@ -353,13 +361,13 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
       {/* ROW 1: GRÁFICO INTERATIVO RECHARTS (ÁREA SUAVE / BARRAS) + DONUT MODERNO */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Col 7: Volume de Mensagens com Tooltip flutuando acima do mouse */}
-        <div className="lg:col-span-7 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-5 flex flex-col justify-between">
+        <div className="lg:col-span-7 nx-spotlight-card p-5 flex flex-col justify-between">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <h3 className="text-sm font-bold text-[var(--nx-text)]">
+              <h3 className="text-base font-bold text-[var(--nx-text)]">
                 Mensagens recebidas e respondidas
               </h3>
-              <p className="text-[11px] text-[var(--nx-muted)]">
+              <p className="text-xs text-[var(--nx-muted)] mt-0.5">
                 Passe o mouse sobre o gráfico para inspecionar cada horário ou dia em detalhe.
               </p>
             </div>
@@ -536,7 +544,7 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
         </div>
 
         {/* Col 5: Donut Moderno Interativo (IA 100% vs Intervenção Humana) */}
-        <div className="lg:col-span-5 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-2xl p-5 flex flex-col justify-between">
+        <div className="lg:col-span-5 nx-spotlight-card p-5 flex flex-col justify-between">
           <div className="mb-2">
             <h3 className="text-base font-bold text-[var(--nx-text)]">
               Atendimento 100% IA vs Humano

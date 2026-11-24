@@ -524,18 +524,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                           key={profile.type}
                           type="button"
                           onClick={() => handleSelectProfile(profile)}
-                          className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between min-h-[128px] ${
+                          className={`nx-card-interactive p-4 text-left flex flex-col justify-between min-h-[132px] ${
                             isActive
-                              ? 'border-[var(--nx-primary)] bg-[var(--nx-primary-soft)] shadow-sm'
-                              : 'border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)]'
+                              ? '!border-[var(--nx-primary)] !bg-[var(--nx-primary-soft)]'
+                              : ''
                           }`}
                         >
                           <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            className={
                               isActive
-                                ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
-                                : 'bg-[var(--nx-surface)] text-[var(--nx-text)] border border-[var(--nx-border)]'
-                            }`}
+                                ? 'w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] shadow-sm'
+                                : 'nx-icon-tile nx-icon-tile--sm'
+                            }
                           >
                             <Icon className="w-5 h-5" />
                           </div>
