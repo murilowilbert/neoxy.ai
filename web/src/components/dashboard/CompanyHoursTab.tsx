@@ -6,11 +6,13 @@ import {
   Plus,
   Trash2,
   Download,
-  Share2
+  Share2,
+  Check
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { AutoScrollLabel } from '../AutoScrollLabel';
 import { CustomSelect } from '../CustomSelect';
+import { CustomTimePicker } from '../CustomTimePicker';
 
 interface TimeSlot {
   start: string;
@@ -275,12 +277,12 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
   return (
     <form onSubmit={handleSaveAll} className="space-y-6 animate-fade-up">
       {/* Barra superior com ação Salvar */}
-      <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="nx-spotlight-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-sm font-bold text-[var(--nx-text)]">
+          <h2 className="text-base font-bold text-[var(--nx-text)]">
             Localização, Avaliação Google, Redes Sociais, Horários & Feriados
           </h2>
-          <p className="text-xs text-[var(--nx-muted)]">
+          <p className="text-xs text-[var(--nx-muted)] mt-0.5">
             O bot do WhatsApp usa estes dados para enviar Pin no Mapa, link direto de avaliação no Google Meu Negócio e informar horários em feriados.
           </p>
         </div>
@@ -294,9 +296,11 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
         {/* Coluna Esquerda: Localização + Redes Sociais */}
         <div className="lg:col-span-5 space-y-5">
           {/* Endereço e Contato */}
-          <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 space-y-4">
-            <div className="flex items-center gap-2 text-sm font-bold text-[var(--nx-text)]">
-              <MapPin className="w-4 h-4 text-[var(--nx-primary)]" />
+          <div className="nx-spotlight-card p-5 space-y-4">
+            <div className="flex items-center gap-3 text-sm font-bold text-[var(--nx-text)]">
+              <span className="nx-icon-tile nx-icon-tile--sm">
+                <MapPin className="w-4 h-4" />
+              </span>
               Endereço, Pin de Mapa & Avaliação Google
             </div>
 
@@ -389,9 +393,11 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
           </div>
 
           {/* Redes Sociais */}
-          <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 space-y-4">
-            <div className="flex items-center gap-2 text-sm font-bold text-[var(--nx-text)]">
-              <Share2 className="w-4 h-4 text-[var(--nx-primary)]" />
+          <div className="nx-spotlight-card p-5 space-y-4">
+            <div className="flex items-center gap-3 text-sm font-bold text-[var(--nx-text)]">
+              <span className="nx-icon-tile nx-icon-tile--sm">
+                <Share2 className="w-4 h-4" />
+              </span>
               Links para Redes Sociais
             </div>
 
@@ -464,73 +470,95 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
         {/* Coluna Direita: Grade Semanal + Feriados/Datas Especiais */}
         <div className="lg:col-span-7 space-y-5">
           {/* Horários de Funcionamento */}
-          <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm font-bold text-[var(--nx-text)]">
-                <Clock className="w-4 h-4 text-[var(--nx-primary)]" />
-                Horários de Atendimento Semanal
+          <div className="nx-spotlight-card p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="nx-icon-tile nx-icon-tile--sm">
+                  <Clock className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--nx-text)]">
+                    Horários de Atendimento Semanal
+                  </h3>
+                  <p className="text-[11px] text-[var(--nx-muted)]">
+                    Ative os dias abertos e defina os turnos de atendimento do bot.
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={copyMondayToWeekdays}
-                className="px-2.5 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-[11px] font-medium text-[var(--nx-text)]"
+                className="nx-btn-secondary px-3.5 py-1.5 text-[11px]"
               >
                 Copiar Segunda para Seg–Sex
               </button>
             </div>
 
-            <div className="divide-y divide-[var(--nx-border)] border border-[var(--nx-border)] rounded-lg bg-[var(--nx-bg)]">
+            <div className="divide-y divide-[var(--nx-border)] border border-[var(--nx-border)] rounded-2xl bg-[var(--nx-bg)]/80 overflow-hidden">
               {WEEK_DAYS.map((day) => {
                 const slots = schedule[day.key] || [];
                 const isOpen = slots.length > 0;
                 return (
                   <div
                     key={day.key}
-                    className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    className={`px-3.5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+                      isOpen
+                        ? 'hover:bg-[var(--nx-surface)]/70'
+                        : 'opacity-75 hover:opacity-100 hover:bg-[var(--nx-surface)]/40'
+                    }`}
                   >
-                    <div className="flex items-center gap-3 min-w-[160px]">
-                      <input
-                        type="checkbox"
-                        checked={isOpen}
-                        onChange={() => toggleDayOpen(day.key)}
-                        className="w-4 h-4 accent-[var(--nx-primary)]"
-                      />
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={isOpen}
+                      onClick={() => toggleDayOpen(day.key)}
+                      className="flex items-center gap-3 min-w-[165px] text-left group cursor-pointer"
+                    >
                       <span
-                        className={`text-xs font-semibold ${
-                          isOpen ? 'text-[var(--nx-text)]' : 'text-[var(--nx-subtle)]'
+                        className="nx-checkbox"
+                        aria-checked={isOpen}
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </span>
+                      <span
+                        className={`text-xs font-semibold transition-colors ${
+                          isOpen
+                            ? 'text-[var(--nx-text)]'
+                            : 'text-[var(--nx-subtle)] group-hover:text-[var(--nx-muted)]'
                         }`}
                       >
                         {day.label}
                       </span>
-                    </div>
+                    </button>
 
                     {!isOpen ? (
-                      <span className="text-[11px] text-[var(--nx-subtle)] font-medium">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-[var(--nx-surface-alt)] text-[var(--nx-subtle)] border border-[var(--nx-border)] self-end sm:self-auto">
                         Fechado
                       </span>
                     ) : (
                       <div className="flex flex-wrap items-center gap-2 flex-1 justify-end">
                         {slots.map((slot, idx) => (
                           <div key={idx} className="inline-flex items-center gap-1.5">
-                            <input
-                              type="time"
+                            <CustomTimePicker
                               value={slot.start}
-                              onChange={(e) => updateSlot(day.key, idx, 'start', e.target.value)}
-                              className="px-2 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs tabular-data text-[var(--nx-text)]"
+                              onChange={(val) => updateSlot(day.key, idx, 'start', val)}
+                              ariaLabel={`Início ${day.label} turno ${idx + 1}`}
                             />
-                            <span className="text-[11px] text-[var(--nx-subtle)]">às</span>
-                            <input
-                              type="time"
+                            <span className="text-[11px] font-medium text-[var(--nx-subtle)] px-0.5">
+                              às
+                            </span>
+                            <CustomTimePicker
                               value={slot.end}
-                              onChange={(e) => updateSlot(day.key, idx, 'end', e.target.value)}
-                              className="px-2 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs tabular-data text-[var(--nx-text)]"
+                              onChange={(val) => updateSlot(day.key, idx, 'end', val)}
+                              ariaLabel={`Término ${day.label} turno ${idx + 1}`}
                             />
                             {slots.length > 1 && (
                               <button
                                 type="button"
                                 onClick={() => removeSlot(day.key, idx)}
-                                className="p-1 text-[var(--nx-muted)] hover:text-[var(--nx-error)]"
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--nx-error)] bg-[var(--nx-error-bg)] hover:opacity-90 transition-opacity"
                                 title="Remover turno"
+                                aria-label="Remover turno"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -541,7 +569,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                           <button
                             type="button"
                             onClick={() => addSlot(day.key)}
-                            className="px-2 py-1 rounded border border-dashed border-[var(--nx-border-strong)] hover:border-[var(--nx-primary)] text-[11px] text-[var(--nx-muted)] hover:text-[var(--nx-primary)]"
+                            className="px-3 py-1.5 rounded-full border border-dashed border-[var(--nx-border-strong)] bg-[var(--nx-surface)]/70 hover:border-[var(--nx-volt-border)] hover:bg-[var(--nx-volt-surface)] text-[11px] font-semibold text-[var(--nx-muted)] hover:text-[var(--nx-volt-ink)] transition-colors"
                             title="Adicionar segundo turno (ex: após almoço)"
                           >
                             + 2º turno
@@ -556,11 +584,15 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
           </div>
 
           {/* Feriados & Datas Especiais */}
-          <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 space-y-4">
+          <div className="nx-spotlight-card p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-[var(--nx-text)]">
-                <Calendar className="w-4 h-4 text-[var(--nx-primary)]" />
-                Feriados & Horários Especiais
+              <div className="flex items-center gap-3">
+                <span className="nx-icon-tile nx-icon-tile--sm">
+                  <Calendar className="w-4 h-4" />
+                </span>
+                <span className="text-sm font-bold text-[var(--nx-text)]">
+                  Feriados & Horários Especiais
+                </span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -578,29 +610,29 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   type="button"
                   onClick={handleImportNationalHolidays}
                   disabled={importingHolidays}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)]"
+                  className="nx-btn-secondary px-3.5 py-1.5 text-xs"
                 >
-                  <Download className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+                  <Download className="w-3.5 h-3.5" />
                   {importingHolidays ? 'Importando...' : 'Importar Feriados BR'}
                 </button>
               </div>
             </div>
 
             {/* Adicionar Data Especial / Feriado */}
-            <div className="p-3.5 rounded-lg border border-[var(--nx-border)] bg-[var(--nx-bg)] space-y-3">
+            <div className="p-3.5 rounded-2xl border border-[var(--nx-border)] bg-[var(--nx-bg)]/80 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <input
                   type="date"
                   value={newExDate}
                   onChange={(e) => setNewExDate(e.target.value)}
-                  className="px-2.5 py-2 rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                  className="px-3 py-2 rounded-xl border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)] outline-none focus:border-[var(--nx-primary)]"
                 />
                 <input
                   type="text"
                   value={newExReason}
                   onChange={(e) => setNewExReason(e.target.value)}
                   placeholder="Motivo (ex: Feriado Municipal, Inventário)"
-                  className="px-2.5 py-2 rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                  className="px-3 py-2 rounded-xl border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)] outline-none focus:border-[var(--nx-primary)]"
                 />
                 <CustomSelect
                   variant="compact"
@@ -611,26 +643,24 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                     { value: 'horario_especial', label: 'Horário especial' }
                   ]}
                   className="w-full"
-                  buttonClassName="w-full py-2"
+                  buttonClassName="w-full py-2 !rounded-xl"
                 />
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 {newExType === 'horario_especial' ? (
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-[var(--nx-muted)]">Abre:</span>
-                    <input
-                      type="time"
+                    <span className="text-[var(--nx-muted)] font-medium">Abre:</span>
+                    <CustomTimePicker
                       value={newExOpen}
-                      onChange={(e) => setNewExOpen(e.target.value)}
-                      className="px-2 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] tabular-data text-xs"
+                      onChange={setNewExOpen}
+                      ariaLabel="Horário especial de abertura"
                     />
-                    <span className="text-[var(--nx-muted)]">Fecha:</span>
-                    <input
-                      type="time"
+                    <span className="text-[var(--nx-muted)] font-medium">Fecha:</span>
+                    <CustomTimePicker
                       value={newExClose}
-                      onChange={(e) => setNewExClose(e.target.value)}
-                      className="px-2 py-1 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] tabular-data text-xs"
+                      onChange={setNewExClose}
+                      ariaLabel="Horário especial de fechamento"
                     />
                   </div>
                 ) : (
@@ -639,14 +669,14 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                     value={newExReturn}
                     onChange={(e) => setNewExReturn(e.target.value)}
                     placeholder="Previsão de retorno (opcional, ex: sexta às 08h)"
-                    className="flex-1 min-w-[200px] px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                    className="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)] outline-none focus:border-[var(--nx-primary)]"
                   />
                 )}
 
                 <button
                   type="button"
                   onClick={handleAddException}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] text-xs font-semibold hover:opacity-90"
+                  className="nx-btn-primary px-4 py-2 text-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Adicionar Data
