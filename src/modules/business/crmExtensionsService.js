@@ -31,7 +31,9 @@ async function getTenantAnalytics(tenantId) {
     missedDemands,
     activePromotionsCount,
     blockedContactsCount,
-    totalContactsCount
+    totalContactsCount,
+    catalogItems,
+    serviceItems
   ] = await Promise.all([
     prisma.chatMessage.findMany({
       where: { tenantId, createdAt: { gte: sevenDaysAgo } },
@@ -58,7 +60,15 @@ async function getTenantAnalytics(tenantId) {
     }),
     prisma.promotion.count({ where: { tenantId, active: true } }),
     prisma.whatsAppContact.count({ where: { tenantId, aiBlocked: true } }),
-    prisma.whatsAppContact.count({ where: { tenantId } })
+    prisma.whatsAppContact.count({ where: { tenantId } }),
+    prisma.catalogItem.findMany({
+      where: { tenantId },
+      select: { id: true, name: true, imageUrl: true, category: true, price: true }
+    }),
+    prisma.serviceItem.findMany({
+      where: { tenantId },
+      select: { id: true, name: true, imageUrl: true, category: true, price: true }
+    })
   ]);
 
   // Buckets por hora hoje (00h..23h)
@@ -169,6 +179,11 @@ async function getTenantAnalytics(tenantId) {
     if (isHandoff || isOld) coldConversationsCount += 1;
   }
 
+  const catalogById = new Map(catalogItems.map((c) => [c.id, c]));
+  const catalogByName = new Map(catalogItems.map((c) => [c.name.toLowerCase().trim(), c]));
+  const serviceById = new Map(serviceItems.map((s) => [s.id, s]));
+  const serviceByName = new Map(serviceItems.map((s) => [s.name.toLowerCase().trim(), s]));
+
   return {
     messagesToday: {
       received: messagesTodayReceived,
@@ -187,14 +202,29 @@ async function getTenantAnalytics(tenantId) {
       humanMessagesTotal,
       userMessagesTotal
     },
-    topExistingDemands: existingDemands.map((d) => ({
-      id: d.id,
-      itemType: d.itemType,
-      name: d.itemName,
-      searchCount: d.searchCount,
-      lastRequested: d.lastRequested,
-      inCatalog: true
-    })),
+    topExistingDemands: existingDemands.map((d) => {
+      const key = String(d.itemName || '').toLowerCase().trim();
+      const matched =
+        (d.catalogItemId && catalogById.get(d.catalogItemId)) ||
+        (d.serviceItemId && serviceById.get(d.serviceItemId)) ||
+        catalogByName.get(key) ||
+        serviceByName.get(key) ||
+        catalogItems.find((c) => c.name.toLowerCase().includes(key) || key.includes(c.name.toLowerCase())) ||
+        serviceItems.find((s) => s.name.toLowerCase().includes(key) || key.includes(s.name.toLowerCase())) ||
+        null;
+
+      return {
+        id: d.id,
+        itemType: d.itemType,
+        name: d.itemName,
+        searchCount: d.searchCount,
+        lastRequested: d.lastRequested,
+        imageUrl: matched?.imageUrl || null,
+        category: matched?.category || null,
+        price: matched?.price ?? null,
+        inCatalog: true
+      };
+    }),
     topMissedDemands: missedDemands.map((m) => ({
       id: m.id,
       itemType: 'MISSING',

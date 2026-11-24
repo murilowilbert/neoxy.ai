@@ -9,8 +9,24 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Package,
+  Scissors
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
 
 interface HourBucket {
   hour: number;
@@ -42,6 +58,9 @@ interface DemandItem {
   name: string;
   searchCount: number;
   inCatalog: boolean;
+  imageUrl?: string | null;
+  category?: string | null;
+  price?: number | null;
   occurrences?: DemandOccurrence[];
 }
 
@@ -80,6 +99,60 @@ interface OverviewAnalyticsPanelProps {
   onOpenConversation?: (customerPhone: string) => void;
 }
 
+const MessagesFloatingTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const fullLabel = payload[0]?.payload?.label || label;
+  return (
+    <div
+      className="rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] px-3 py-2.5 shadow-lg text-xs min-w-[165px]"
+      style={{ pointerEvents: 'none' }}
+    >
+      <div className="font-bold text-[var(--nx-text)] pb-1.5 mb-1.5 border-b border-[var(--nx-border)]">
+        {fullLabel}
+      </div>
+      <div className="space-y-1">
+        {payload.map((entry: any) => (
+          <div key={entry.dataKey} className="flex items-center justify-between gap-4">
+            <span className="inline-flex items-center gap-1.5 text-[var(--nx-muted)]">
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: entry.color }}
+              />
+              {entry.name}
+            </span>
+            <span className="font-bold tabular-data text-[var(--nx-text)]">
+              {entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const DonutFloatingTooltip = ({ active, payload }: any) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const entry = payload[0];
+  return (
+    <div
+      className="rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] px-3 py-2 shadow-lg text-xs"
+      style={{ pointerEvents: 'none' }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className="w-2.5 h-2.5 rounded-full shrink-0"
+          style={{ backgroundColor: entry.payload?.fill }}
+        />
+        <span className="font-semibold text-[var(--nx-text)]">{entry.name}</span>
+      </div>
+      <div className="mt-1 text-[11px] text-[var(--nx-muted)] tabular-data">
+        <strong className="text-[var(--nx-text)]">{entry.value}</strong> conversa
+        {entry.value === 1 ? '' : 's'} ({entry.payload?.pct}%)
+      </div>
+    </div>
+  );
+};
+
 export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
   analytics,
   metrics,
@@ -89,7 +162,7 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
   onOpenConversation
 }) => {
   const [chartRange, setChartRange] = useState<'today' | '7d'>('today');
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [chartStyle, setChartStyle] = useState<'area' | 'bar'>('area');
   const [expandedMissedId, setExpandedMissedId] = useState<string | null>(null);
 
   const aiVsHuman = analytics?.aiVsHuman || {
@@ -102,24 +175,56 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
     userMessagesTotal: 0
   };
 
-  const series =
+  const series: Array<{
+    axisLabel: string;
+    label: string;
+    received: number;
+    aiReplies: number;
+    humanReplies: number;
+  }> =
     chartRange === 'today'
-      ? (analytics?.messagesByHourToday || []).filter((_, idx) => idx >= 7 && idx <= 22)
-      : analytics?.messagesLast7Days || [];
+      ? (analytics?.messagesByHourToday || [])
+          .filter((_, idx) => idx >= 7 && idx <= 22)
+          .map((b) => ({
+            axisLabel: b.label,
+            label: b.label,
+            received: b.received,
+            aiReplies: b.aiReplies,
+            humanReplies: b.humanReplies
+          }))
+      : (analytics?.messagesLast7Days || []).map((b) => ({
+          axisLabel: b.shortLabel,
+          label: b.label,
+          received: b.received,
+          aiReplies: b.aiReplies,
+          humanReplies: b.humanReplies
+        }));
 
-  const maxBarValue = Math.max(
-    4,
-    ...series.map((b) => Math.max(b.received, b.aiReplies + b.humanReplies))
-  );
-
-  const radius = 50;
-  const circumference = 2 * Math.PI * radius;
-  const aiRatio =
+  const totalSessionsSafe = Math.max(1, aiVsHuman.totalConversations);
+  const donutData =
     aiVsHuman.totalConversations > 0
-      ? aiVsHuman.aiOnlySessions / aiVsHuman.totalConversations
-      : 1;
-  const aiDash = circumference * aiRatio;
-  const humanDash = circumference * (1 - aiRatio);
+      ? [
+          {
+            name: '100% pela IA',
+            value: aiVsHuman.aiOnlySessions,
+            pct: Math.round((aiVsHuman.aiOnlySessions / totalSessionsSafe) * 100),
+            fill: '#15803D'
+          },
+          {
+            name: 'Tratado por Humano',
+            value: aiVsHuman.humanIntervenedSessions,
+            pct: Math.round((aiVsHuman.humanIntervenedSessions / totalSessionsSafe) * 100),
+            fill: '#D97706'
+          }
+        ].filter((d) => d.value > 0)
+      : [
+          {
+            name: 'Sem conversas ainda',
+            value: 1,
+            pct: 100,
+            fill: 'var(--nx-border-strong)'
+          }
+        ];
 
   const topExisting = analytics?.topExistingDemands || [];
   const topMissed = analytics?.topMissedDemands || metrics?.missedDemands || [];
@@ -232,182 +337,194 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
         </button>
       </div>
 
-      {/* ROW 1: GRÁFICO DE MENSAGENS + IA VS HUMANO */}
+      {/* ROW 1: GRÁFICO INTERATIVO RECHARTS (ÁREA SUAVE / BARRAS) + DONUT MODERNO */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Col 7: Volume de Mensagens (Hoje 24h ou 7 dias) */}
-        <div className="lg:col-span-7 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 flex flex-col justify-between">
+        {/* Col 7: Volume de Mensagens com Tooltip flutuando acima do mouse */}
+        <div className="lg:col-span-7 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-5 flex flex-col justify-between">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="text-sm font-bold text-[var(--nx-text)]">
                 Mensagens recebidas e respondidas
               </h3>
               <p className="text-[11px] text-[var(--nx-muted)]">
-                Fluxo de entrada no WhatsApp comparado com respostas da IA e equipe humana.
+                Passe o mouse sobre o gráfico para inspecionar cada horário ou dia em detalhe.
               </p>
             </div>
-            <div className="flex rounded-md border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-bg)] text-[11px]">
-              <button
-                type="button"
-                onClick={() => setChartRange('today')}
-                className={`px-2.5 py-1 rounded font-medium transition-colors ${
-                  chartRange === 'today'
-                    ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
-                    : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                Hoje (horas)
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartRange('7d')}
-                className={`px-2.5 py-1 rounded font-medium transition-colors ${
-                  chartRange === '7d'
-                    ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
-                    : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                Últimos 7 dias
-              </button>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex rounded-lg border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-bg)] text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setChartStyle('area')}
+                  className={`px-2 py-1 rounded-md font-medium transition-colors ${
+                    chartStyle === 'area'
+                      ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
+                      : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                  }`}
+                >
+                  Curva
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartStyle('bar')}
+                  className={`px-2 py-1 rounded-md font-medium transition-colors ${
+                    chartStyle === 'bar'
+                      ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
+                      : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                  }`}
+                >
+                  Barras
+                </button>
+              </div>
+
+              <div className="flex rounded-lg border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-bg)] text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setChartRange('today')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                    chartRange === 'today'
+                      ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
+                      : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                  }`}
+                >
+                  Hoje
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartRange('7d')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                    chartRange === '7d'
+                      ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
+                      : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                  }`}
+                >
+                  7 dias
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="relative">
-            <svg
-              viewBox="0 0 600 200"
-              className="w-full h-48 overflow-visible"
-              role="img"
-              aria-label="Gráfico de mensagens recebidas e respondidas"
-            >
-              {[0, 0.25, 0.5, 0.75, 1].map((step) => {
-                const y = 165 - step * 145;
-                const val = Math.round(maxBarValue * step);
-                return (
-                  <g key={step}>
-                    <line
-                      x1="28"
-                      y1={y}
-                      x2="594"
-                      y2={y}
-                      stroke="var(--nx-border)"
-                      strokeDasharray={step === 0 ? undefined : '3 3'}
-                      strokeWidth="1"
-                    />
-                    <text
-                      x="22"
-                      y={y + 3}
-                      textAnchor="end"
-                      fontSize="9"
-                      fill="var(--nx-subtle)"
-                      className="tabular-data"
-                    >
-                      {val}
-                    </text>
-                  </g>
-                );
-              })}
-
-              {series.map((bucket, idx) => {
-                const slotWidth = 560 / Math.max(1, series.length);
-                const xStart = 32 + idx * slotWidth;
-                const barW = Math.max(6, Math.min(18, slotWidth * 0.32));
-                const hRec = (bucket.received / maxBarValue) * 145;
-                const hAi = (bucket.aiReplies / maxBarValue) * 145;
-                const hHum = (bucket.humanReplies / maxBarValue) * 145;
-                const isHovered = hoveredIdx === idx;
-
-                return (
-                  <g
-                    key={bucket.label}
-                    onMouseEnter={() => setHoveredIdx(idx)}
-                    onMouseLeave={() => setHoveredIdx(null)}
-                    className="cursor-pointer"
-                  >
-                    {isHovered && (
-                      <rect
-                        x={xStart}
-                        y={16}
-                        width={slotWidth - 2}
-                        height={150}
-                        rx="4"
-                        fill="var(--nx-primary-soft)"
-                        opacity="0.55"
-                      />
-                    )}
-
-                    <rect
-                      x={xStart + slotWidth * 0.16}
-                      y={165 - hRec}
-                      width={barW}
-                      height={Math.max(hRec, bucket.received > 0 ? 3 : 0)}
-                      rx="2"
-                      fill="var(--nx-primary)"
-                    />
-
-                    <rect
-                      x={xStart + slotWidth * 0.16 + barW + 2}
-                      y={165 - hAi}
-                      width={barW}
-                      height={Math.max(hAi, bucket.aiReplies > 0 ? 3 : 0)}
-                      rx="2"
-                      fill="var(--nx-accent)"
-                    />
-
-                    {bucket.humanReplies > 0 && (
-                      <rect
-                        x={xStart + slotWidth * 0.16 + barW + 2}
-                        y={165 - hAi - hHum}
-                        width={barW}
-                        height={Math.max(hHum, 3)}
-                        rx="2"
-                        fill="var(--nx-amber)"
-                      />
-                    )}
-
-                    {(chartRange === '7d' || idx % 2 === 0) && (
-                      <text
-                        x={xStart + slotWidth / 2}
-                        y="184"
-                        textAnchor="middle"
-                        fontSize="9.5"
-                        fill="var(--nx-muted)"
-                      >
-                        {'shortLabel' in bucket ? bucket.shortLabel : bucket.label}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-
-            <div className="mt-2 pt-2.5 border-t border-[var(--nx-border)] flex flex-wrap items-center justify-between gap-2 text-[11px]">
-              <div className="flex items-center gap-4 text-[var(--nx-muted)]">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[var(--nx-primary)]" />
-                  Recebidas
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[var(--nx-accent)]" />
-                  Respostas IA
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[var(--nx-amber)]" />
-                  Atendente Humano
-                </span>
-              </div>
-
-              {hoveredIdx !== null && series[hoveredIdx] && (
-                <div className="text-[11px] text-[var(--nx-text)] bg-[var(--nx-bg)] px-2.5 py-0.5 rounded border border-[var(--nx-border)] tabular-data">
-                  {series[hoveredIdx].label}: {series[hoveredIdx].received} rec /{' '}
-                  {series[hoveredIdx].aiReplies} IA / {series[hoveredIdx].humanReplies} hum
-                </div>
+          <div className="w-full h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              {chartStyle === 'area' ? (
+                <AreaChart data={series} margin={{ top: 10, right: 12, left: -18, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="nxGradReceived" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0F4C81" stopOpacity={0.28} />
+                      <stop offset="95%" stopColor="#0F4C81" stopOpacity={0.01} />
+                    </linearGradient>
+                    <linearGradient id="nxGradAi" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#15803D" stopOpacity={0.28} />
+                      <stop offset="95%" stopColor="#15803D" stopOpacity={0.01} />
+                    </linearGradient>
+                    <linearGradient id="nxGradHuman" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#D97706" stopOpacity={0.26} />
+                      <stop offset="95%" stopColor="#D97706" stopOpacity={0.01} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    stroke="var(--nx-border)"
+                    strokeDasharray="3 4"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="axisLabel"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: 'var(--nx-muted)' }}
+                    interval={chartRange === 'today' ? 1 : 0}
+                    dy={6}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: 'var(--nx-subtle)' }}
+                  />
+                  <Tooltip
+                    content={<MessagesFloatingTooltip />}
+                    cursor={{ stroke: 'var(--nx-border-strong)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="received"
+                    name="Recebidas"
+                    stroke="#0F4C81"
+                    strokeWidth={2.2}
+                    fill="url(#nxGradReceived)"
+                    activeDot={{ r: 5, stroke: 'var(--nx-surface)', strokeWidth: 2, fill: '#0F4C81' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="aiReplies"
+                    name="Respostas IA"
+                    stroke="#15803D"
+                    strokeWidth={2.2}
+                    fill="url(#nxGradAi)"
+                    activeDot={{ r: 5, stroke: 'var(--nx-surface)', strokeWidth: 2, fill: '#15803D' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="humanReplies"
+                    name="Humano"
+                    stroke="#D97706"
+                    strokeWidth={2}
+                    fill="url(#nxGradHuman)"
+                    activeDot={{ r: 5, stroke: 'var(--nx-surface)', strokeWidth: 2, fill: '#D97706' }}
+                  />
+                </AreaChart>
+              ) : (
+                <BarChart data={series} margin={{ top: 10, right: 12, left: -18, bottom: 0 }} barGap={3}>
+                  <CartesianGrid
+                    stroke="var(--nx-border)"
+                    strokeDasharray="3 4"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="axisLabel"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: 'var(--nx-muted)' }}
+                    interval={chartRange === 'today' ? 1 : 0}
+                    dy={6}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: 'var(--nx-subtle)' }}
+                  />
+                  <Tooltip
+                    content={<MessagesFloatingTooltip />}
+                    cursor={{ fill: 'var(--nx-primary-soft)', radius: 6 }}
+                  />
+                  <Bar dataKey="received" name="Recebidas" fill="#0F4C81" radius={[5, 5, 0, 0]} maxBarSize={16} />
+                  <Bar dataKey="aiReplies" name="Respostas IA" fill="#15803D" radius={[5, 5, 0, 0]} maxBarSize={16} />
+                  <Bar dataKey="humanReplies" name="Humano" fill="#D97706" radius={[5, 5, 0, 0]} maxBarSize={16} />
+                </BarChart>
               )}
-            </div>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-[var(--nx-border)] flex flex-wrap items-center gap-4 text-[11px] text-[var(--nx-muted)]">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#0F4C81' }} />
+              Recebidas
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#15803D' }} />
+              Respostas IA
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#D97706' }} />
+              Atendente Humano
+            </span>
           </div>
         </div>
 
-        {/* Col 5: IA 100% vs Intervenção Humana */}
-        <div className="lg:col-span-5 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 flex flex-col justify-between">
-          <div className="mb-3">
+        {/* Col 5: Donut Moderno Interativo (IA 100% vs Intervenção Humana) */}
+        <div className="lg:col-span-5 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-5 flex flex-col justify-between">
+          <div className="mb-2">
             <h3 className="text-sm font-bold text-[var(--nx-text)]">
               Atendimento 100% IA vs Humano
             </h3>
@@ -416,76 +533,64 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-5 my-2">
-            <div className="relative w-32 h-32 shrink-0">
-              <svg viewBox="0 0 128 128" className="w-full h-full -rotate-90">
-                <circle
-                  cx="64"
-                  cy="64"
-                  r={radius}
-                  fill="none"
-                  stroke="var(--nx-surface-alt)"
-                  strokeWidth="14"
-                />
-                <circle
-                  cx="64"
-                  cy="64"
-                  r={radius}
-                  fill="none"
-                  stroke="var(--nx-accent)"
-                  strokeWidth="14"
-                  strokeDasharray={`${aiDash} ${circumference}`}
-                  strokeLinecap="butt"
-                />
-                {aiVsHuman.humanIntervenedSessions > 0 && (
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r={radius}
-                    fill="none"
-                    stroke="var(--nx-amber)"
-                    strokeWidth="14"
-                    strokeDasharray={`${humanDash} ${circumference}`}
-                    strokeDashoffset={-aiDash}
-                    strokeLinecap="butt"
-                  />
-                )}
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="flex flex-col sm:flex-row items-center gap-5 my-1">
+            <div className="relative w-44 h-44 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={54}
+                    outerRadius={74}
+                    paddingAngle={donutData.length > 1 ? 5 : 0}
+                    cornerRadius={8}
+                    stroke="none"
+                  >
+                    {donutData.map((entry, idx) => (
+                      <Cell key={`cell-${idx}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<DonutFloatingTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-2xl font-bold tabular-data text-[var(--nx-text)] leading-none">
                   {aiVsHuman.automationRatePct}%
                 </span>
-                <span className="text-[10px] text-[var(--nx-muted)] mt-1">autônomo</span>
+                <span className="text-[11px] text-[var(--nx-muted)] mt-1">autônomo</span>
               </div>
             </div>
 
-            <div className="flex-1 space-y-3 min-w-0">
-              <div className="p-2.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+            <div className="flex-1 w-full space-y-2.5 min-w-0">
+              <div className="p-3 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)]">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="inline-flex items-center gap-1.5 font-medium text-[var(--nx-text)]">
-                    <span className="w-2 h-2 rounded-full bg-[var(--nx-accent)]" />
+                  <span className="inline-flex items-center gap-2 font-semibold text-[var(--nx-text)]">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#15803D' }} />
                     100% pela IA
                   </span>
                   <span className="font-bold tabular-data text-[var(--nx-text)]">
                     {aiVsHuman.aiOnlySessions}
                   </span>
                 </div>
-                <div className="text-[10px] text-[var(--nx-subtle)] mt-0.5">
+                <div className="text-[11px] text-[var(--nx-subtle)] mt-1">
                   {aiVsHuman.aiMessagesTotal} mensagens enviadas pela IA
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+              <div className="p-3 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)]">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="inline-flex items-center gap-1.5 font-medium text-[var(--nx-text)]">
-                    <span className="w-2 h-2 rounded-full bg-[var(--nx-amber)]" />
+                  <span className="inline-flex items-center gap-2 font-semibold text-[var(--nx-text)]">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#D97706' }} />
                     Tratado por Humano
                   </span>
                   <span className="font-bold tabular-data text-[var(--nx-text)]">
                     {aiVsHuman.humanIntervenedSessions}
                   </span>
                 </div>
-                <div className="text-[10px] text-[var(--nx-subtle)] mt-0.5">
+                <div className="text-[11px] text-[var(--nx-subtle)] mt-1">
                   {aiVsHuman.humanMessagesTotal} mensagens manuais da equipe
                 </div>
               </div>
@@ -511,10 +616,10 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
         </div>
       </div>
 
-      {/* ROW 2: ITENS & SERVIÇOS MAIS PROCURADOS (TEMOS VS OPORTUNIDADES EXPANSÍVEIS) */}
+      {/* ROW 2: ITENS & SERVIÇOS MAIS PROCURADOS (COM THUMBNAIL) VS OPORTUNIDADES EXPANSÍVEIS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Col 6: Mais procurados que TEMOS */}
-        <div className="lg:col-span-6 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
+        {/* Col 6: Mais procurados que TEMOS (com miniatura da foto do produto/serviço) */}
+        <div className="lg:col-span-6 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-5">
           <div className="flex items-center justify-between gap-2 mb-4">
             <div>
               <h3 className="text-sm font-bold text-[var(--nx-text)] flex items-center gap-2">
@@ -535,21 +640,51 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
             <div className="space-y-3">
               {topExisting.map((item) => {
                 const pct = Math.max(8, Math.round((item.searchCount / maxExisting) * 100));
+                const isService = item.itemType === 'SERVICE';
                 return (
-                  <div key={item.id} className="space-y-1">
-                    <div className="flex items-center justify-between gap-3 text-xs">
-                      <span className="font-medium text-[var(--nx-text)] truncate">
-                        {item.name}
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold text-[11px] tabular-data shrink-0">
-                        {item.searchCount}x
-                      </span>
+                  <div key={item.id} className="flex items-center gap-3">
+                    {/* Miniatura do Produto ou Serviço */}
+                    <div className="w-10 h-10 rounded-lg border border-[var(--nx-border)] bg-[var(--nx-bg)] overflow-hidden flex items-center justify-center shrink-0">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : isService ? (
+                        <Scissors className="w-4 h-4 text-[var(--nx-muted)]" />
+                      ) : (
+                        <Package className="w-4 h-4 text-[var(--nx-muted)]" />
+                      )}
                     </div>
-                    <div className="h-1.5 w-full bg-[var(--nx-surface-alt)] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[var(--nx-primary)] rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
+
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-[var(--nx-text)] truncate">
+                            {item.name}
+                          </div>
+                          {(item.category || (item.price !== null && item.price !== undefined)) && (
+                            <div className="text-[10px] text-[var(--nx-subtle)] flex items-center gap-2">
+                              {item.category && <span>{item.category}</span>}
+                              {item.price !== null && item.price !== undefined && (
+                                <span className="tabular-data font-medium text-[var(--nx-muted)]">
+                                  R$ {Number(item.price).toFixed(2).replace('.', ',')}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <span className="px-2 py-0.5 rounded bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold text-[11px] tabular-data shrink-0">
+                          {item.searchCount}x
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-[var(--nx-surface-alt)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[var(--nx-primary)] rounded-full transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
@@ -559,7 +694,7 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
         </div>
 
         {/* Col 6: Oportunidades que ainda não oferecemos (EXPANSÍVEL COM CONVERSAS SALVAS) */}
-        <div className="lg:col-span-6 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5">
+        <div className="lg:col-span-6 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-5">
           <div className="flex items-center justify-between gap-2 mb-4">
             <div>
               <h3 className="text-sm font-bold text-[var(--nx-text)] flex items-center gap-2">
@@ -643,7 +778,6 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                       </div>
                     </div>
 
-                    {/* Conversas registradas onde o cliente pediu este item */}
                     {isExpanded && (
                       <div className="px-3 pb-3 pt-2 border-t border-[var(--nx-border)] space-y-2 animate-fade-up">
                         {occurrences.length === 0 ? (

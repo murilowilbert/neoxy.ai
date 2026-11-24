@@ -9,6 +9,7 @@ import {
   Share2
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { AutoScrollLabel } from '../AutoScrollLabel';
 
 interface TimeSlot {
   start: string;
@@ -306,7 +307,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                 />
-                <label>Endereço completo (Rua, nº, bairro)</label>
+                <AutoScrollLabel>Endereço completo (Rua, nº, bairro)</AutoScrollLabel>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -317,7 +318,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                   />
-                  <label>Cidade / UF</label>
+                  <AutoScrollLabel>Cidade / UF</AutoScrollLabel>
                 </div>
                 <div className="nx-field !mb-0">
                   <input
@@ -326,7 +327,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                   />
-                  <label>Telefone comercial (vCard)</label>
+                  <AutoScrollLabel>Telefone comercial (vCard)</AutoScrollLabel>
                 </div>
               </div>
 
@@ -337,7 +338,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   value={mapsUrl}
                   onChange={(e) => handleMapsUrlChange(e.target.value)}
                 />
-                <label>Link Google Maps (cola URL com @lat,lng para preencher o Pin)</label>
+                <AutoScrollLabel>Link Google Maps (cole URL com @lat,lng para preencher o Pin)</AutoScrollLabel>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -348,7 +349,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                     value={latitude}
                     onChange={(e) => setLatitude(e.target.value)}
                   />
-                  <label>Latitude do Pin (ex: -29.574)</label>
+                  <AutoScrollLabel>Latitude (ex: -29.574)</AutoScrollLabel>
                 </div>
                 <div className="nx-field !mb-0">
                   <input
@@ -357,7 +358,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                     value={longitude}
                     onChange={(e) => setLongitude(e.target.value)}
                   />
-                  <label>Longitude do Pin (ex: -50.791)</label>
+                  <AutoScrollLabel>Longitude (ex: -50.791)</AutoScrollLabel>
                 </div>
               </div>
 
@@ -368,7 +369,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   value={googleReviewUrl}
                   onChange={(e) => setGoogleReviewUrl(e.target.value)}
                 />
-                <label>Link de Avaliação Google Meu Negócio (g.page/r/.../review)</label>
+                <AutoScrollLabel>Link de Avaliação Google Meu Negócio (g.page/r/.../review)</AutoScrollLabel>
               </div>
               <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed">
                 Quando configurado, o bot ou atendente pode enviar esse link direto no WhatsApp para o cliente avaliar sua empresa com 5 estrelas no Google.
@@ -381,7 +382,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
                 />
-                <label>Site oficial (opcional)</label>
+                <AutoScrollLabel>Site oficial (opcional)</AutoScrollLabel>
               </div>
             </div>
           </div>
@@ -401,7 +402,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
                 />
-                <label>Instagram (@perfil ou URL)</label>
+                <AutoScrollLabel>Instagram (@perfil ou URL)</AutoScrollLabel>
               </div>
               <div className="nx-field !mb-0">
                 <input
@@ -410,7 +411,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   value={facebook}
                   onChange={(e) => setFacebook(e.target.value)}
                 />
-                <label>Facebook (URL da página)</label>
+                <AutoScrollLabel>Facebook (URL da página)</AutoScrollLabel>
               </div>
               <div className="nx-field !mb-0">
                 <input
@@ -419,7 +420,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   value={tiktok}
                   onChange={(e) => setTiktok(e.target.value)}
                 />
-                <label>TikTok (@perfil ou URL)</label>
+                <AutoScrollLabel>TikTok (@perfil ou URL)</AutoScrollLabel>
               </div>
               <div className="nx-field !mb-0">
                 <input
@@ -428,7 +429,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   value={youtube}
                   onChange={(e) => setYoutube(e.target.value)}
                 />
-                <label>YouTube (canal ou URL)</label>
+                <AutoScrollLabel>YouTube (canal ou URL)</AutoScrollLabel>
               </div>
             </div>
           </div>
@@ -540,7 +541,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                 <select
                   value={holidayYear}
                   onChange={(e) => setHolidayYear(e.target.value)}
-                  className="px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs text-[var(--nx-text)]"
+                  className="nx-select px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs text-[var(--nx-text)]"
                 >
                   <option value="2026">2026</option>
                   <option value="2027">2027</option>
@@ -576,7 +577,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                 <select
                   value={newExType}
                   onChange={(e) => setNewExType(e.target.value as 'closed' | 'horario_especial')}
-                  className="px-2.5 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                  className="nx-select px-2.5 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
                 >
                   <option value="closed">Fechado o dia todo</option>
                   <option value="horario_especial">Horário especial</option>

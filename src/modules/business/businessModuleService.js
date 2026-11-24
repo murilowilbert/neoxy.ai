@@ -697,21 +697,39 @@ async function deleteDocument(tenantId, documentId) {
  * Live Inbox & Human Handoff Control
  */
 async function listChatSessionsWithLastMessage(tenantId) {
-  const sessions = await prisma.chatSession.findMany({
-    where: { tenantId },
-    orderBy: { lastInteraction: 'desc' }
-  });
+  const [sessions, contacts] = await Promise.all([
+    prisma.chatSession.findMany({
+      where: { tenantId },
+      orderBy: { lastInteraction: 'desc' }
+    }),
+    prisma.whatsAppContact.findMany({
+      where: { tenantId },
+      select: { phone: true, name: true, pushName: true, avatarUrl: true, aiBlocked: true }
+    })
+  ]);
+
+  const contactByPhone = new Map();
+  for (const c of contacts) {
+    const clean = String(c.phone || '').replace(/[^0-9]/g, '');
+    if (clean) contactByPhone.set(clean, c);
+  }
 
   const enriched = await Promise.all(
     sessions.map(async (s) => {
       const messages = await prisma.chatMessage.findMany({
         where: { tenantId, customerPhone: s.customerPhone },
         orderBy: { createdAt: 'asc' },
-        take: 30
+        take: 40
       });
       const parsedState = parseJsonSafe(s.stateData, {});
+      const cleanPhone = String(s.customerPhone || '').replace(/[^0-9]/g, '');
+      const contact = contactByPhone.get(cleanPhone) || null;
       return {
         ...s,
+        customerName: contact?.name || contact?.pushName || s.customerName || null,
+        pushName: contact?.pushName || null,
+        avatarUrl: contact?.avatarUrl || null,
+        aiBlocked: Boolean(contact?.aiBlocked),
         sentiment: parsedState?.sentiment || 'NEUTRAL',
         sentimentReason: parsedState?.sentimentReason || null,
         flaggedAt: parsedState?.flaggedAt || null,

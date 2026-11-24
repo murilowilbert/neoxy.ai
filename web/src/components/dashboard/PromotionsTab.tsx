@@ -15,6 +15,8 @@ import {
   Scissors
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { NumberField } from '../NumberField';
+import { AutoScrollLabel } from '../AutoScrollLabel';
 
 export interface PromotionItem {
   id: string;
@@ -515,7 +517,7 @@ export const PromotionsTab: React.FC<PromotionsTabProps> = ({
                 </div>
 
                 {/* Alvo (Produtos / Serviços), Tipo de Desconto & Escopo */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   <div className="nx-field !mb-0">
                     <select
                       value={form.appliesTo}
@@ -530,7 +532,7 @@ export const PromotionsTab: React.FC<PromotionsTabProps> = ({
                       {hasServices && <option value="SERVICES">Serviços</option>}
                       {hasStock && hasServices && <option value="BOTH">Produtos + Serviços</option>}
                     </select>
-                    <label>Válido para</label>
+                    <AutoScrollLabel>Válido para</AutoScrollLabel>
                   </div>
 
                   <div className="nx-field !mb-0">
@@ -543,26 +545,21 @@ export const PromotionsTab: React.FC<PromotionsTabProps> = ({
                         }))
                       }
                     >
-                      <option value="PERCENT">Porcentagem (% OFF)</option>
-                      <option value="FIXED_PRICE">Preço Manual Fixo (R$)</option>
+                      <option value="PERCENT">Porcentagem (%)</option>
+                      <option value="FIXED_PRICE">Preço Fixo (R$)</option>
                     </select>
-                    <label>Regra de preço</label>
+                    <AutoScrollLabel>Regra de preço</AutoScrollLabel>
                   </div>
 
-                  <div className="nx-field !mb-0">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      placeholder=" "
-                      value={form.discountValue}
-                      onChange={(e) => setForm((p) => ({ ...p, discountValue: e.target.value }))}
-                      required
-                    />
-                    <label>
-                      {form.discountType === 'PERCENT' ? 'Desconto (%)' : 'Preço promocional (R$)'}
-                    </label>
-                  </div>
+                  <NumberField
+                    label={form.discountType === 'PERCENT' ? 'Desconto (%)' : 'Preço promocional (R$)'}
+                    value={form.discountValue}
+                    onChange={(val) => setForm((p) => ({ ...p, discountValue: val }))}
+                    step={form.discountType === 'PERCENT' ? 1 : 0.5}
+                    min={0.01}
+                    required
+                    className="!mb-0"
+                  />
 
                   <div className="nx-field !mb-0">
                     <select
@@ -574,11 +571,11 @@ export const PromotionsTab: React.FC<PromotionsTabProps> = ({
                         }))
                       }
                     >
-                      <option value="PRODUCTS">Itens / Serviços específicos</option>
+                      <option value="PRODUCTS">Itens específicos</option>
                       <option value="CATEGORY">Por categoria</option>
                       <option value="ALL">Todos</option>
                     </select>
-                    <label>Aplicar em</label>
+                    <AutoScrollLabel>Aplicar em</AutoScrollLabel>
                   </div>
                 </div>
 

@@ -60,6 +60,8 @@ import {
   RadarItem
 } from '../components/dashboard/QuickRepliesAndRadarTab';
 import { CompanyHoursTab } from '../components/dashboard/CompanyHoursTab';
+import { WhatsAppInboxTab } from '../components/dashboard/WhatsAppInboxTab';
+import { NumberField } from '../components/NumberField';
 
 interface DashboardPageProps {
   user: any;
@@ -3980,218 +3982,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* ABA 8: INBOX AO VIVO & PAUSA PARA HUMANO */}
+        {/* ABA 8: INBOX AO VIVO ESTILO WHATSAPP WEB & PAUSA PARA HUMANO */}
         {activeTab === 'inbox' && (
-          <div className="space-y-4 animate-fade-up">
-            <div>
-              <h2 className="text-base font-bold text-[var(--nx-text)]">
-                Conversas Ativas no WhatsApp & Histórico de Avisos Automáticos
-              </h2>
-              <p className="text-xs text-[var(--nx-muted)]">
-                Veja os disparos automáticos de "Pronto para Retirada" e lembretes de retorno ou assuma a conversa manualmente.
-              </p>
-            </div>
-
-            {highlightedPhone && (
-              <div className="px-4 py-2.5 rounded-lg bg-[var(--nx-primary-soft)] border border-[var(--nx-primary)]/40 flex items-center justify-between gap-3 text-xs">
-                <span className="text-[var(--nx-text)]">
-                  Exibindo conversa destacada de{' '}
-                  <strong className="tabular-data">+{highlightedPhone}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setHighlightedPhone(null)}
-                  className="text-[var(--nx-primary)] font-semibold hover:underline"
-                >
-                  Limpar destaque
-                </button>
-              </div>
-            )}
-
-            {inboxSessions.length === 0 ? (
-              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-8 text-center text-xs text-[var(--nx-subtle)]">
-                Nenhuma sessão registrada para este estabelecimento. Use o simulador na aba Resumo para iniciar uma conversa.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {[...inboxSessions]
-                  .sort((a, b) => {
-                    if (highlightedPhone && a.customerPhone === highlightedPhone) return -1;
-                    if (highlightedPhone && b.customerPhone === highlightedPhone) return 1;
-                    const score = (x: any) =>
-                      x.sentiment === 'URGENT' ? 2 : x.sentiment === 'FRUSTRATED' ? 1 : 0;
-                    return score(b) - score(a);
-                  })
-                  .map((session) => {
-                  const isPaused = session.state === 'HUMAN_HANDOFF';
-                  const isSentimentRed =
-                    session.sentiment === 'URGENT' || session.sentiment === 'FRUSTRATED';
-                  const isHighlighted = Boolean(
-                    highlightedPhone && session.customerPhone === highlightedPhone
-                  );
-                  return (
-                    <div
-                      key={session.id}
-                      className={`bg-[var(--nx-surface)] border rounded-lg overflow-hidden ${
-                        isSentimentRed
-                          ? 'border-[var(--nx-error)] ring-2 ring-[var(--nx-error)]/25'
-                          : isHighlighted
-                          ? 'border-[var(--nx-primary)] ring-2 ring-[var(--nx-primary-ring)]'
-                          : 'border-[var(--nx-border)]'
-                      }`}
-                    >
-                      <div className="px-4 py-3 bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="text-xs font-bold text-[var(--nx-text)] tabular-data">
-                            {session.customerName
-                              ? `${session.customerName} (+${session.customerPhone})`
-                              : `Cliente: +${session.customerPhone}`}
-                          </span>
-                          {isSentimentRed && (
-                            <span
-                              className="px-2 py-0.5 rounded bg-[var(--nx-error)] text-white text-[10px] font-bold"
-                              title={session.sentimentReason || undefined}
-                            >
-                              {session.sentiment === 'URGENT'
-                                ? 'Alerta Urgente'
-                                : 'Cliente Insatisfeito'}
-                            </span>
-                          )}
-                          <span
-                            className={`px-2 py-0.5 rounded text-[11px] font-medium ${
-                              isPaused
-                                ? 'bg-[var(--nx-error-bg)] text-[var(--nx-error)]'
-                                : 'bg-[var(--nx-accent-bg)] text-[var(--nx-accent)]'
-                            }`}
-                          >
-                            {isPaused ? 'Pausado (Atendimento Humano)' : 'IA Respondendo Automaticamente'}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => handleSendInboxLocation(session.customerPhone)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)] transition-colors"
-                            title="Enviar Pin de Localização clicável no mapa"
-                          >
-                            <MapPin className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
-                            Enviar Pin
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSendInboxReview(session.customerPhone)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)] transition-colors"
-                            title="Enviar convite de avaliação (Google Meu Negócio / Enquete)"
-                          >
-                            <ThumbsUp className="w-3.5 h-3.5 text-[var(--nx-amber)]" />
-                            Pedir Avaliação
-                          </button>
-                          <button
-                            onClick={() => handleToggleHandoff(session.customerPhone, !isPaused)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-                              isPaused
-                                ? 'bg-[var(--nx-accent)] text-white'
-                                : 'bg-[var(--nx-primary)] text-white'
-                            }`}
-                          >
-                            {isPaused ? (
-                              <>
-                                <PlayCircle className="w-3.5 h-3.5" />
-                                Devolver para IA
-                              </>
-                            ) : (
-                              <>
-                                <PauseCircle className="w-3.5 h-3.5" />
-                                Assumir conversa (Pausar IA)
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="p-4 space-y-2 max-h-60 overflow-y-auto bg-[var(--nx-bg)]">
-                        {session.messages?.map((m: any) => (
-                          <div
-                            key={m.id}
-                            className={`p-2.5 rounded text-xs max-w-[85%] ${
-                              m.role === 'user'
-                                ? 'bg-[var(--nx-surface)] border border-[var(--nx-border)] text-[var(--nx-text)]'
-                                : m.role === 'human_agent'
-                                ? 'bg-[var(--nx-accent)] text-white ml-auto'
-                                : 'bg-[var(--nx-primary)] text-white ml-auto'
-                            }`}
-                          >
-                            <div className="text-[10px] opacity-75 mb-0.5">
-                              {m.role === 'user'
-                                ? 'Cliente'
-                                : m.role === 'human_agent'
-                                ? 'Atendente Humano'
-                                : 'IA Neoxy'}
-                            </div>
-                            <div>{m.content}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Barra de Resposta Humana + Atalhos Rápidos */}
-                      <div className="p-3 border-t border-[var(--nx-border)] bg-[var(--nx-surface)] space-y-2">
-                        {quickReplies.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {quickReplies.slice(0, 6).map((qr) => (
-                              <button
-                                key={qr.id}
-                                type="button"
-                                onClick={() =>
-                                  setInboxReplyDrafts((prev) => ({
-                                    ...prev,
-                                    [session.customerPhone]: qr.content
-                                  }))
-                                }
-                                className="px-2 py-0.5 rounded bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] hover:border-[var(--nx-primary)] tabular-data text-[10px] text-[var(--nx-text)]"
-                                title={qr.title}
-                              >
-                                {qr.shortcut}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={inboxReplyDrafts[session.customerPhone] || ''}
-                            onChange={(e) =>
-                              setInboxReplyDrafts((prev) => ({
-                                ...prev,
-                                [session.customerPhone]: e.target.value
-                              }))
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleSendInboxReply(session.customerPhone);
-                              }
-                            }}
-                            placeholder="Responder como atendente humano ou clique em um /atalho acima..."
-                            className="flex-1 px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
-                          />
-                          <button
-                            type="button"
-                            disabled={sendingInboxPhone === session.customerPhone}
-                            onClick={() => handleSendInboxReply(session.customerPhone)}
-                            className="nx-btn-primary px-3.5 py-2 text-xs shrink-0"
-                          >
-                            <Send className="w-3.5 h-3.5" />
-                            Enviar
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <WhatsAppInboxTab
+            sessions={inboxSessions}
+            quickReplies={quickReplies}
+            highlightedPhone={highlightedPhone}
+            onClearHighlight={() => setHighlightedPhone(null)}
+            inboxReplyDrafts={inboxReplyDrafts}
+            onChangeDraft={(phone, text) =>
+              setInboxReplyDrafts((prev) => ({ ...prev, [phone]: text }))
+            }
+            sendingInboxPhone={sendingInboxPhone}
+            onSendReply={handleSendInboxReply}
+            onToggleHandoff={handleToggleHandoff}
+            onSendLocation={handleSendInboxLocation}
+            onSendReview={handleSendInboxReview}
+          />
         )}
 
         {/* SUB-ABA WHATSAPP: CONTATOS & FILTRO DE BLOQUEIO IA */}
@@ -4552,7 +4359,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         reviewMode: e.target.value as 'google_review' | 'poll_csat' | 'both'
                       })
                     }
-                    className="px-3 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs font-medium text-[var(--nx-text)] shrink-0"
+                    className="nx-select px-3 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs font-medium text-[var(--nx-text)] shrink-0"
                   >
                     <option value="google_review">Link direto Google Meu Negócio</option>
                     <option value="poll_csat">Enquete Nativa no WhatsApp (CSAT)</option>
@@ -4882,42 +4689,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                  <div className="nx-field">
-                    <input
-                      type="number"
-                      min="5"
-                      step="5"
-                      placeholder=" "
-                      required
-                      value={srvForm.durationMinutes}
-                      onChange={(e) => setSrvForm({ ...srvForm, durationMinutes: e.target.value })}
-                    />
-                    <label>Duração base (min)</label>
-                  </div>
-
-                  <div className="nx-field">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder=" "
-                      required
-                      value={srvForm.price}
-                      onChange={(e) => setSrvForm({ ...srvForm, price: e.target.value })}
-                    />
-                    <label>Valor base (R$)</label>
-                  </div>
-
-                  <div className="nx-field">
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder=" "
-                      value={srvForm.returnCycleDays}
-                      onChange={(e) => setSrvForm({ ...srvForm, returnCycleDays: e.target.value })}
-                    />
-                    <label>Ciclo retorno (dias)</label>
-                  </div>
+                  <NumberField
+                    label="Duração base (min)"
+                    value={srvForm.durationMinutes}
+                    onChange={(val) => setSrvForm({ ...srvForm, durationMinutes: val })}
+                    step={5}
+                    min={5}
+                    required
+                  />
+                  <NumberField
+                    label="Valor base (R$)"
+                    value={srvForm.price}
+                    onChange={(val) => setSrvForm({ ...srvForm, price: val })}
+                    step={5}
+                    min={0}
+                    required
+                  />
+                  <NumberField
+                    label="Ciclo retorno (dias)"
+                    value={srvForm.returnCycleDays}
+                    onChange={(val) => setSrvForm({ ...srvForm, returnCycleDays: val })}
+                    step={5}
+                    min={0}
+                  />
                 </div>
 
                 <MediaFieldBox
@@ -5865,28 +5659,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   />
                   <label>Categoria</label>
                 </div>
-                <div className="nx-field">
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder=" "
-                    required
-                    value={newCatalog.price}
-                    onChange={(e) => setNewCatalog({ ...newCatalog, price: e.target.value })}
-                  />
-                  <label>Preço (R$) *</label>
-                </div>
-                <div className="nx-field">
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder=" "
-                    required
-                    value={newCatalog.stockQty}
-                    onChange={(e) => setNewCatalog({ ...newCatalog, stockQty: e.target.value })}
-                  />
-                  <label>Estoque *</label>
-                </div>
+                <NumberField
+                  label="Preço (R$) *"
+                  value={newCatalog.price}
+                  onChange={(val) => setNewCatalog({ ...newCatalog, price: val })}
+                  step={0.5}
+                  min={0}
+                  required
+                />
+                <NumberField
+                  label="Estoque *"
+                  value={newCatalog.stockQty}
+                  onChange={(val) => setNewCatalog({ ...newCatalog, stockQty: val })}
+                  step={1}
+                  min={0}
+                  required
+                />
               </div>
 
               <div className="p-3.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)] space-y-2.5">
@@ -5894,46 +5682,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   Peso & Dimensões
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="nx-field">
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder=" "
-                      value={newCatalog.weightKg}
-                      onChange={(e) => setNewCatalog({ ...newCatalog, weightKg: e.target.value })}
-                    />
-                    <label>Peso (kg)</label>
-                  </div>
-                  <div className="nx-field">
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder=" "
-                      value={newCatalog.lengthCm}
-                      onChange={(e) => setNewCatalog({ ...newCatalog, lengthCm: e.target.value })}
-                    />
-                    <label>Compr. (cm)</label>
-                  </div>
-                  <div className="nx-field">
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder=" "
-                      value={newCatalog.widthCm}
-                      onChange={(e) => setNewCatalog({ ...newCatalog, widthCm: e.target.value })}
-                    />
-                    <label>Largura (cm)</label>
-                  </div>
-                  <div className="nx-field">
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder=" "
-                      value={newCatalog.heightCm}
-                      onChange={(e) => setNewCatalog({ ...newCatalog, heightCm: e.target.value })}
-                    />
-                    <label>Altura (cm)</label>
-                  </div>
+                  <NumberField
+                    label="Peso (kg)"
+                    value={newCatalog.weightKg}
+                    onChange={(val) => setNewCatalog({ ...newCatalog, weightKg: val })}
+                    step={0.1}
+                    min={0}
+                  />
+                  <NumberField
+                    label="Compr. (cm)"
+                    value={newCatalog.lengthCm}
+                    onChange={(val) => setNewCatalog({ ...newCatalog, lengthCm: val })}
+                    step={0.5}
+                    min={0}
+                  />
+                  <NumberField
+                    label="Largura (cm)"
+                    value={newCatalog.widthCm}
+                    onChange={(val) => setNewCatalog({ ...newCatalog, widthCm: val })}
+                    step={0.5}
+                    min={0}
+                  />
+                  <NumberField
+                    label="Altura (cm)"
+                    value={newCatalog.heightCm}
+                    onChange={(val) => setNewCatalog({ ...newCatalog, heightCm: val })}
+                    step={0.5}
+                    min={0}
+                  />
                 </div>
               </div>
 

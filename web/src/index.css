@@ -211,7 +211,7 @@
   transform: translateY(-1px);
 }
 
-/* ─── Inputs com Floating Labels (Padrão MedPet) ─────────────────── */
+/* ─── Inputs com Floating Labels (Padrão Neoxy Industrial) ────────── */
 .nx-field {
   position: relative;
   margin-bottom: 16px;
@@ -222,18 +222,102 @@
 .nx-field select {
   width: 100%;
   padding: 20px 14px 7px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 400;
   color: var(--nx-text);
-  background: var(--nx-surface);
+  background-color: var(--nx-surface);
   border: 1.5px solid var(--nx-border-strong);
   border-radius: 8px;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
 .nx-field input {
   height: 52px;
+}
+
+/* Custom sleek chevron on all .nx-field select & .nx-select */
+.nx-field select,
+.nx-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 38px !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 15px 15px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234B5563' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+:root.dark .nx-field select,
+:root.dark .nx-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+.nx-field select:hover,
+.nx-select:hover {
+  border-color: var(--nx-primary);
+}
+
+/* Remove ugly native browser spin buttons on number inputs */
+.nx-field input[type='number']::-webkit-inner-spin-button,
+.nx-field input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.nx-field input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.nx-field--stepper input {
+  padding-right: 36px;
+}
+
+.nx-num-stepper {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  bottom: 5px;
+  width: 24px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--nx-border);
+  background: var(--nx-bg);
+}
+
+.nx-num-stepper button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nx-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+.nx-num-stepper button:first-child {
+  border-bottom: 1px solid var(--nx-border);
+}
+
+.nx-num-stepper button:hover {
+  background: var(--nx-primary-soft);
+  color: var(--nx-primary);
+}
+
+.nx-num-stepper button:active {
+  background: var(--nx-primary);
+  color: #ffffff;
 }
 
 .nx-field textarea {
@@ -258,14 +342,48 @@
 .nx-field label {
   position: absolute;
   left: 14px;
+  right: 14px;
   top: 26px;
   transform: translateY(-50%);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--nx-subtle);
   pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  line-height: 1.25;
   transition: top 0.18s ease, font-size 0.18s ease, color 0.18s ease;
   transform-origin: left center;
+}
+
+.nx-field select ~ label,
+.nx-field--stepper label {
+  right: 36px;
+}
+
+/* Suave máscara/fade na borda direita quando o texto do label for grande */
+.nx-field label.nx-label-overflowing {
+  mask-image: linear-gradient(90deg, #000 0%, #000 82%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 82%, transparent 100%);
+}
+
+.nx-field label .nx-label-track {
+  display: inline-block;
+  will-change: transform;
+}
+
+@keyframes nxLabelGlide {
+  0%, 14% { transform: translateX(0); }
+  50%, 64% { transform: translateX(var(--nx-slide-x, 0px)); }
+  100% { transform: translateX(0); }
+}
+
+.nx-field label.nx-label-overflowing .nx-label-track {
+  animation: nxLabelGlide 6.5s ease-in-out infinite;
+}
+
+.nx-field:focus-within label.nx-label-overflowing .nx-label-track {
+  animation-duration: 5s;
 }
 
 .nx-field textarea ~ label {
@@ -280,7 +398,7 @@
 .nx-field select ~ label {
   top: 8px;
   transform: none;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--nx-primary);
 }
@@ -301,7 +419,7 @@
 .nx-field input:-webkit-autofill ~ label {
   top: 8px;
   transform: none;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--nx-primary);
 }
@@ -656,6 +774,10 @@
   font-size: 13px;
 }
 
+.nx-modal-main .nx-field--stepper input {
+  padding-right: 34px;
+}
+
 .nx-modal-main .nx-field textarea {
   padding-top: 24px;
   min-height: 72px;
@@ -663,8 +785,15 @@
 }
 
 .nx-modal-main .nx-field label {
+  left: 12px;
+  right: 12px;
   top: 23px;
-  font-size: 13px;
+  font-size: 12.5px;
+}
+
+.nx-modal-main .nx-field select ~ label,
+.nx-modal-main .nx-field--stepper label {
+  right: 36px;
 }
 
 .nx-modal-main .nx-field-suffix {
@@ -677,7 +806,7 @@
 .nx-modal-main .nx-field textarea:focus ~ label,
 .nx-modal-main .nx-field textarea:not(:placeholder-shown) ~ label {
   top: 7px;
-  font-size: 10.5px;
+  font-size: 10px;
 }
 
 .nx-modal-side-panel {
@@ -772,4 +901,85 @@
   margin-top: 4px;
   margin-bottom: 4px;
 }
+
+/* ─── Estilo Fiel ao WhatsApp Web (Inbox ao Vivo — Claro & Escuro) ─────── */
+.nx-wa-header {
+  background-color: #F0F2F5;
+  border-bottom: 1px solid #D1D7DB;
+}
+
+:root.dark .nx-wa-header {
+  background-color: #202C33;
+  border-bottom: 1px solid #2A3942;
+}
+
+.nx-wa-canvas {
+  background-color: #EFEAE2;
+  background-image: radial-gradient(rgba(17, 27, 33, 0.045) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+:root.dark .nx-wa-canvas {
+  background-color: #0B141A;
+  background-image: radial-gradient(rgba(233, 237, 239, 0.04) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.nx-wa-bubble-in {
+  background-color: #FFFFFF;
+  color: #111B21;
+  border-radius: 0 10px 10px 10px;
+  box-shadow: 0 1px 1.5px rgba(11, 20, 26, 0.12);
+}
+
+:root.dark .nx-wa-bubble-in {
+  background-color: #202C33;
+  color: #E9EDEF;
+  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.35);
+}
+
+.nx-wa-bubble-out {
+  background-color: #D9FDD3;
+  color: #111B21;
+  border-radius: 10px 0 10px 10px;
+  box-shadow: 0 1px 1.5px rgba(11, 20, 26, 0.12);
+}
+
+:root.dark .nx-wa-bubble-out {
+  background-color: #005C4B;
+  color: #E9EDEF;
+  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.35);
+}
+
+.nx-wa-bubble-human {
+  background-color: #C7F9CC;
+  color: #111B21;
+  border-radius: 10px 0 10px 10px;
+  box-shadow: 0 1px 1.5px rgba(11, 20, 26, 0.12);
+}
+
+:root.dark .nx-wa-bubble-human {
+  background-color: #025144;
+  color: #E9EDEF;
+  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.35);
+}
+
+.nx-wa-meta {
+  color: #667781;
+}
+
+:root.dark .nx-wa-meta {
+  color: rgba(233, 237, 239, 0.65);
+}
+
+.nx-wa-composer {
+  background-color: #F0F2F5;
+  border-top: 1px solid #D1D7DB;
+}
+
+:root.dark .nx-wa-composer {
+  background-color: #202C33;
+  border-top: 1px solid #2A3942;
+}
+
 
