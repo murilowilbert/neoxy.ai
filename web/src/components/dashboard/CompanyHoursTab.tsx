@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { AutoScrollLabel } from '../AutoScrollLabel';
+import { CustomSelect } from '../CustomSelect';
 
 interface TimeSlot {
   start: string;
@@ -395,7 +396,14 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
             </div>
 
             <div className="space-y-3">
-              <div className="nx-field !mb-0">
+              <div className="nx-field nx-field--icon-left !mb-0">
+                <span className="nx-field-prefix" aria-hidden="true" style={{ color: '#E1306C' }}>
+                  <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5" />
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                  </svg>
+                </span>
                 <input
                   type="text"
                   placeholder=" "
@@ -404,7 +412,13 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                 />
                 <AutoScrollLabel>Instagram (@perfil ou URL)</AutoScrollLabel>
               </div>
-              <div className="nx-field !mb-0">
+
+              <div className="nx-field nx-field--icon-left !mb-0">
+                <span className="nx-field-prefix" aria-hidden="true" style={{ color: '#1877F2' }}>
+                  <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="currentColor">
+                    <path d="M13.5 21v-8.2h2.75l.42-3.2H13.5V7.55c0-.93.26-1.56 1.58-1.56h1.69V3.13c-.29-.04-1.3-.13-2.47-.13-2.45 0-4.12 1.5-4.12 4.24v2.36H7.4v3.2h2.78V21h3.32Z" />
+                  </svg>
+                </span>
                 <input
                   type="text"
                   placeholder=" "
@@ -413,7 +427,13 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                 />
                 <AutoScrollLabel>Facebook (URL da página)</AutoScrollLabel>
               </div>
-              <div className="nx-field !mb-0">
+
+              <div className="nx-field nx-field--icon-left !mb-0">
+                <span className="nx-field-prefix text-[var(--nx-text)]" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="currentColor">
+                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1Z" />
+                  </svg>
+                </span>
                 <input
                   type="text"
                   placeholder=" "
@@ -422,7 +442,13 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                 />
                 <AutoScrollLabel>TikTok (@perfil ou URL)</AutoScrollLabel>
               </div>
-              <div className="nx-field !mb-0">
+
+              <div className="nx-field nx-field--icon-left !mb-0">
+                <span className="nx-field-prefix" aria-hidden="true" style={{ color: '#FF0000' }}>
+                  <svg viewBox="0 0 24 24" className="w-[19px] h-[19px]" fill="currentColor">
+                    <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 0 0 .5 6.19 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.81 3.02 3.02 0 0 0 2.12 2.14c1.88.55 9.38.55 9.38.55s7.5 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.81ZM9.55 15.57V8.43L15.82 12l-6.27 3.57Z" />
+                  </svg>
+                </span>
                 <input
                   type="text"
                   placeholder=" "
@@ -538,19 +564,21 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                <select
+                <CustomSelect
+                  variant="compact"
                   value={holidayYear}
-                  onChange={(e) => setHolidayYear(e.target.value)}
-                  className="nx-select px-2.5 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs text-[var(--nx-text)]"
-                >
-                  <option value="2026">2026</option>
-                  <option value="2027">2027</option>
-                </select>
+                  onChange={(val) => setHolidayYear(val)}
+                  options={[
+                    { value: '2026', label: '2026' },
+                    { value: '2027', label: '2027' }
+                  ]}
+                  buttonClassName="min-w-[82px]"
+                />
                 <button
                   type="button"
                   onClick={handleImportNationalHolidays}
                   disabled={importingHolidays}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)]"
                 >
                   <Download className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
                   {importingHolidays ? 'Importando...' : 'Importar Feriados BR'}
@@ -565,23 +593,26 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                   type="date"
                   value={newExDate}
                   onChange={(e) => setNewExDate(e.target.value)}
-                  className="px-2.5 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                  className="px-2.5 py-2 rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
                 />
                 <input
                   type="text"
                   value={newExReason}
                   onChange={(e) => setNewExReason(e.target.value)}
                   placeholder="Motivo (ex: Feriado Municipal, Inventário)"
-                  className="px-2.5 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
+                  className="px-2.5 py-2 rounded-lg border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
                 />
-                <select
+                <CustomSelect
+                  variant="compact"
                   value={newExType}
-                  onChange={(e) => setNewExType(e.target.value as 'closed' | 'horario_especial')}
-                  className="nx-select px-2.5 py-2 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)]"
-                >
-                  <option value="closed">Fechado o dia todo</option>
-                  <option value="horario_especial">Horário especial</option>
-                </select>
+                  onChange={(val) => setNewExType(val as 'closed' | 'horario_especial')}
+                  options={[
+                    { value: 'closed', label: 'Fechado o dia todo' },
+                    { value: 'horario_especial', label: 'Horário especial' }
+                  ]}
+                  className="w-full"
+                  buttonClassName="w-full py-2"
+                />
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2.5">

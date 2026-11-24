@@ -12,6 +12,7 @@ import {
   Clock
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { CustomSelect } from '../CustomSelect';
 
 export interface QuickReplyItem {
   id: string;
@@ -282,18 +283,18 @@ export const QuickRepliesTab: React.FC<QuickRepliesTabProps> = ({
                     />
                     <label>Título</label>
                   </div>
-                  <div className="nx-field !mb-0">
-                    <select
-                      value={form.category}
-                      onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-                    >
-                      <option value="ATENDIMENTO">Atendimento</option>
-                      <option value="VENDAS">Vendas</option>
-                      <option value="FINANCEIRO">Financeiro</option>
-                      <option value="POS_VENDA">Pós-venda</option>
-                    </select>
-                    <label>Categoria</label>
-                  </div>
+                  <CustomSelect
+                    label="Categoria"
+                    value={form.category}
+                    onChange={(val) => setForm((p) => ({ ...p, category: val }))}
+                    options={[
+                      { value: 'ATENDIMENTO', label: 'Atendimento' },
+                      { value: 'VENDAS', label: 'Vendas' },
+                      { value: 'FINANCEIRO', label: 'Financeiro' },
+                      { value: 'POS_VENDA', label: 'Pós-venda' }
+                    ]}
+                    className="!mb-0"
+                  />
                 </div>
 
                 <div className="space-y-2">

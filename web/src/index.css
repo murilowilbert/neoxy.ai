@@ -982,4 +982,119 @@
   border-top: 1px solid #2A3942;
 }
 
+/* ─── CustomSelect (Mesmo estilo da caixa de autocomplete de e-mail) ──── */
+.nx-select-trigger {
+  width: 100%;
+  height: 52px;
+  padding: 20px 12px 7px 14px;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--nx-text);
+  background-color: var(--nx-surface);
+  border: 1.5px solid var(--nx-border-strong);
+  border-radius: 8px;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.nx-modal-main .nx-select-trigger {
+  height: 46px;
+  padding: 18px 10px 5px 12px;
+  font-size: 13px;
+}
+
+.nx-select-trigger:hover {
+  border-color: var(--nx-primary);
+}
+
+.nx-select-trigger:focus,
+.nx-select-trigger.is-open {
+  border-color: var(--nx-primary);
+  box-shadow: 0 0 0 3px var(--nx-primary-ring);
+}
+
+.nx-field--custom-select label.nx-label-floated {
+  top: 8px;
+  transform: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--nx-primary);
+  right: 34px;
+}
+
+.nx-modal-main .nx-field--custom-select label.nx-label-floated {
+  top: 7px;
+  font-size: 10px;
+}
+
+.nx-custom-select-menu {
+  padding: 5px;
+  background: var(--nx-surface);
+  border: 1.5px solid var(--nx-border-strong);
+  border-radius: 10px;
+  list-style: none;
+  margin: 0;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  max-height: 248px;
+  overflow-y: auto;
+}
+
+.nx-custom-select-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--nx-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.nx-custom-select-option:hover,
+.nx-custom-select-option--hover {
+  background: var(--nx-primary-soft);
+}
+
+.nx-custom-select-option--selected {
+  background: var(--nx-primary-soft);
+  color: var(--nx-primary);
+  font-weight: 600;
+}
+
+/* ─── Campo com Ícone de Rede Social à Esquerda ───────────────────────── */
+.nx-field--icon-left .nx-field-prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.nx-field--icon-left input {
+  padding-left: 44px;
+}
+
+.nx-field--icon-left label {
+  left: 44px;
+}
+
+
 

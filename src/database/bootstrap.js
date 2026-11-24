@@ -7,20 +7,13 @@ const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
 async function ensureDatabaseReady() {
   try {
-    const [userCount] = await Promise.all([
-      prisma.user.count(),
-      prisma.whatsAppContact.findFirst({ select: { id: true, avatarUrl: true } }),
-      prisma.promotion.findFirst({ select: { id: true, appliesTo: true, targetServiceIds: true } }),
-      prisma.missedDemand.findFirst({ select: { id: true, occurrences: true } }),
-      prisma.quickReply.count(),
-      prisma.demandTracker.count()
-    ]);
+    const userCount = await prisma.user.count();
     if (userCount === 0) {
       logger.info('Banco de dados vazio detectado. Executando seed inicial...');
       execSync('node prisma/seed.js', { cwd: PROJECT_ROOT, stdio: 'inherit' });
     }
   } catch (err) {
-    logger.warn('Schema local desatualizado ou colunas ausentes. Executando prisma db push automaticamente...');
+    logger.warn({ err: err.message }, 'Banco local não inicializado. Executando prisma db push e seed...');
     execSync('npx prisma db push --skip-generate', { cwd: PROJECT_ROOT, stdio: 'inherit' });
     const countAfterPush = await prisma.user.count().catch(() => 0);
     if (countAfterPush === 0) {

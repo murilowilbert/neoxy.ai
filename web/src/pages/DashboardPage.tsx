@@ -62,6 +62,7 @@ import {
 import { CompanyHoursTab } from '../components/dashboard/CompanyHoursTab';
 import { WhatsAppInboxTab } from '../components/dashboard/WhatsAppInboxTab';
 import { NumberField } from '../components/NumberField';
+import { CustomSelect } from '../components/CustomSelect';
 
 interface DashboardPageProps {
   user: any;
@@ -2042,24 +2043,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           {!sidebarCollapsed && tenants.length > 0 && (
             <div className="mb-5">
-              <select
+              <CustomSelect
+                variant="compact"
                 value={selectedTenant?.slug || ''}
-                onChange={(e) => {
-                  const found = tenants.find((t) => t.slug === e.target.value);
+                onChange={(slug) => {
+                  const found = tenants.find((t) => t.slug === slug);
                   if (found) {
                     setSelectedTenant(found);
                     setActiveTab('overview');
                   }
                 }}
-                aria-label="Estabelecimento ativo"
-                className="w-full px-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs font-medium text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
-              >
-                {tenants.map((t) => (
-                  <option key={t.slug} value={t.slug}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                options={tenants.map((t) => ({ value: t.slug, label: t.name }))}
+                className="w-full"
+                buttonClassName="w-full py-2 bg-[var(--nx-bg)]"
+              />
             </div>
           )}
 
@@ -4352,19 +4349,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       Escolha enviar o link direto do Google Meu Negócio (configurado em Empresa & Horários) ou uma enquete nativa no WhatsApp.
                     </p>
                   </div>
-                  <select
+                  <CustomSelect
+                    variant="compact"
                     value={botFeatures.reviewMode}
-                    onChange={(e) =>
+                    onChange={(val) =>
                       handleUpdateBotFeatures({
-                        reviewMode: e.target.value as 'google_review' | 'poll_csat' | 'both'
+                        reviewMode: val as 'google_review' | 'poll_csat' | 'both'
                       })
                     }
-                    className="nx-select px-3 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] text-xs font-medium text-[var(--nx-text)] shrink-0"
-                  >
-                    <option value="google_review">Link direto Google Meu Negócio</option>
-                    <option value="poll_csat">Enquete Nativa no WhatsApp (CSAT)</option>
-                    <option value="both">Google Meu Negócio + Enquete CSAT</option>
-                  </select>
+                    options={[
+                      { value: 'google_review', label: 'Link direto Google Meu Negócio' },
+                      { value: 'poll_csat', label: 'Enquete Nativa no WhatsApp (CSAT)' },
+                      { value: 'both', label: 'Google Meu Negócio + Enquete CSAT' }
+                    ]}
+                    buttonClassName="py-2 bg-[var(--nx-bg)] min-w-[230px]"
+                  />
                 </div>
               </div>
             </div>
@@ -4663,19 +4662,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <label>SKU (opcional)</label>
                   </div>
 
-                  <div className="nx-field">
-                    <select
-                      value={srvForm.unit}
-                      onChange={(e) => setSrvForm({ ...srvForm, unit: e.target.value })}
-                    >
-                      <option value="serviço">Por serviço</option>
-                      <option value="hora">Por hora</option>
-                      <option value="metro">Por metro</option>
-                      <option value="visita">Por visita</option>
-                      <option value="diária">Por diária</option>
-                    </select>
-                    <label>Unidade</label>
-                  </div>
+                  <CustomSelect
+                    label="Unidade"
+                    value={srvForm.unit}
+                    onChange={(val) => setSrvForm({ ...srvForm, unit: val })}
+                    options={[
+                      { value: 'serviço', label: 'Por serviço' },
+                      { value: 'hora', label: 'Por hora' },
+                      { value: 'metro', label: 'Por metro' },
+                      { value: 'visita', label: 'Por visita' },
+                      { value: 'diária', label: 'Por diária' }
+                    ]}
+                  />
 
                   <div className="nx-field">
                     <input
@@ -4951,35 +4949,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="nx-field">
-                    <select
-                      value={apptForm.serviceId}
-                      onChange={(e) => handleSelectServiceInAppt(e.target.value)}
-                    >
-                      <option value="">Atendimento Geral</option>
-                      {services.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} (Base R$ {Number(s.price).toFixed(2)} / {s.durationMinutes}m)
-                        </option>
-                      ))}
-                    </select>
-                    <label>Serviço / Procedimento</label>
-                  </div>
+                  <CustomSelect
+                    label="Serviço / Procedimento"
+                    value={apptForm.serviceId}
+                    onChange={(val) => handleSelectServiceInAppt(val)}
+                    options={[
+                      { value: '', label: 'Atendimento Geral' },
+                      ...services.map((s) => ({
+                        value: s.id,
+                        label: `${s.name} (Base R$ ${Number(s.price).toFixed(2)} / ${s.durationMinutes}m)`
+                      }))
+                    ]}
+                  />
 
-                  <div className="nx-field">
-                    <select
-                      value={apptForm.professionalId}
-                      onChange={(e) => setApptForm({ ...apptForm, professionalId: e.target.value })}
-                    >
-                      <option value="">Sem profissional específico</option>
-                      {professionals.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.role} / Comissão {p.commissionPct}%)
-                        </option>
-                      ))}
-                    </select>
-                    <label>Profissional / Box Responsável</label>
-                  </div>
+                  <CustomSelect
+                    label="Profissional / Box Responsável"
+                    value={apptForm.professionalId}
+                    onChange={(val) => setApptForm({ ...apptForm, professionalId: val })}
+                    options={[
+                      { value: '', label: 'Sem profissional específico' },
+                      ...professionals.map((p) => ({
+                        value: p.id,
+                        label: `${p.name} (${p.role} / Comissão ${p.commissionPct}%)`
+                      }))
+                    ]}
+                  />
                 </div>
 
                 {/* Seleção Rápida de Variação de Porte / Complexidade (Feature 2) */}
@@ -5610,23 +5604,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   />
                   <label>Código EAN / Barras</label>
                 </div>
-                <div className="nx-field">
-                  <select
-                    value={newCatalog.unit}
-                    onChange={(e) => setNewCatalog({ ...newCatalog, unit: e.target.value })}
-                  >
-                    <option value="un">Unidade (un)</option>
-                    <option value="cx">Caixa (cx)</option>
-                    <option value="kg">Quilograma (kg)</option>
-                    <option value="m">Metro (m)</option>
-                    <option value="lt">Litro (lt)</option>
-                    <option value="bd">Balde (bd)</option>
-                    <option value="pct">Pacote (pct)</option>
-                    <option value="kit">Kit (kit)</option>
-                    <option value="par">Par (par)</option>
-                  </select>
-                  <label>Unidade de venda</label>
-                </div>
+                <CustomSelect
+                  label="Unidade de venda"
+                  value={newCatalog.unit}
+                  onChange={(val) => setNewCatalog({ ...newCatalog, unit: val })}
+                  options={[
+                    { value: 'un', label: 'Unidade (un)' },
+                    { value: 'cx', label: 'Caixa (cx)' },
+                    { value: 'kg', label: 'Quilograma (kg)' },
+                    { value: 'm', label: 'Metro (m)' },
+                    { value: 'lt', label: 'Litro (lt)' },
+                    { value: 'bd', label: 'Balde (bd)' },
+                    { value: 'pct', label: 'Pacote (pct)' },
+                    { value: 'kit', label: 'Kit (kit)' },
+                    { value: 'par', label: 'Par (par)' }
+                  ]}
+                />
               </div>
 
               <div className="nx-field">

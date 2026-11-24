@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { NumberField } from '../NumberField';
-import { AutoScrollLabel } from '../AutoScrollLabel';
+import { CustomSelect } from '../CustomSelect';
 
 export interface PromotionItem {
   id: string;
@@ -518,38 +518,40 @@ export const PromotionsTab: React.FC<PromotionsTabProps> = ({
 
                 {/* Alvo (Produtos / Serviços), Tipo de Desconto & Escopo */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  <div className="nx-field !mb-0">
-                    <select
-                      value={form.appliesTo}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          appliesTo: e.target.value as 'PRODUCTS' | 'SERVICES' | 'BOTH'
-                        }))
-                      }
-                    >
-                      {hasStock && <option value="PRODUCTS">Produtos</option>}
-                      {hasServices && <option value="SERVICES">Serviços</option>}
-                      {hasStock && hasServices && <option value="BOTH">Produtos + Serviços</option>}
-                    </select>
-                    <AutoScrollLabel>Válido para</AutoScrollLabel>
-                  </div>
+                  <CustomSelect
+                    label="Válido para"
+                    value={form.appliesTo}
+                    onChange={(val) =>
+                      setForm((p) => ({
+                        ...p,
+                        appliesTo: val as 'PRODUCTS' | 'SERVICES' | 'BOTH'
+                      }))
+                    }
+                    options={[
+                      ...(hasStock ? [{ value: 'PRODUCTS', label: 'Produtos' }] : []),
+                      ...(hasServices ? [{ value: 'SERVICES', label: 'Serviços' }] : []),
+                      ...(hasStock && hasServices
+                        ? [{ value: 'BOTH', label: 'Produtos + Serviços' }]
+                        : [])
+                    ]}
+                    className="!mb-0"
+                  />
 
-                  <div className="nx-field !mb-0">
-                    <select
-                      value={form.discountType}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          discountType: e.target.value as 'PERCENT' | 'FIXED_PRICE'
-                        }))
-                      }
-                    >
-                      <option value="PERCENT">Porcentagem (%)</option>
-                      <option value="FIXED_PRICE">Preço Fixo (R$)</option>
-                    </select>
-                    <AutoScrollLabel>Regra de preço</AutoScrollLabel>
-                  </div>
+                  <CustomSelect
+                    label="Regra de preço"
+                    value={form.discountType}
+                    onChange={(val) =>
+                      setForm((p) => ({
+                        ...p,
+                        discountType: val as 'PERCENT' | 'FIXED_PRICE'
+                      }))
+                    }
+                    options={[
+                      { value: 'PERCENT', label: 'Porcentagem (%)' },
+                      { value: 'FIXED_PRICE', label: 'Preço Fixo (R$)' }
+                    ]}
+                    className="!mb-0"
+                  />
 
                   <NumberField
                     label={form.discountType === 'PERCENT' ? 'Desconto (%)' : 'Preço promocional (R$)'}
@@ -561,38 +563,32 @@ export const PromotionsTab: React.FC<PromotionsTabProps> = ({
                     className="!mb-0"
                   />
 
-                  <div className="nx-field !mb-0">
-                    <select
-                      value={form.scope}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          scope: e.target.value as 'ALL' | 'CATEGORY' | 'PRODUCTS'
-                        }))
-                      }
-                    >
-                      <option value="PRODUCTS">Itens específicos</option>
-                      <option value="CATEGORY">Por categoria</option>
-                      <option value="ALL">Todos</option>
-                    </select>
-                    <AutoScrollLabel>Aplicar em</AutoScrollLabel>
-                  </div>
+                  <CustomSelect
+                    label="Aplicar em"
+                    value={form.scope}
+                    onChange={(val) =>
+                      setForm((p) => ({
+                        ...p,
+                        scope: val as 'ALL' | 'CATEGORY' | 'PRODUCTS'
+                      }))
+                    }
+                    options={[
+                      { value: 'PRODUCTS', label: 'Itens específicos' },
+                      { value: 'CATEGORY', label: 'Por categoria' },
+                      { value: 'ALL', label: 'Todos' }
+                    ]}
+                    className="!mb-0"
+                  />
                 </div>
 
                 {form.scope === 'CATEGORY' && (
-                  <div className="nx-field !mb-0">
-                    <select
-                      value={form.targetCategory}
-                      onChange={(e) => setForm((p) => ({ ...p, targetCategory: e.target.value }))}
-                    >
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                    <label>Categoria alvo</label>
-                  </div>
+                  <CustomSelect
+                    label="Categoria alvo"
+                    value={form.targetCategory}
+                    onChange={(val) => setForm((p) => ({ ...p, targetCategory: val }))}
+                    options={categories.map((cat) => ({ value: cat, label: cat }))}
+                    className="!mb-0"
+                  />
                 )}
 
                 {form.scope === 'PRODUCTS' && (
@@ -610,34 +606,29 @@ export const PromotionsTab: React.FC<PromotionsTabProps> = ({
                         />
                       </div>
 
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-md bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] text-xs">
-                        <Filter className="w-3.5 h-3.5 text-[var(--nx-subtle)]" />
-                        <select
-                          value={pickerCategory}
-                          onChange={(e) => setPickerCategory(e.target.value)}
-                          className="bg-transparent text-xs text-[var(--nx-text)] outline-none"
-                        >
-                          <option value="ALL">Todas categorias</option>
-                          {categories.map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <CustomSelect
+                        variant="compact"
+                        value={pickerCategory}
+                        onChange={(val) => setPickerCategory(val)}
+                        options={[
+                          { value: 'ALL', label: 'Todas categorias' },
+                          ...categories.map((c) => ({ value: c, label: c }))
+                        ]}
+                      />
 
                       {form.appliesTo === 'BOTH' && (
-                        <select
+                        <CustomSelect
+                          variant="compact"
                           value={pickerKind}
-                          onChange={(e) =>
-                            setPickerKind(e.target.value as 'ALL' | 'PRODUCT' | 'SERVICE')
+                          onChange={(val) =>
+                            setPickerKind(val as 'ALL' | 'PRODUCT' | 'SERVICE')
                           }
-                          className="px-2.5 py-2 rounded-md bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)]"
-                        >
-                          <option value="ALL">Produtos & Serviços</option>
-                          <option value="PRODUCT">Só Produtos</option>
-                          <option value="SERVICE">Só Serviços</option>
-                        </select>
+                          options={[
+                            { value: 'ALL', label: 'Produtos & Serviços' },
+                            { value: 'PRODUCT', label: 'Só Produtos' },
+                            { value: 'SERVICE', label: 'Só Serviços' }
+                          ]}
+                        />
                       )}
                     </div>
 
