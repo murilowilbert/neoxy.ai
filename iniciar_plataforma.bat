@@ -7,7 +7,13 @@ echo ===================================================
 echo.
 
 echo [1/4] Baixando ultimas atualizacoes do GitHub...
+git fetch origin main
+git checkout -- package-lock.json 2>nul
 git pull origin main
+if errorlevel 1 (
+    echo [AVISO] Conflito local detectado. Sincronizando com a versao mais recente do GitHub...
+    git reset --hard origin/main
+)
 
 echo.
 echo [2/4] Verificando dependencias (npm install)...
