@@ -150,7 +150,13 @@ function formatUpcomingExceptions(businessHoursConfig) {
     : [];
   if (exceptions.length === 0) return '';
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const timezone = businessHoursConfig?.timezone || 'America/Sao_Paulo';
+  const todayIso = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
   const upcoming = exceptions
     .filter((ex) => ex.date && ex.date >= todayIso)
     .sort((a, b) => String(a.date).localeCompare(String(b.date)))

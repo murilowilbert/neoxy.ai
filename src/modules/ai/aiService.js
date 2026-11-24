@@ -11,7 +11,7 @@ class AIService {
   getModel(tenant) {
     const activeKey = process.env.GEMINI_API_KEY || process.env.API_KEY || geminiApiKey;
     if (!activeKey || activeKey === 'sua_chave_gemini_aqui') {
-      throw new Error('GEMINI_API_KEY não configurada. Informe sua chave em Perfil & Módulos -> Chave API Gemini.');
+      throw new Error('GEMINI_API_KEY não configurada. Informe sua chave em Configurações → Módulos & IA.');
     }
     if (!this.genAI || this.cachedKey !== activeKey) {
       this.cachedKey = activeKey;
@@ -96,7 +96,11 @@ class AIService {
     }
 
     if (currentParts.length > 0) {
-      contents.push({ role: 'user', parts: currentParts });
+      if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
+        contents[contents.length - 1].parts.push(...currentParts);
+      } else {
+        contents.push({ role: 'user', parts: currentParts });
+      }
     }
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {

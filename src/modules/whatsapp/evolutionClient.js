@@ -213,28 +213,178 @@ class EvolutionClient {
     return this.sendMediaMessage(instanceName, number, videoUrl, caption, 'video');
   }
 
-  async createInstance(instanceName) {
+  getHttpClient(overrideCfg = null) {
+    if (!overrideCfg?.baseUrl && !overrideCfg?.apiKey) return this.client;
+    return axios.create({
+      baseURL: String(overrideCfg.baseUrl || evolutionApi.baseUrl).replace(/\/+$/, ''),
+      headers: {
+        apikey: overrideCfg.apiKey || evolutionApi.apiKey,
+        'Content-Type': 'application/json'
+      },
+      timeout: 8000
+    });
+  }
+
+  async createInstance(instanceName, overrideCfg = null) {
     try {
-      const response = await this.client.post('/instance/create', {
+      const http = this.getHttpClient(overrideCfg);
+      const response = await http.post('/instance/create', {
         instanceName,
-        token: evolutionApi.apiKey,
+        token: overrideCfg?.apiKey || evolutionApi.apiKey,
         qrcode: true,
         integration: 'WHATSAPP-BAILEYS'
       });
       return response.data;
     } catch (err) {
-      logger.error({ err: err.message, instanceName }, 'Erro ao criar instância na Evolution API');
+      logger.warn({ err: err.message, instanceName }, 'Erro ao criar instância na Evolution API');
       throw err;
     }
   }
 
-  async connectInstance(instanceName) {
+  async connectInstance(instanceName, options = {}, overrideCfg = null) {
     try {
-      const response = await this.client.get(`/instance/connect/${instanceName}`);
+      const http = this.getHttpClient(overrideCfg);
+      const params = {};
+      if (options?.number) {
+        params.number = this.cleanPhone(options.number);
+      }
+      const response = await http.get(`/instance/connect/${instanceName}`, { params });
       return response.data;
     } catch (err) {
-      logger.error({ err: err.message, instanceName }, 'Erro ao conectar instância');
+      logger.warn({ err: err.message, instanceName }, 'Erro ao conectar instância na Evolution API');
       throw err;
+    }
+  }
+
+  async getConnectionState(instanceName, overrideCfg = null) {
+    const start = Date.now();
+    try {
+      const http = this.getHttpClient(overrideCfg);
+      const response = await http.get(`/instance/connectionState/${instanceName}`);
+      const state =
+        response.data?.instance?.state ||
+        response.data?.state ||
+        'close';
+      return {
+        reachable: true,
+        latencyMs: Date.now() - start,
+        state: String(state).toLowerCase(),
+        raw: response.data
+      };
+    } catch (err) {
+      const status = err?.response?.status;
+      // 404 significa que a Evolution API está ONLINE, mas a instância ainda não foi criada
+      if (status === 404 || status === 400) {
+        return {
+          reachable: true,
+          latencyMs: Date.now() - start,
+          state: 'not_found',
+          raw: null
+        };
+      }
+      return {
+        reachable: false,
+        latencyMs: null,
+        state: 'offline',
+        error: err.message
+      };
+    }
+  }
+
+  async fetchInstanceInfo(instanceName, overrideCfg = null) {
+    try {
+      const http = this.getHttpClient(overrideCfg);
+      const response = await http.get('/instance/fetchInstances', {
+        params: { instanceName }
+      });
+      const list = Array.isArray(response.data) ? response.data : [];
+      const found =
+        list.find((it) => it?.name === instanceName || it?.instance?.instanceName === instanceName) ||
+        list[0] ||
+        null;
+      if (!found) return null;
+      const inst = found.instance || found;
+      const ownerJid = inst.ownerJid || inst.owner || '';
+      return {
+        instanceName: inst.name || inst.instanceName || instanceName,
+        profileName: inst.profileName || null,
+        profilePicUrl: inst.profilePicUrl || null,
+        phoneNumber: ownerJid ? this.cleanPhone(String(ownerJid).split('@')[0]) : null,
+        connectionStatus: inst.connectionStatus || inst.status || null
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async logoutInstance(instanceName, overrideCfg = null) {
+    try {
+      const http = this.getHttpClient(overrideCfg);
+      const response = await http.delete(`/instance/logout/${instanceName}`);
+      return response.data;
+    } catch (err) {
+      logger.warn({ err: err.message, instanceName }, 'Logout Evolution API retornou aviso');
+      return null;
+    }
+  }
+
+  async restartInstance(instanceName, overrideCfg = null) {
+    try {
+      const http = this.getHttpClient(overrideCfg);
+      const response = await http.put(`/instance/restart/${instanceName}`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteInstance(instanceName, overrideCfg = null) {
+    try {
+      const http = this.getHttpClient(overrideCfg);
+      const response = await http.delete(`/instance/delete/${instanceName}`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  }
+
+  async setWebhook(instanceName, webhookUrl, overrideCfg = null) {
+    if (!instanceName || !webhookUrl) return null;
+    try {
+      const http = this.getHttpClient(overrideCfg);
+      const response = await http.post(`/webhook/set/${instanceName}`, {
+        webhook: {
+          enabled: true,
+          url: webhookUrl,
+          webhookByEvents: false,
+          webhookBase64: true,
+          events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'QRCODE_UPDATED']
+        }
+      });
+      return response.data;
+    } catch (err) {
+      logger.debug({ err: err.message, instanceName }, 'Falha ao configurar webhook na Evolution API');
+      return null;
+    }
+  }
+
+  async setInstanceSettings(instanceName, settings = {}, overrideCfg = null) {
+    if (!instanceName) return null;
+    try {
+      const http = this.getHttpClient(overrideCfg);
+      const response = await http.post(`/settings/set/${instanceName}`, {
+        rejectCall: Boolean(settings.rejectCalls),
+        msgCall: settings.rejectCalls ? 'No momento não recebemos chamadas por aqui, envie uma mensagem de texto ou áudio.' : '',
+        groupsIgnore: settings.ignoreGroups !== false,
+        alwaysOnline: Boolean(settings.alwaysOnline),
+        readMessages: settings.readReceipts !== false,
+        readStatus: false,
+        syncFullHistory: Boolean(settings.syncContactsOnConnect)
+      });
+      return response.data;
+    } catch (err) {
+      logger.debug({ err: err.message, instanceName }, 'Falha ao enviar configurações de instância para Evolution API');
+      return null;
     }
   }
 

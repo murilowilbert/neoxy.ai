@@ -1,6 +1,7 @@
 const tenantService = require('../tenants/tenantService');
 const messageQueueService = require('../queue/messageQueueService');
 const evolutionClient = require('./evolutionClient');
+const whatsappSyncService = require('./whatsappSyncService');
 const { logger } = require('../../config');
 
 function stripDataUrl(raw) {
@@ -20,11 +21,38 @@ class WebhookController {
       return;
     }
 
-    logger.debug({ event, instance }, 'Evento de webhook recebido da Evolution API');
+    const evtUpper = String(event).toUpperCase();
+    logger.debug({ event: evtUpper, instance }, 'Evento de webhook recebido da Evolution API');
 
     const tenant = await tenantService.getTenantByWhatsAppInstance(instance);
     if (!tenant) {
-      logger.warn({ instance }, 'Instância de WhatsApp não mapeada para nenhum tenant no Neoxy');
+      logger.warn({ instance }, 'Instância de WhatsApp não mapeada para nenhum tenant no NEO');
+      return;
+    }
+
+    // Atualização de estado da conexão WhatsApp (open / connecting / close)
+    if (evtUpper === 'CONNECTION_UPDATE' || evtUpper === 'CONNECTION.UPDATE') {
+      const state = data?.state || data?.connection || data?.status;
+      const ownerJid = data?.wuid || data?.instance?.ownerJid || '';
+      const phoneNumber = ownerJid ? String(ownerJid).split('@')[0] : null;
+      await whatsappSyncService
+        .handleWebhookConnectionUpdate(tenant, {
+          instanceName: instance,
+          state,
+          phoneNumber,
+          profileName: data?.profileName || null
+        })
+        .catch((err) => logger.warn({ err: err.message }, 'Erro ao processar CONNECTION_UPDATE'));
+      return;
+    }
+
+    // Atualização de QR Code em tempo real enviado pela Evolution API
+    if (evtUpper === 'QRCODE_UPDATED' || evtUpper === 'QRCODE.UPDATED') {
+      const qrBase64 = data?.qrcode?.base64 || data?.base64 || null;
+      const qrCode = data?.qrcode?.code || data?.code || null;
+      await whatsappSyncService
+        .handleWebhookQrUpdate(tenant, { qrBase64, qrCode })
+        .catch((err) => logger.warn({ err: err.message }, 'Erro ao processar QRCODE_UPDATED'));
       return;
     }
 
@@ -34,20 +62,27 @@ class WebhookController {
     }
 
     // Processa novas mensagens recebidas
-    if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
+    if (evtUpper === 'MESSAGES_UPSERT' || evtUpper === 'MESSAGES.UPSERT') {
       const messageData = data?.message || data;
       if (!messageData) return;
 
       const key = messageData.key || {};
       const fromMe = key.fromMe;
       const remoteJid = key.remoteJid || '';
+      const syncPrefs = whatsappSyncService.getSyncSettings(tenant).preferences;
 
-      // Ignora mensagens enviadas pelo próprio bot ou de grupos / status
-      if (fromMe || remoteJid.includes('@g.us') || remoteJid.includes('status@broadcast')) {
+      // Ignora mensagens enviadas pelo próprio bot, status e grupos (quando ignoreGroups ativo)
+      if (
+        fromMe ||
+        remoteJid.includes('status@broadcast') ||
+        (syncPrefs.ignoreGroups !== false && remoteJid.includes('@g.us'))
+      ) {
         return;
       }
 
-      const customerPhone = remoteJid.replace('@s.whatsapp.net', '').replace(/[^0-9]/g, '');
+      const customerPhone = remoteJid
+        .replace(/@(s\.whatsapp\.net|lid|c\.us|g\.us)$/i, '')
+        .replace(/[^0-9]/g, '');
       if (!customerPhone) return;
 
       const pushName = messageData.pushName || data?.pushName || null;

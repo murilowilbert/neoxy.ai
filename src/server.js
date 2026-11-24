@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { port, logger } = require('./config');
 const webhookController = require('./modules/whatsapp/webhookController');
+const whatsappSyncService = require('./modules/whatsapp/whatsappSyncService');
 const tenantService = require('./modules/tenants/tenantService');
 const messageQueueService = require('./modules/queue/messageQueueService');
 const authService = require('./modules/auth/authService');
@@ -306,10 +307,100 @@ app.post('/api/tenants/:slug/inbox/send-location', requireAuth, requireTenantAcc
     if (result.type === 'none') {
       return res.status(400).json({
         success: false,
-        error: 'Configure o endereço, link do Google Maps ou latitude/longitude em Perfil -> Empresa & Horários.'
+        error: 'Configure o endereço, link do Google Maps ou latitude/longitude em Configurações -> Empresa, Horários & Feriados.'
       });
     }
     res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// =========================================================================
+// SINCRONIZAÇÃO WHATSAPP (QR Code, Pairing Code, Status, Reset, Preferências)
+// =========================================================================
+function getRequestOrigin(req) {
+  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').toString().split(',')[0].trim();
+  const host = (req.headers['x-forwarded-host'] || req.get('host') || '').toString().split(',')[0].trim();
+  return host ? `${proto}://${host}` : '';
+}
+
+app.get('/api/tenants/:slug/whatsapp/status', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    const whatsapp = await whatsappSyncService.getStatus(tenant, getRequestOrigin(req));
+    res.json({ success: true, whatsapp });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/whatsapp/connect', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { mode = 'qr', phoneNumber = '' } = req.body || {};
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    const whatsapp = await whatsappSyncService.startSync(tenant, {
+      mode: mode === 'pairing' ? 'pairing' : 'qr',
+      phoneNumber,
+      requestOrigin: getRequestOrigin(req)
+    });
+    res.json({ success: true, whatsapp });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/whatsapp/confirm-demo', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { phoneNumber = '', profileName = '' } = req.body || {};
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    const whatsapp = await whatsappSyncService.confirmSandboxConnection(tenant, {
+      phoneNumber,
+      profileName,
+      requestOrigin: getRequestOrigin(req)
+    });
+    res.json({ success: true, whatsapp });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/whatsapp/disconnect', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    const whatsapp = await whatsappSyncService.disconnect(tenant, getRequestOrigin(req));
+    res.json({ success: true, whatsapp });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/whatsapp/reset', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    const whatsapp = await whatsappSyncService.resetSync(tenant, getRequestOrigin(req));
+    res.json({ success: true, whatsapp });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/tenants/:slug/whatsapp/config', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    const whatsapp = await whatsappSyncService.updateConfig(tenant, req.body || {}, getRequestOrigin(req));
+    res.json({ success: true, whatsapp });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants/:slug/whatsapp/test-message', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { phone = '', text = '' } = req.body || {};
+    const tenant = await tenantService.getTenantBySlug(req.params.slug);
+    const result = await whatsappSyncService.sendTestMessage(tenant, { phone, text });
+    res.json({ success: true, result });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }

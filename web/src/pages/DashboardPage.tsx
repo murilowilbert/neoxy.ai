@@ -63,6 +63,11 @@ import {
 } from '../components/dashboard/QuickRepliesAndRadarTab';
 import { CompanyHoursTab } from '../components/dashboard/CompanyHoursTab';
 import { WhatsAppInboxTab } from '../components/dashboard/WhatsAppInboxTab';
+import {
+  WhatsAppSyncTab,
+  WhatsAppNotSyncedBanner,
+  WhatsAppSyncStatus
+} from '../components/dashboard/WhatsAppSyncTab';
 import { NumberField } from '../components/NumberField';
 import JellyRadio from '../components/reactbits/JellyRadio';
 import { CustomSelect } from '../components/CustomSelect';
@@ -205,6 +210,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [promotions, setPromotions] = useState<PromotionItem[]>([]);
   const [quickReplies, setQuickReplies] = useState<QuickReplyItem[]>([]);
   const [radarItems, setRadarItems] = useState<RadarItem[]>([]);
+  const [whatsappSyncStatus, setWhatsappSyncStatus] = useState<WhatsAppSyncStatus | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     whatsapp: true,
     catalog: false,
@@ -549,14 +555,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setLoading(true);
     try {
       const mods: string[] = parseModules(selectedTenant?.enabledModules);
-      const [mRes, inboxRes, anRes, ctRes, prRes, qrRes, rdRes] = await Promise.all([
+      const [mRes, inboxRes, anRes, ctRes, prRes, qrRes, rdRes, waRes] = await Promise.all([
         apiFetch(`/api/tenants/${slug}/metrics`),
         apiFetch(`/api/tenants/${slug}/inbox`),
         apiFetch(`/api/tenants/${slug}/analytics`).catch(() => ({ analytics: null })),
         apiFetch(`/api/tenants/${slug}/contacts`).catch(() => ({ contacts: [] })),
         apiFetch(`/api/tenants/${slug}/promotions`).catch(() => ({ promotions: [] })),
         apiFetch(`/api/tenants/${slug}/quick-replies`).catch(() => ({ quickReplies: [] })),
-        apiFetch(`/api/tenants/${slug}/radar`).catch(() => ({ radar: [] }))
+        apiFetch(`/api/tenants/${slug}/radar`).catch(() => ({ radar: [] })),
+        apiFetch(`/api/tenants/${slug}/whatsapp/status`).catch(() => ({ whatsapp: null }))
       ]);
       setMetrics(mRes.metrics);
       setInboxSessions(inboxRes.sessions || []);
@@ -565,6 +572,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       setPromotions(prRes.promotions || []);
       setQuickReplies(qrRes.quickReplies || []);
       setRadarItems(rdRes.radar || []);
+      setWhatsappSyncStatus(waRes.whatsapp || null);
 
       if (mods.includes('stock')) {
         const cRes = await apiFetch(`/api/tenants/${slug}/catalog`);
@@ -1359,7 +1367,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       }
       await onRefreshSession();
       await loadTenantData(selectedTenant.slug);
-      showToast('Perfil e módulos atualizados com sucesso.');
+      showToast('Configurações e módulos atualizados com sucesso.');
     } catch (err: any) {
       showToast(err.message);
     }
@@ -2403,32 +2411,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 );
               })}
 
-            {/* Grupo Expansível: Perfil & Módulos */}
+            {/* Grupo Expansível: Configurações */}
             <div>
               <button
                 type="button"
                 onClick={() => {
                   if (sidebarCollapsed) {
-                    setActiveTab('settings');
+                    setActiveTab('whatsapp_sync');
                   } else {
                     setExpandedMenus((prev) => ({ ...prev, profile: !prev.profile }));
                   }
                 }}
-                title="Perfil & Módulos"
-                aria-label="Perfil & Módulos"
+                title="Configurações"
+                aria-label="Configurações"
+                data-testid="sidebar-configuracoes-btn"
                 className={`w-full flex items-center ${
                   sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
                 } rounded-lg text-xs font-medium transition-colors ${
-                  ['settings', 'profile_hours'].includes(activeTab)
+                  ['settings', 'profile_hours', 'whatsapp_sync'].includes(activeTab)
                     ? sidebarCollapsed
                       ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                       : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
                     : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                 }`}
               >
-                <span className="flex items-center gap-2.5">
+                <span className="flex items-center gap-2.5 relative">
                   <Settings className="w-4 h-4 shrink-0" />
-                  {!sidebarCollapsed && <span>Perfil & Módulos</span>}
+                  {!sidebarCollapsed && <span>Configurações</span>}
+                  {whatsappSyncStatus && !whatsappSyncStatus.isConnected && (
+                    <span
+                      className={`w-2 h-2 rounded-full bg-amber-500 ${
+                        sidebarCollapsed ? 'absolute -top-0.5 -right-0.5' : ''
+                      }`}
+                      title="WhatsApp não sincronizado"
+                    />
+                  )}
                 </span>
                 {!sidebarCollapsed &&
                   (expandedMenus.profile ? (
@@ -2440,6 +2457,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
               {!sidebarCollapsed && expandedMenus.profile && (
                 <div className="nx-submenu-rail">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('whatsapp_sync')}
+                    data-testid="sidebar-sync-btn"
+                    className={`w-full flex items-center justify-between gap-2 text-left px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                      activeTab === 'whatsapp_sync'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
+                        : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                    }`}
+                  >
+                    <span>Sincronização</span>
+                    {whatsappSyncStatus && (
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 ${
+                          whatsappSyncStatus.isConnected
+                            ? 'bg-emerald-500'
+                            : 'bg-amber-500 animate-pulse'
+                        }`}
+                        title={
+                          whatsappSyncStatus.isConnected
+                            ? 'WhatsApp conectado'
+                            : 'WhatsApp não sincronizado'
+                        }
+                      />
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab('settings')}
@@ -2553,6 +2596,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </header>
         )}
 
+        {/* CARD DE AVISO: WHATSAPP AINDA NÃO SINCRONIZADO (Resumo e páginas operacionais) */}
+        {selectedTenant &&
+          [
+            'overview',
+            'inbox',
+            'contacts',
+            'quickreplies',
+            'radar',
+            'catalog',
+            'promotions',
+            'services',
+            'appointments',
+            'documents'
+          ].includes(activeTab) && (
+            <WhatsAppNotSyncedBanner
+              status={whatsappSyncStatus}
+              compact={activeTab !== 'overview'}
+              onGoToSync={() => {
+                setExpandedMenus((prev) => ({ ...prev, profile: true }));
+                setActiveTab('whatsapp_sync');
+              }}
+            />
+          )}
+
         {/* ABA 1: RESUMO OPERACIONAL & TELEMETRIA INDUSTRIAL */}
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-fade-up">
@@ -2574,7 +2641,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 if (['catalog', 'promotions'].includes(tab)) {
                   setExpandedMenus((p) => ({ ...p, catalog: true, services: !enabledModules.includes('stock') }));
                 }
-                if (['settings', 'profile_hours'].includes(tab)) {
+                if (['settings', 'profile_hours', 'whatsapp_sync'].includes(tab)) {
                   setExpandedMenus((p) => ({ ...p, profile: true }));
                 }
                 setActiveTab(tab);
@@ -4314,7 +4381,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           />
         )}
 
-        {/* SUB-ABA PERFIL: EMPRESA, HORÁRIOS, REDES SOCIAIS & FERIADOS */}
+        {/* SUB-ABA CONFIGURAÇÕES: SINCRONIZAÇÃO WHATSAPP (QR CODE & PAREAMENTO) */}
+        {activeTab === 'whatsapp_sync' && selectedTenant && (
+          <WhatsAppSyncTab
+            tenant={selectedTenant}
+            initialStatus={whatsappSyncStatus}
+            onStatusChange={(next) => setWhatsappSyncStatus(next)}
+            onNotify={showToast}
+          />
+        )}
+
+        {/* SUB-ABA CONFIGURAÇÕES: EMPRESA, HORÁRIOS, REDES SOCIAIS & FERIADOS */}
         {activeTab === 'profile_hours' && selectedTenant && (
           <CompanyHoursTab
             tenant={selectedTenant}

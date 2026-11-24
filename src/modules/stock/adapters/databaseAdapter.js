@@ -29,6 +29,7 @@ class DatabaseStockAdapter extends StockAdapterInterface {
       tipo: 'produto',
       código: item.code,
       'modelo/produto': item.name,
+      ...(item.description ? { descrição: item.description } : {}),
       preço: item.price ? `R$${item.price.toFixed(2).replace('.', ',')}` : '',
       ...(item.activePromotion
         ? {
@@ -39,25 +40,41 @@ class DatabaseStockAdapter extends StockAdapterInterface {
       estoque: item.stockQty,
       categoria_geral: item.category || 'Geral',
       marca: item.brand || '',
-      _temFoto: item.hasPhoto
+      _temFoto: Boolean(item.hasPhoto || item.imageUrl)
     }));
 
-    const normalizedServices = annotatedServices.map(srv => ({
-      tipo: 'serviço',
-      código: srv.sku || srv.id.slice(0, 8),
-      'modelo/produto': srv.name,
-      preço: srv.price ? `R$${srv.price.toFixed(2).replace('.', ',')}` : '',
-      ...(srv.activePromotion
-        ? {
-            preço_promocional: `R$${srv.effectivePrice.toFixed(2).replace('.', ',')}`,
-            promoção_ativa: `${srv.activePromotion.name} (${srv.discountPct}% OFF)`
+    const normalizedServices = annotatedServices.map(srv => {
+      let parsedTiers = null;
+      if (srv.priceTiers) {
+        try {
+          const tiers = typeof srv.priceTiers === 'string' ? JSON.parse(srv.priceTiers) : srv.priceTiers;
+          if (Array.isArray(tiers) && tiers.length > 0) {
+            parsedTiers = tiers.map((t) => ({
+              porte: t.label || t.size || t.name,
+              preço: Number.isFinite(Number(t.price)) ? `R$${Number(t.price).toFixed(2).replace('.', ',')}` : ''
+            }));
           }
-        : {}),
-      duração_min: srv.durationMinutes,
-      categoria_geral: srv.category || 'Serviços',
-      marca: srv.brand || '',
-      _temFoto: Boolean(srv.imageUrl)
-    }));
+        } catch {}
+      }
+      return {
+        tipo: 'serviço',
+        código: srv.sku || srv.id.slice(0, 8),
+        'modelo/produto': srv.name,
+        ...(srv.description ? { descrição: srv.description } : {}),
+        preço: srv.price ? `R$${srv.price.toFixed(2).replace('.', ',')}` : '',
+        ...(parsedTiers ? { preços_por_porte: parsedTiers } : {}),
+        ...(srv.activePromotion
+          ? {
+              preço_promocional: `R$${srv.effectivePrice.toFixed(2).replace('.', ',')}`,
+              promoção_ativa: `${srv.activePromotion.name} (${srv.discountPct}% OFF)`
+            }
+          : {}),
+        duração_min: srv.durationMinutes,
+        categoria_geral: srv.category || 'Serviços',
+        marca: srv.brand || '',
+        _temFoto: Boolean(srv.imageUrl)
+      };
+    });
 
     const normalizedItems = [...normalizedProducts, ...normalizedServices];
 
@@ -66,7 +83,8 @@ class DatabaseStockAdapter extends StockAdapterInterface {
         { name: 'modelo/produto', weight: 0.7 },
         { name: 'código', weight: 0.9 },
         { name: 'categoria_geral', weight: 0.55 },
-        { name: 'marca', weight: 0.5 }
+        { name: 'marca', weight: 0.5 },
+        { name: 'descrição', weight: 0.35 }
       ],
       threshold: 0.38
     });

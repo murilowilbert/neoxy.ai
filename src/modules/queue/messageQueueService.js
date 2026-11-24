@@ -557,6 +557,16 @@ class MessageQueueService {
         }
       }
 
+      // 7.1 Envia fotos/vídeos reais do catálogo quando a IA referenciar {{COD:...}}
+      const resolvedMedia = await this.resolveCatalogMedia(tenant.id, aiResult.photoCodes);
+      if (resolvedMedia.length > 0 && instanceName) {
+        for (const m of resolvedMedia) {
+          await antiBanService.enforceRateLimit(tenant);
+          await evolutionClient.sendMediaMessage(instanceName, customerPhone, m.url, m.caption, m.mediaType);
+          await antiBanService.sleep(antiBanService.computeBubbleJitterMs(tenant));
+        }
+      }
+
       // 7.5 Executa ações nativas do bot (PDF extract, reação, pin, vCard, poll, review, sentimento)
       const sideEffects = await this.executeAiSideEffects({
         tenant,
@@ -587,6 +597,7 @@ class MessageQueueService {
         metadata: {
           isHandoff: aiResult.isHandoff,
           photoCodes: aiResult.photoCodes,
+          resolvedMediaCount: resolvedMedia.length,
           sentiment: aiResult.sentiment,
           reactionEmoji: sideEffects.reactionSent,
           documentId: sideEffects.documentSaved?.id || null,
@@ -596,13 +607,50 @@ class MessageQueueService {
         }
       });
 
-      return { ...aiResult, sideEffects };
+      return { ...aiResult, resolvedMedia, sideEffects };
     } catch (err) {
       logger.error({ err: err.message, stack: err.stack, tenantId: tenant.id, customerPhone }, 'Erro no pipeline de processamento de mensagens');
       throw err;
     } finally {
       this.processingLocks.delete(queueKey);
     }
+  }
+
+  /**
+   * Resolve códigos {{COD:...}} emitidos pela IA em URLs reais de foto/vídeo do catálogo ou serviços.
+   */
+  async resolveCatalogMedia(tenantId, photoCodes = []) {
+    if (!tenantId || !Array.isArray(photoCodes) || photoCodes.length === 0) return [];
+    const uniqueCodes = [...new Set(photoCodes.map((c) => String(c || '').trim()).filter(Boolean))].slice(0, 4);
+    if (uniqueCodes.length === 0) return [];
+
+    const [products, services] = await Promise.all([
+      prisma.catalogItem.findMany({
+        where: { tenantId, code: { in: uniqueCodes } }
+      }),
+      prisma.serviceItem.findMany({
+        where: { tenantId, active: true }
+      })
+    ]);
+
+    const media = [];
+    for (const code of uniqueCodes) {
+      const prod = products.find((p) => p.code === code);
+      if (prod) {
+        if (prod.imageUrl) {
+          media.push({ code, mediaType: 'image', url: prod.imageUrl, caption: prod.name });
+        }
+        if (prod.videoUrl && prod.videoBotEnabled) {
+          media.push({ code, mediaType: 'video', url: prod.videoUrl, caption: prod.name });
+        }
+        continue;
+      }
+      const srv = services.find((s) => s.sku === code || s.id.slice(0, 8) === code);
+      if (srv && srv.imageUrl) {
+        media.push({ code, mediaType: 'image', url: srv.imageUrl, caption: srv.name });
+      }
+    }
+    return media;
   }
 
   normalizeMediaPart(m, fallbackMime = 'image/jpeg') {
@@ -686,6 +734,34 @@ class MessageQueueService {
         isHandoff: false,
         blockedByContactFilter: true,
         photoCodes: [],
+        resolvedMedia: [],
+        imageAnalyzed: false,
+        audioAnalyzed: false,
+        documentAnalyzed: false,
+        matchedStockCount: 0,
+        sampleMatchedStock: []
+      };
+    }
+
+    // Verifica se a sessão está em pausa para atendimento humano
+    const session = await chatSessionService.getOrCreateSession(tenant.id, customerPhone);
+    const isPaused = await chatSessionService.isSessionPaused(session);
+    if (isPaused) {
+      await chatSessionService.appendMessage({
+        tenantId: tenant.id,
+        customerPhone,
+        role: 'user',
+        content: userLabel,
+        mediaType
+      });
+      return {
+        text: '',
+        replyText: '[Sessão em pausa para atendimento humano (Handoff ativo). Clique em "Retomar IA" na conversa para reativar o bot.]',
+        isNoResponse: true,
+        isHandoff: true,
+        pausedByHuman: true,
+        photoCodes: [],
+        resolvedMedia: [],
         imageAnalyzed: false,
         audioAnalyzed: false,
         documentAnalyzed: false,
@@ -726,6 +802,7 @@ class MessageQueueService {
           isNoResponse: false,
           quickReplyTriggered: autoReply.quickReply.shortcut,
           photoCodes: [],
+          resolvedMedia: [],
           sentiment: 'NEUTRAL',
           imageAnalyzed: false,
           audioAnalyzed: false,
@@ -767,6 +844,8 @@ class MessageQueueService {
       activePromotions
     });
 
+    const resolvedMedia = await this.resolveCatalogMedia(tenant.id, aiResult.photoCodes);
+
     const sideEffects = await this.executeAiSideEffects({
       tenant,
       customerPhone,
@@ -786,6 +865,7 @@ class MessageQueueService {
         metadata: {
           isHandoff: aiResult.isHandoff,
           photoCodes: aiResult.photoCodes,
+          resolvedMediaCount: resolvedMedia.length,
           sentiment: aiResult.sentiment,
           reactionEmoji: sideEffects.reactionSent,
           documentId: sideEffects.documentSaved?.id || null,
@@ -804,7 +884,10 @@ class MessageQueueService {
     return {
       ...aiResult,
       sideEffects,
-      replyText: aiResult.text,
+      resolvedMedia,
+      replyText: aiResult.isNoResponse
+        ? '[Silêncio inteligente ativado: cliente encerrou a conversa]'
+        : aiResult.text,
       imageAnalyzed: mediaItems.length > 0,
       audioAnalyzed: audioItems.length > 0,
       documentAnalyzed: documentItems.length > 0,
