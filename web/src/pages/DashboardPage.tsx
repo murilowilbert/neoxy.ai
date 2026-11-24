@@ -563,7 +563,42 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         apiFetch(`/api/tenants/${slug}/promotions`).catch(() => ({ promotions: [] })),
         apiFetch(`/api/tenants/${slug}/quick-replies`).catch(() => ({ quickReplies: [] })),
         apiFetch(`/api/tenants/${slug}/radar`).catch(() => ({ radar: [] })),
-        apiFetch(`/api/tenants/${slug}/whatsapp/status`).catch(() => ({ whatsapp: null }))
+        apiFetch(`/api/tenants/${slug}/whatsapp/status`).catch(() => ({
+          whatsapp: {
+            status: 'DISCONNECTED',
+            isConnected: false,
+            instanceName: `neo-${slug}`,
+            phoneNumber: null,
+            profileName: null,
+            connectedAt: null,
+            lastSyncAt: null,
+            gateway: {
+              mode: 'sandbox' as const,
+              reachable: false,
+              latencyMs: null,
+              baseUrl: 'http://localhost:8080',
+              hasCustomCredentials: false,
+              webhookUrl: `${window.location.origin}/api/webhooks/whatsapp`
+            },
+            qr: null,
+            pairingCode: null,
+            preferences: {
+              autoReconnect: true,
+              ignoreGroups: true,
+              rejectCalls: true,
+              alwaysOnline: false,
+              readReceipts: true,
+              typingIndicator: true,
+              syncContactsOnConnect: true
+            },
+            health: {
+              totalContacts: 0,
+              totalSessions: 0,
+              messagesLast24h: 0,
+              antiBanActive: true
+            }
+          }
+        }))
       ]);
       setMetrics(mRes.metrics);
       setInboxSessions(inboxRes.sessions || []);

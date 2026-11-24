@@ -1,5 +1,10 @@
 const crypto = require('crypto');
-const QRCode = require('qrcode');
+let QRCode = null;
+try {
+  QRCode = require('qrcode');
+} catch {
+  QRCode = null;
+}
 const prisma = require('../../database/prisma');
 const evolutionClient = require('./evolutionClient');
 const tenantService = require('../tenants/tenantService');
@@ -85,6 +90,9 @@ class WhatsAppSyncService {
   }
 
   async renderQrDataUrl(rawCode) {
+    if (!QRCode) {
+      throw new Error('Pacote "qrcode" não instalado. Execute "npm install" (ou reinicie iniciar_plataforma.bat).');
+    }
     return QRCode.toDataURL(String(rawCode), {
       width: 280,
       margin: 2,

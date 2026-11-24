@@ -918,7 +918,15 @@ const webDistPath = path.join(__dirname, '..', 'web', 'dist');
 const publicPath = path.join(__dirname, '..', 'public');
 
 if (fs.existsSync(webDistPath)) {
-  app.use(express.static(webDistPath));
+  app.use(
+    express.static(webDistPath, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+      }
+    })
+  );
 }
 if (fs.existsSync(publicPath)) {
   app.use(express.static(publicPath));
@@ -931,10 +939,12 @@ app.get('*', (req, res, next) => {
   }
   const distIndex = path.join(webDistPath, 'index.html');
   if (fs.existsSync(distIndex)) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     return res.sendFile(distIndex);
   }
   const publicIndex = path.join(publicPath, 'index.html');
   if (fs.existsSync(publicIndex)) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     return res.sendFile(publicIndex);
   }
   res.status(404).json({ error: 'Frontend não encontrado.' });

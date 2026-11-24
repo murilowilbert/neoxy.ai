@@ -115,9 +115,13 @@ async function main() {
     create: {
       tenantId: ferragensTenant.id,
       instanceName: 'ferragens_instance_01',
-      status: 'CONNECTED',
-      phoneNumber: '5551999999999'
+      status: 'DISCONNECTED',
+      phoneNumber: null
     }
+  });
+  await prisma.tenantWhatsAppSession.updateMany({
+    where: { instanceName: 'ferragens_instance_01', phoneNumber: '5551999999999' },
+    data: { status: 'DISCONNECTED', phoneNumber: null }
   });
 
   // Popula itens de amostra no banco para visualização imediata no painel da Ferragens
