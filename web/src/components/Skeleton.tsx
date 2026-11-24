@@ -14,46 +14,65 @@ export const SkeletonBlock: React.FC<SkeletonBlockProps> = ({ className = '' }) 
  * Bloco de mídia arredondado + título + subtítulo menor + dois botões-pílula,
  * comunicando claramente o layout que será carregado.
  */
-export const CardSkeleton: React.FC<{ withMedia?: boolean }> = ({ withMedia = true }) => (
+export const CardSkeleton: React.FC<{ withMedia?: boolean; compact?: boolean }> = ({
+  withMedia = true,
+  compact = false
+}) => (
   <div
-    className="rounded-2xl border border-[var(--nx-border)] bg-[var(--nx-surface)] overflow-hidden p-4 space-y-4 shadow-sm"
+    className={`rounded-2xl border border-[var(--nx-border)] bg-[var(--nx-surface)] overflow-hidden ${
+      compact ? 'p-2.5 space-y-2.5' : 'p-4 space-y-4'
+    } shadow-sm`}
     aria-busy="true"
     aria-label="Carregando conteúdo"
   >
-    {withMedia && <SkeletonBlock className="w-full h-44 rounded-xl" />}
-    <div className="space-y-2.5 px-1">
-      <SkeletonBlock className="h-5 w-3/4 rounded-full" />
-      <SkeletonBlock className="h-3.5 w-2/5 rounded-full" />
-      <div className="pt-1 space-y-1.5">
-        <SkeletonBlock className="h-3 w-full rounded-full" />
-        <SkeletonBlock className="h-3 w-5/6 rounded-full" />
-      </div>
+    {withMedia && (
+      <SkeletonBlock className={`w-full ${compact ? 'h-28' : 'h-44'} rounded-xl`} />
+    )}
+    <div className={`${compact ? 'space-y-2 px-0.5' : 'space-y-2.5 px-1'}`}>
+      <SkeletonBlock className={`${compact ? 'h-4' : 'h-5'} w-4/5 rounded-full`} />
+      <SkeletonBlock className="h-3 w-1/2 rounded-full" />
+      {!compact && (
+        <div className="pt-1 space-y-1.5">
+          <SkeletonBlock className="h-3 w-full rounded-full" />
+          <SkeletonBlock className="h-3 w-5/6 rounded-full" />
+        </div>
+      )}
     </div>
-    <div className="flex items-center gap-2.5 px-1 pt-1">
-      <SkeletonBlock className="h-10 w-28 rounded-full" />
-      <SkeletonBlock className="h-10 w-24 rounded-full" />
+    <div className={`flex items-center gap-2 ${compact ? 'px-0.5 pt-0.5' : 'px-1 pt-1'}`}>
+      <SkeletonBlock className={`${compact ? 'h-7 flex-1' : 'h-10 w-28'} rounded-full`} />
+      <SkeletonBlock className={`${compact ? 'h-7 w-8' : 'h-10 w-24'} rounded-full`} />
     </div>
   </div>
 );
 
 export const CardGridSkeleton: React.FC<{
   count?: number;
-  columns?: 2 | 3;
+  columns?: 2 | 3 | 5 | 6;
   withMedia?: boolean;
-}> = ({ count = 6, columns = 3, withMedia = true }) => (
-  <div
-    className={`grid grid-cols-1 ${
-      columns === 3 ? 'sm:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'
-    } gap-5`}
-    role="status"
-    aria-live="polite"
-    aria-label="Carregando cartões..."
-  >
-    {Array.from({ length: count }).map((_, idx) => (
-      <CardSkeleton key={idx} withMedia={withMedia} />
-    ))}
-  </div>
-);
+  compact?: boolean;
+}> = ({ count = 6, columns = 3, withMedia = true, compact = false }) => {
+  const gridClass =
+    columns === 6
+      ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3'
+      : columns === 5
+      ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3.5'
+      : columns === 3
+      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5'
+      : 'grid-cols-1 md:grid-cols-2 gap-5';
+
+  return (
+    <div
+      className={`grid ${gridClass}`}
+      role="status"
+      aria-live="polite"
+      aria-label="Carregando cartões..."
+    >
+      {Array.from({ length: count }).map((_, idx) => (
+        <CardSkeleton key={idx} withMedia={withMedia} compact={compact} />
+      ))}
+    </div>
+  );
+};
 
 export const TableSkeleton: React.FC<{ rows?: number }> = ({ rows = 6 }) => (
   <div

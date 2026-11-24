@@ -32,6 +32,7 @@ import {
   ClipboardList,
   Bell,
   LayoutGrid,
+  Grid3X3,
   List,
   Upload,
   Video,
@@ -335,9 +336,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     item: any;
   } | null>(null);
 
-  // Visualização Lista / Grade para Produtos e Serviços
-  const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid'>('list');
-  const [serviceViewMode, setServiceViewMode] = useState<'grid' | 'list'>('grid');
+  // Visualização Lista / Grade / Grade Compacta (5 ou 6 por linha) para Produtos e Serviços
+  const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid' | 'compact'>('grid');
+  const [serviceViewMode, setServiceViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
 
   // Formulários de Catálogo (Criar / Editar com todas características opcionais)
   const [catModalOpen, setCatModalOpen] = useState(false);
@@ -2192,7 +2193,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   className={`w-full flex items-center ${
                     sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
                   } rounded-lg text-xs font-medium transition-colors ${
-                    ['catalog', 'promotions'].includes(activeTab)
+                    activeTab === 'catalog' ||
+                    (activeTab === 'promotions' && (expandedMenus.catalog || !expandedMenus.services))
                       ? sidebarCollapsed
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
@@ -2268,7 +2270,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   className={`w-full flex items-center ${
                     sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
                   } rounded-lg text-xs font-medium transition-colors ${
-                    ['services', ...(enabledModules.includes('stock') ? [] : ['promotions'])].includes(activeTab)
+                    activeTab === 'services' ||
+                    (activeTab === 'promotions' && (expandedMenus.services || !enabledModules.includes('stock')))
                       ? sidebarCollapsed
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
@@ -2505,7 +2508,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       </aside>
 
       {/* ÁREA DE TRABALHO PRINCIPAL */}
-      <main className="flex-1 p-5 sm:p-8 overflow-y-auto max-w-7xl">
+      <main className="flex-1 min-w-0 p-5 sm:p-8 overflow-y-auto w-full max-w-[1680px] mx-auto">
         {selectedTenant && (
           <header className="sticky top-3 z-30 nx-liquid-glass rounded-2xl px-5 py-3.5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="min-w-0">
@@ -3118,30 +3121,45 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <h2 className="text-lg font-bold text-[var(--nx-text)]">Serviços</h2>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex rounded-lg border border-[var(--nx-border-strong)] p-1 bg-[var(--nx-surface)] gap-1">
+                <div className="flex rounded-xl border border-[var(--nx-border-strong)] p-1 bg-[var(--nx-surface)] gap-1">
                   <button
                     type="button"
                     onClick={() => setServiceViewMode('list')}
-                    className={`p-1.5 rounded-md transition-colors ${
+                    className={`p-1.5 rounded-lg transition-colors ${
                       serviceViewMode === 'list'
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
                     title="Linhas"
+                    aria-label="Visualizar em linhas"
                   >
                     <List className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setServiceViewMode('grid')}
-                    className={`p-1.5 rounded-md transition-colors ${
+                    className={`p-1.5 rounded-lg transition-colors ${
                       serviceViewMode === 'grid'
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
-                    title="Grade"
+                    title="Grade padrão"
+                    aria-label="Visualizar em grade padrão"
                   >
                     <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setServiceViewMode('compact')}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      serviceViewMode === 'compact'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
+                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                    }`}
+                    title={sidebarCollapsed ? 'Grade compacta (6 por linha)' : 'Grade compacta (5 por linha)'}
+                    aria-label="Visualizar em grade compacta"
+                  >
+                    <Grid3X3 className="w-4 h-4" />
                   </button>
                 </div>
 
@@ -3157,6 +3175,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {loading && filteredServices.length === 0 ? (
               serviceViewMode === 'list' ? (
                 <TableSkeleton rows={6} />
+              ) : serviceViewMode === 'compact' ? (
+                <CardGridSkeleton
+                  count={sidebarCollapsed ? 6 : 5}
+                  columns={sidebarCollapsed ? 6 : 5}
+                  compact
+                />
               ) : (
                 <CardGridSkeleton count={4} columns={2} />
               )
@@ -3240,8 +3264,112 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </tbody>
                 </table>
               </div>
+            ) : serviceViewMode === 'compact' ? (
+              <div
+                className={`grid ${
+                  sidebarCollapsed
+                    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3'
+                    : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5'
+                }`}
+              >
+                {filteredServices.map((srv) => {
+                  const srvVariants: ServiceVariant[] = Array.isArray(srv.variants)
+                    ? srv.variants
+                    : [];
+                  return (
+                    <div
+                      key={srv.id}
+                      className="nx-card-interactive group p-2.5 !rounded-2xl flex flex-col justify-between overflow-hidden animate-fade-up"
+                    >
+                      <div>
+                        <div className="relative h-28 rounded-xl bg-[var(--nx-surface-alt)] ring-1 ring-inset ring-black/10 dark:ring-white/10 flex items-center justify-center overflow-hidden mb-2.5">
+                          {srv.imageUrl ? (
+                            <img
+                              src={srv.imageUrl}
+                              alt={srv.name}
+                              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]"
+                            />
+                          ) : (
+                            <div className="nx-icon-tile nx-icon-tile--sm">
+                              <Scissors className="w-4 h-4" />
+                            </div>
+                          )}
+                          <span className="absolute top-2 left-2 max-w-[82%] truncate px-2 py-0.5 rounded-full text-[9.5px] font-semibold bg-[var(--nx-surface)]/90 backdrop-blur-md text-[var(--nx-text)] border border-[var(--nx-border)]">
+                            {srv.category || 'Serviços'}
+                          </span>
+                        </div>
+
+                        <div className="px-0.5 space-y-1">
+                          <h3 className="text-[13.5px] font-bold tracking-tight text-[var(--nx-text)] leading-snug line-clamp-2 min-h-[36px]">
+                            {srv.name}
+                          </h3>
+                          <div className="flex items-center justify-between gap-1 text-[11px] text-[var(--nx-muted)] tabular-data">
+                            <span className="truncate">{srv.durationMinutes} min</span>
+                            {srvVariants.length > 0 && (
+                              <span className="shrink-0 text-[10px] font-semibold text-[var(--nx-volt-ink)]">
+                                {srvVariants.length} portes
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-baseline justify-between gap-1 pt-1">
+                            {srv.activePromotion ? (
+                              <div className="flex items-baseline gap-1 min-w-0">
+                                <span className="text-[14px] font-bold text-[var(--nx-accent)] tabular-data truncate">
+                                  R$ {Number(srv.effectivePrice).toFixed(2)}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded-full bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] text-[9.5px] font-bold tabular-data shrink-0">
+                                  -{srv.discountPct}%
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[14px] font-bold text-[var(--nx-volt-ink)] tabular-data truncate">
+                                R$ {Number(srv.price).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 pt-2.5 mt-2.5 border-t border-[var(--nx-border)]">
+                        <button
+                          type="button"
+                          onClick={() => openEditService(srv)}
+                          className="nx-btn-secondary flex-1 py-1.5 px-2 text-[11px] gap-1"
+                        >
+                          <Edit3 className="w-3 h-3 shrink-0" />
+                          <span className="truncate">Editar</span>
+                        </button>
+                        {enabledModules.includes('appointments') && (
+                          <button
+                            type="button"
+                            onClick={() => openCreateAppt({ serviceId: srv.id })}
+                            className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center bg-[var(--nx-volt-surface)] text-[var(--nx-volt-ink)] border border-[var(--nx-volt-border)] hover:opacity-90 transition-opacity"
+                            title="Agendar este serviço"
+                            aria-label="Agendar este serviço"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget({ type: 'service', item: srv })}
+                          className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[var(--nx-error)] bg-[var(--nx-error-bg)] hover:opacity-90 transition-opacity"
+                          title="Excluir serviço"
+                          aria-label="Excluir serviço"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div
+                className={`grid grid-cols-1 md:grid-cols-2 ${
+                  sidebarCollapsed ? 'xl:grid-cols-3' : ''
+                } gap-5`}
+              >
                 {filteredServices.map((srv) => {
                   const srvVariants: ServiceVariant[] = Array.isArray(srv.variants)
                     ? srv.variants
@@ -3654,30 +3782,45 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">Catálogo</h2>
-                <div className="flex rounded-lg border border-[var(--nx-border-strong)] p-1 bg-[var(--nx-surface)] gap-1">
+                <div className="flex rounded-xl border border-[var(--nx-border-strong)] p-1 bg-[var(--nx-surface)] gap-1">
                   <button
                     type="button"
                     onClick={() => setCatalogViewMode('list')}
-                    className={`p-1.5 rounded-md transition-colors ${
+                    className={`p-1.5 rounded-lg transition-colors ${
                       catalogViewMode === 'list'
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
                     title="Linhas"
+                    aria-label="Visualizar em linhas"
                   >
                     <List className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setCatalogViewMode('grid')}
-                    className={`p-1.5 rounded-md transition-colors ${
+                    className={`p-1.5 rounded-lg transition-colors ${
                       catalogViewMode === 'grid'
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
-                    title="Grade"
+                    title={sidebarCollapsed ? 'Grade padrão (4 por linha)' : 'Grade padrão (3 por linha)'}
+                    aria-label="Visualizar em grade padrão"
                   >
                     <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCatalogViewMode('compact')}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      catalogViewMode === 'compact'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
+                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
+                    }`}
+                    title={sidebarCollapsed ? 'Grade compacta (6 por linha)' : 'Grade compacta (5 por linha)'}
+                    aria-label="Visualizar em grade compacta"
+                  >
+                    <Grid3X3 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -3721,6 +3864,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {loading && filteredCatalog.length === 0 ? (
               catalogViewMode === 'list' ? (
                 <TableSkeleton rows={6} />
+              ) : catalogViewMode === 'compact' ? (
+                <CardGridSkeleton
+                  count={sidebarCollapsed ? 6 : 5}
+                  columns={sidebarCollapsed ? 6 : 5}
+                  compact
+                />
               ) : (
                 <CardGridSkeleton count={6} columns={3} />
               )
@@ -3811,8 +3960,110 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </tbody>
                 </table>
               </div>
+            ) : catalogViewMode === 'compact' ? (
+              <div
+                className={`grid ${
+                  sidebarCollapsed
+                    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3'
+                    : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5'
+                }`}
+              >
+                {filteredCatalog.map((item) => (
+                  <div
+                    key={item.id}
+                    className="nx-card-interactive group p-2.5 !rounded-2xl flex flex-col justify-between overflow-hidden animate-fade-up"
+                  >
+                    <div>
+                      <div className="relative h-28 rounded-xl bg-[var(--nx-surface-alt)] ring-1 ring-inset ring-black/10 dark:ring-white/10 flex items-center justify-center overflow-hidden mb-2.5">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1 text-[var(--nx-subtle)]">
+                            <ImageIcon className="w-5 h-5 opacity-40" />
+                            <span className="text-[10px]">Sem foto</span>
+                          </div>
+                        )}
+                        <span className="absolute top-2 left-2 max-w-[82%] truncate px-2 py-0.5 rounded-full text-[9.5px] font-semibold bg-[var(--nx-surface)]/90 backdrop-blur-md text-[var(--nx-text)] border border-[var(--nx-border)]">
+                          {item.category || 'Geral'}
+                        </span>
+                        {item.videoUrl && (
+                          <span
+                            className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/75 text-white flex items-center justify-center"
+                            title="Vídeo Bot ativo"
+                          >
+                            <Video className="w-2.5 h-2.5" />
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="px-0.5 space-y-1">
+                        <h3 className="text-[13.5px] font-bold tracking-tight text-[var(--nx-text)] leading-snug line-clamp-2 min-h-[36px]">
+                          {item.name}
+                        </h3>
+
+                        <div className="flex items-center justify-between gap-1 text-[11px] text-[var(--nx-muted)] tabular-data">
+                          <span className="truncate">{item.code}</span>
+                          {item.brand && (
+                            <span className="truncate max-w-[48%] text-right">{item.brand}</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-1 pt-1.5">
+                          <div className="flex items-baseline gap-1 min-w-0">
+                            {item.activePromotion ? (
+                              <>
+                                <span className="text-[14px] font-bold text-[var(--nx-accent)] tabular-data truncate">
+                                  R$ {Number(item.effectivePrice).toFixed(2)}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded-full bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] text-[9px] font-bold tabular-data shrink-0">
+                                  -{item.discountPct}%
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-[14px] font-bold text-[var(--nx-volt-ink)] tabular-data truncate">
+                                R$ {Number(item.price).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] tabular-data shrink-0">
+                            {item.stockQty} {item.unit || 'un'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-2.5 mt-2.5 border-t border-[var(--nx-border)]">
+                      <button
+                        type="button"
+                        onClick={() => openEditCatalog(item)}
+                        className="nx-btn-secondary flex-1 py-1.5 px-2 text-[11px] gap-1"
+                      >
+                        <Edit3 className="w-3 h-3 shrink-0" />
+                        <span className="truncate">Editar</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget({ type: 'catalog', item })}
+                        className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[var(--nx-error)] bg-[var(--nx-error-bg)] hover:opacity-90 transition-opacity"
+                        title="Excluir produto"
+                        aria-label="Excluir produto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div
+                className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${
+                  sidebarCollapsed ? 'xl:grid-cols-4' : ''
+                } gap-5`}
+              >
                 {filteredCatalog.map((item) => {
                   const hasDimensions = item.lengthCm || item.widthCm || item.heightCm;
                   return (

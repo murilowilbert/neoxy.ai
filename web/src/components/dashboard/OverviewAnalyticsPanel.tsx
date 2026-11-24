@@ -640,7 +640,7 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
       {/* ROW 2: ITENS & SERVIÇOS MAIS PROCURADOS (COM THUMBNAIL) VS OPORTUNIDADES EXPANSÍVEIS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Col 6: Mais procurados que TEMOS (com miniatura da foto do produto/serviço) */}
-        <div className="lg:col-span-6 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-5">
+        <div className="lg:col-span-6 nx-spotlight-card p-5">
           <div className="flex items-center justify-between gap-2 mb-4">
             <div>
               <h3 className="text-sm font-bold text-[var(--nx-text)] flex items-center gap-2">
@@ -715,7 +715,7 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
         </div>
 
         {/* Col 6: Oportunidades que ainda não oferecemos (EXPANSÍVEL COM CONVERSAS SALVAS) */}
-        <div className="lg:col-span-6 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-5">
+        <div className="lg:col-span-6 nx-spotlight-card p-5">
           <div className="flex items-center justify-between gap-2 mb-4">
             <div>
               <h3 className="text-sm font-bold text-[var(--nx-text)] flex items-center gap-2">
