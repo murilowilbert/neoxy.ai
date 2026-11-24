@@ -63,6 +63,7 @@ import { CompanyHoursTab } from '../components/dashboard/CompanyHoursTab';
 import { WhatsAppInboxTab } from '../components/dashboard/WhatsAppInboxTab';
 import { NumberField } from '../components/NumberField';
 import { CustomSelect } from '../components/CustomSelect';
+import { CardGridSkeleton, TableSkeleton, ChatReplySkeleton } from '../components/Skeleton';
 
 interface DashboardPageProps {
   user: any;
@@ -2012,12 +2013,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               title="Neoxy.ai"
             >
               {sidebarCollapsed ? (
-                <div className="w-8 h-8 rounded-md bg-[var(--nx-primary)] text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
-                  NX
+                <div className="w-9 h-9 rounded-xl nx-volt-badge flex items-center justify-center shadow-sm shrink-0">
+                  <NeoxyLogo variant="cube" height={20} tone="black" />
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  <NeoxyLogo height={16} className="text-[var(--nx-text)]" />
+                  <NeoxyLogo variant="lockup" height={15} />
                   <span className="text-[10px] text-[var(--nx-subtle)] mt-1">Operação</span>
                 </div>
               )}
@@ -2072,7 +2073,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
               } rounded-lg text-xs font-medium transition-colors ${
                 activeTab === 'overview'
-                  ? 'bg-[var(--nx-primary)] text-white'
+                  ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                   : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
               }`}
             >
@@ -2100,7 +2101,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 } rounded-lg text-xs font-medium transition-colors ${
                   ['inbox', 'contacts', 'quickreplies', 'radar'].includes(activeTab)
                     ? sidebarCollapsed
-                      ? 'bg-[var(--nx-primary)] text-white'
+                      ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                       : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
                     : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                 }`}
@@ -2152,7 +2153,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       onClick={() => setActiveTab(sub.key)}
                       className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
                         activeTab === sub.key
-                          ? 'bg-[var(--nx-primary)] text-white'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                           : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                       }`}
                     >
@@ -2193,7 +2194,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   } rounded-lg text-xs font-medium transition-colors ${
                     ['catalog', 'promotions'].includes(activeTab)
                       ? sidebarCollapsed
-                        ? 'bg-[var(--nx-primary)] text-white'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
                       : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                   }`}
@@ -2221,7 +2222,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       onClick={() => setActiveTab('catalog')}
                       className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
                         activeTab === 'catalog'
-                          ? 'bg-[var(--nx-primary)] text-white'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                           : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                       }`}
                     >
@@ -2233,7 +2234,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       onClick={() => setActiveTab('promotions')}
                       className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
                         activeTab === 'promotions'
-                          ? 'bg-[var(--nx-primary)] text-white'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                           : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                       }`}
                     >
@@ -2269,7 +2270,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   } rounded-lg text-xs font-medium transition-colors ${
                     ['services', ...(enabledModules.includes('stock') ? [] : ['promotions'])].includes(activeTab)
                       ? sidebarCollapsed
-                        ? 'bg-[var(--nx-primary)] text-white'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
                       : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                   }`}
@@ -2297,7 +2298,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       onClick={() => setActiveTab('services')}
                       className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
                         activeTab === 'services'
-                          ? 'bg-[var(--nx-primary)] text-white'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                           : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                       }`}
                     >
@@ -2309,7 +2310,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       onClick={() => setActiveTab('promotions')}
                       className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
                         activeTab === 'promotions'
-                          ? 'bg-[var(--nx-primary)] text-white'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                           : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                       }`}
                     >
@@ -2373,7 +2374,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
                     } rounded-lg text-xs font-medium transition-colors ${
                       isActive
-                        ? 'bg-[var(--nx-primary)] text-white'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                     }`}
                   >
@@ -2414,7 +2415,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 } rounded-lg text-xs font-medium transition-colors ${
                   ['settings', 'profile_hours'].includes(activeTab)
                     ? sidebarCollapsed
-                      ? 'bg-[var(--nx-primary)] text-white'
+                      ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                       : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
                     : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                 }`}
@@ -2438,7 +2439,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     onClick={() => setActiveTab('settings')}
                     className={`w-full text-left px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
                       activeTab === 'settings'
-                        ? 'bg-[var(--nx-primary)] text-white'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                     }`}
                   >
@@ -2449,7 +2450,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     onClick={() => setActiveTab('profile_hours')}
                     className={`w-full text-left px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
                       activeTab === 'profile_hours'
-                        ? 'bg-[var(--nx-primary)] text-white'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                     }`}
                   >
@@ -2469,7 +2470,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-2.5'
                 } rounded-lg text-xs font-medium transition-colors mt-3 border-t border-[var(--nx-border)] pt-3 ${
                   activeTab === 'superadmin'
-                    ? 'bg-[var(--nx-primary)] text-white'
+                    ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                     : 'text-[var(--nx-primary)] hover:bg-[var(--nx-surface-alt)]'
                 }`}
               >
@@ -2506,13 +2507,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* ÁREA DE TRABALHO PRINCIPAL */}
       <main className="flex-1 p-5 sm:p-8 overflow-y-auto max-w-7xl">
         {selectedTenant && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-6 border-b border-[var(--nx-border)]">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl sm:text-2xl font-bold text-[var(--nx-text)]">
+          <header className="sticky top-3 z-30 nx-liquid-glass rounded-2xl px-5 py-3.5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold text-[var(--nx-text)] truncate">
                   {selectedTenant.name}
                 </h1>
-                <span className="px-2 py-0.5 text-[11px] font-medium bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] border border-[var(--nx-accent-border)] rounded">
+                <span className="px-2.5 py-0.5 text-[11px] font-semibold bg-[var(--nx-volt-surface)] text-[var(--nx-volt-ink)] border border-[var(--nx-volt-border)] rounded-full">
                   {selectedTenant.businessType === 'SERVICES'
                     ? 'Prestador de Serviços'
                     : selectedTenant.businessType === 'RETAIL'
@@ -2520,16 +2521,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     : 'Escritório & Consultoria'}
                 </span>
               </div>
-              <p className="text-xs text-[var(--nx-muted)] mt-1 tabular-data">
+              <p className="text-xs text-[var(--nx-muted)] mt-0.5 tabular-data truncate">
                 Identificador: {selectedTenant.slug} / Módulos habilitados: {enabledModules.join(', ')}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {enabledModules.includes('appointments') && (
                 <button
                   onClick={() => openCreateAppt()}
-                  className="nx-btn-primary px-3.5 py-1.5 text-xs"
+                  className="nx-btn-primary px-4 py-2 text-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Novo Agendamento
@@ -2537,13 +2538,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               )}
               <button
                 onClick={() => loadTenantData(selectedTenant.slug)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[var(--nx-border-strong)] bg-[var(--nx-surface)]/80 hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] transition-colors"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                 Atualizar
               </button>
             </div>
-          </div>
+          </header>
         )}
 
         {/* ABA 1: RESUMO OPERACIONAL & TELEMETRIA INDUSTRIAL */}
@@ -2553,6 +2554,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               analytics={analytics}
               metrics={metrics}
               enabledModules={enabledModules}
+              loading={loading}
               onQuickCreateFromDemand={handleQuickCreateFromDemand}
               onOpenConversation={(phone) => {
                 setHighlightedPhone(phone);
@@ -2766,8 +2768,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </button>
               </form>
 
-              {simResult && (
-                <div className="p-3.5 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs space-y-2 animate-fade-up">
+              {simLoading ? (
+                <ChatReplySkeleton />
+              ) : simResult ? (
+                <div className="p-3.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)] text-xs space-y-2 animate-fade-up">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="font-semibold text-[var(--nx-text)]">Resposta gerada:</span>
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -2835,7 +2839,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     {simResult.replyText || simResult.text || JSON.stringify(simResult)}
                   </p>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         )}
@@ -2866,21 +2870,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               })}
             </div>
 
-            {filteredAppointments.length === 0 ? (
-              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-12 text-center space-y-3">
+            {loading && filteredAppointments.length === 0 ? (
+              <CardGridSkeleton count={4} columns={2} withMedia={false} />
+            ) : filteredAppointments.length === 0 ? (
+              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-2xl p-12 text-center space-y-3">
                 <Calendar className="w-8 h-8 text-[var(--nx-subtle)] mx-auto opacity-50" />
-                <div className="text-sm font-semibold text-[var(--nx-text)]">
+                <div className="text-base font-bold text-[var(--nx-text)]">
                   Nenhum agendamento encontrado
                 </div>
-                <p className="text-xs text-[var(--nx-muted)]">
+                <p className="text-sm text-[var(--nx-muted)]">
                   Crie um novo agendamento ou limpe os filtros ativos.
                 </p>
                 <button
                   type="button"
                   onClick={() => openCreateAppt()}
-                  className="nx-btn-primary px-4 py-2 text-xs"
+                  className="nx-btn-primary px-5 py-2.5 text-sm"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   Criar Agendamento
                 </button>
               </div>
@@ -2984,7 +2990,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   title={`Mudar para ${st.label}`}
                                   className={`py-1 px-1 rounded text-[10px] font-semibold transition-all text-center truncate ${
                                     isCurrent
-                                      ? 'bg-[var(--nx-primary)] text-white shadow-sm'
+                                      ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] shadow-sm'
                                       : isPassed
                                       ? 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]'
                                       : 'bg-[var(--nx-surface)] text-[var(--nx-subtle)] hover:text-[var(--nx-text)]'
@@ -3118,7 +3124,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     onClick={() => setServiceViewMode('list')}
                     className={`p-1.5 rounded-md transition-colors ${
                       serviceViewMode === 'list'
-                        ? 'bg-[var(--nx-primary)] text-white'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
                     title="Linhas"
@@ -3130,7 +3136,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     onClick={() => setServiceViewMode('grid')}
                     className={`p-1.5 rounded-md transition-colors ${
                       serviceViewMode === 'grid'
-                        ? 'bg-[var(--nx-primary)] text-white'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
                     title="Grade"
@@ -3148,8 +3154,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             </div>
 
-            {serviceViewMode === 'list' ? (
-              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
+            {loading && filteredServices.length === 0 ? (
+              serviceViewMode === 'list' ? (
+                <TableSkeleton rows={6} />
+              ) : (
+                <CardGridSkeleton count={4} columns={2} />
+              )
+            ) : serviceViewMode === 'list' ? (
+              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-2xl overflow-hidden">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] text-xs font-semibold text-[var(--nx-muted)]">
@@ -3229,7 +3241,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </table>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {filteredServices.map((srv) => {
                   const srvVariants: ServiceVariant[] = Array.isArray(srv.variants)
                     ? srv.variants
@@ -3241,31 +3253,33 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       className="nx-card-interactive flex flex-col justify-between overflow-hidden animate-fade-up"
                     >
                       {srv.imageUrl && (
-                        <div className="relative h-40 bg-[var(--nx-bg)] border-b border-[var(--nx-border)] overflow-hidden">
-                          <img
-                            src={srv.imageUrl}
-                            alt={srv.name}
-                            className="w-full h-full object-cover"
-                          />
-                          {srv.videoUrl && (
-                            <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/70 text-white text-[10px] font-semibold">
-                              <Video className="w-3 h-3" />
-                              Vídeo Bot
-                            </span>
-                          )}
+                        <div className="p-3.5 pb-0">
+                          <div className="relative h-44 rounded-xl bg-[var(--nx-bg)] overflow-hidden">
+                            <img
+                              src={srv.imageUrl}
+                              alt={srv.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {srv.videoUrl && (
+                              <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/75 backdrop-blur-md text-white text-[10px] font-semibold">
+                                <Video className="w-3 h-3" />
+                                Vídeo Bot
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
                       <div className="p-5">
-                        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                        <div className="flex items-center justify-between gap-2 mb-3.5 flex-wrap">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)]">
                               ● Ativo
                             </span>
-                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-primary-soft)] text-[var(--nx-primary)]">
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-volt-surface)] text-[var(--nx-volt-ink)] border border-[var(--nx-volt-border)]">
                               {srv.category || 'Serviços'}
                             </span>
                             {srv.returnCycleDays && (
-                              <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] tabular-data">
+                              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] tabular-data">
                                 Retorno: {srv.returnCycleDays} dias
                               </span>
                             )}
@@ -3283,12 +3297,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           )}
                         </div>
 
-                        <div className="flex items-baseline justify-between gap-4 mb-2">
-                          <div>
-                            <h3 className="text-base font-bold text-[var(--nx-text)]">{srv.name}</h3>
+                        <div className="flex items-start justify-between gap-4 mb-3">
+                          <div className="min-w-0">
+                            <h3 className="text-[20px] leading-snug font-bold tracking-tight text-[var(--nx-text)]">
+                              {srv.name}
+                            </h3>
                             {(srv.sku || srv.brand) && (
-                              <div className="text-[11px] text-[var(--nx-subtle)] mt-0.5">
-                                {[srv.sku, srv.brand, srv.unit].filter(Boolean).join(' / ')}
+                              <div className="text-[14px] font-medium text-[var(--nx-muted)] mt-0.5">
+                                {[srv.sku, srv.brand, srv.unit].filter(Boolean).join(' · ')}
                               </div>
                             )}
                           </div>
@@ -3296,23 +3312,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             {srv.activePromotion ? (
                               <>
                                 <div className="flex items-baseline justify-end gap-1.5">
-                                  <span className="text-base font-bold text-[var(--nx-accent)] tabular-data">
+                                  <span className="text-[18px] font-bold text-[var(--nx-accent)] tabular-data">
                                     R$ {Number(srv.effectivePrice).toFixed(2)}
                                   </span>
-                                  <span className="px-1.5 py-0.5 rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] text-[10px] font-bold tabular-data">
+                                  <span className="px-1.5 py-0.5 rounded-full bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] text-[10px] font-bold tabular-data">
                                     -{srv.discountPct}%
                                   </span>
                                 </div>
-                                <span className="block text-[10px] line-through text-[var(--nx-subtle)] tabular-data">
+                                <span className="block text-xs line-through text-[var(--nx-subtle)] tabular-data">
                                   R$ {Number(srv.price).toFixed(2)}
                                 </span>
                               </>
                             ) : (
-                              <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
+                              <span className="text-[18px] font-bold text-[var(--nx-volt-ink)] tabular-data">
                                 R$ {Number(srv.price).toFixed(2)}
                               </span>
                             )}
-                            <span className="block text-[10px] text-[var(--nx-subtle)] tabular-data">
+                            <span className="block text-xs text-[var(--nx-muted)] tabular-data">
                               Base: {srv.durationMinutes} min
                             </span>
                           </div>
@@ -3644,7 +3660,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     onClick={() => setCatalogViewMode('list')}
                     className={`p-1.5 rounded-md transition-colors ${
                       catalogViewMode === 'list'
-                        ? 'bg-[var(--nx-primary)] text-white'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
                     title="Linhas"
@@ -3656,7 +3672,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     onClick={() => setCatalogViewMode('grid')}
                     className={`p-1.5 rounded-md transition-colors ${
                       catalogViewMode === 'grid'
-                        ? 'bg-[var(--nx-primary)] text-white'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
                     }`}
                     title="Grade"
@@ -3702,8 +3718,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             </div>
 
-            {catalogViewMode === 'list' ? (
-              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
+            {loading && filteredCatalog.length === 0 ? (
+              catalogViewMode === 'list' ? (
+                <TableSkeleton rows={6} />
+              ) : (
+                <CardGridSkeleton count={6} columns={3} />
+              )
+            ) : catalogViewMode === 'list' ? (
+              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-2xl overflow-hidden">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] text-xs font-semibold text-[var(--nx-muted)]">
@@ -3790,16 +3812,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </table>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredCatalog.map((item) => {
                   const hasDimensions = item.lengthCm || item.widthCm || item.heightCm;
                   return (
                     <div
                       key={item.id}
-                      className="nx-card-interactive flex flex-col justify-between overflow-hidden animate-fade-up"
+                      className="nx-card-interactive p-4 flex flex-col justify-between overflow-hidden animate-fade-up"
                     >
                       <div>
-                        <div className="relative h-44 bg-[var(--nx-bg)] border-b border-[var(--nx-border)] flex items-center justify-center overflow-hidden">
+                        {/* Mídia com bordas arredondadas internas (Referência Imagem 5) */}
+                        <div className="relative h-44 rounded-xl bg-[var(--nx-surface-alt)] flex items-center justify-center overflow-hidden mb-4">
                           {item.imageUrl ? (
                             <img
                               src={item.imageUrl}
@@ -3809,62 +3832,63 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           ) : (
                             <div className="flex flex-col items-center gap-1.5 text-[var(--nx-subtle)]">
                               <ImageIcon className="w-7 h-7 opacity-40" />
-                              <span className="text-[11px]">Sem foto cadastrada</span>
+                              <span className="text-xs">Sem foto cadastrada</span>
                             </div>
                           )}
-                          <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--nx-surface)] text-[var(--nx-text)] border border-[var(--nx-border)] shadow-sm">
+                          <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-surface)]/90 backdrop-blur-md text-[var(--nx-text)] border border-[var(--nx-border)] shadow-sm">
                             {item.category || 'Geral'}
                           </span>
                           {item.videoUrl && (
-                            <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/75 text-white text-[10px] font-semibold">
+                            <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/75 backdrop-blur-md text-white text-[10px] font-semibold">
                               <Video className="w-3 h-3" />
                               Vídeo Bot
                             </span>
                           )}
                         </div>
 
-                        <div className="p-4 space-y-2">
-                          <div className="flex items-center justify-between text-[11px] text-[var(--nx-subtle)] tabular-data">
-                            <span>SKU: {item.code}</span>
-                            {item.brand && <span className="font-medium text-[var(--nx-muted)]">{item.brand}</span>}
-                          </div>
-
-                          <h3 className="text-sm font-bold text-[var(--nx-text)] leading-snug line-clamp-2">
+                        {/* Hierarquia Tipográfica: Headline > Subhead > Body */}
+                        <div className="px-1 space-y-2">
+                          <h3 className="text-[20px] font-bold tracking-tight text-[var(--nx-text)] leading-snug line-clamp-2">
                             {item.name}
                           </h3>
 
-                          <div className="flex items-baseline justify-between pt-1">
+                          <div className="flex items-center justify-between text-[14px] font-medium text-[var(--nx-muted)] tabular-data">
+                            <span>SKU: {item.code}</span>
+                            {item.brand && <span className="truncate max-w-[50%]">{item.brand}</span>}
+                          </div>
+
+                          <div className="flex items-baseline justify-between pt-2">
                             <div className="flex items-baseline gap-1.5 flex-wrap">
                               {item.activePromotion ? (
                                 <>
-                                  <span className="text-base font-bold text-[var(--nx-accent)] tabular-data">
+                                  <span className="text-[18px] font-bold text-[var(--nx-accent)] tabular-data">
                                     R$ {Number(item.effectivePrice).toFixed(2)}
                                   </span>
-                                  <span className="text-[11px] line-through text-[var(--nx-subtle)] tabular-data">
+                                  <span className="text-xs line-through text-[var(--nx-subtle)] tabular-data">
                                     R$ {Number(item.price).toFixed(2)}
                                   </span>
-                                  <span className="px-1.5 py-0.5 rounded bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] text-[10px] font-bold tabular-data">
+                                  <span className="px-2 py-0.5 rounded-full bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] text-[11px] font-bold tabular-data">
                                     -{item.discountPct}%
                                   </span>
                                 </>
                               ) : (
-                                <span className="text-base font-bold text-[var(--nx-primary)] tabular-data">
+                                <span className="text-[18px] font-bold text-[var(--nx-volt-ink)] tabular-data">
                                   R$ {Number(item.price).toFixed(2)}
                                 </span>
                               )}
                             </div>
-                            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] tabular-data">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] tabular-data">
                               {item.stockQty} {item.unit || 'un'}
                             </span>
                           </div>
 
                           {(item.ean || item.weightKg || hasDimensions) && (
-                            <div className="pt-2 border-t border-[var(--nx-border)] text-[10px] text-[var(--nx-muted)] space-y-0.5 tabular-data">
+                            <div className="pt-2 border-t border-[var(--nx-border)] text-xs text-[var(--nx-muted)] space-y-0.5 tabular-data">
                               {item.ean && <div>EAN: {item.ean}</div>}
                               {(item.weightKg || hasDimensions) && (
                                 <div>
                                   {item.weightKg ? `Peso: ${item.weightKg}kg` : ''}
-                                  {item.weightKg && hasDimensions ? ' / ' : ''}
+                                  {item.weightKg && hasDimensions ? ' · ' : ''}
                                   {hasDimensions
                                     ? `Dim.: ${item.lengthCm || 0}×${item.widthCm || 0}×${item.heightCm || 0} cm`
                                     : ''}
@@ -3875,11 +3899,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 divide-x divide-[var(--nx-border)] border-t border-[var(--nx-border)] bg-[var(--nx-bg)] text-xs font-medium">
+                      {/* Ações em pílula (Referência Imagem 5) */}
+                      <div className="flex items-center gap-2.5 pt-4 mt-4 border-t border-[var(--nx-border)]">
                         <button
                           type="button"
                           onClick={() => openEditCatalog(item)}
-                          className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
+                          className="nx-btn-secondary flex-1 py-2 px-3 text-sm"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                           Editar
@@ -3887,7 +3912,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         <button
                           type="button"
                           onClick={() => setDeleteTarget({ type: 'catalog', item })}
-                          className="py-2.5 flex items-center justify-center gap-1.5 text-[var(--nx-error)] hover:bg-[var(--nx-error-bg)] transition-colors"
+                          className="inline-flex items-center justify-center gap-1.5 flex-1 py-2 px-3 rounded-full text-sm font-semibold text-[var(--nx-error)] bg-[var(--nx-error-bg)] hover:opacity-90 transition-opacity"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           Excluir
@@ -4570,7 +4595,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         className="w-full h-full object-cover"
                       />
                       {slide.badge && (
-                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--nx-primary)] text-white">
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]">
                           {slide.badge}
                         </span>
                       )}
@@ -4992,7 +5017,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             onClick={() => handleSelectVariantInAppt(v)}
                             className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                               isSelected
-                                ? 'bg-[var(--nx-primary)] text-white border-[var(--nx-primary)]'
+                                ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] border-[var(--nx-primary)]'
                                 : 'bg-[var(--nx-surface)] text-[var(--nx-text)] border-[var(--nx-border-strong)] hover:border-[var(--nx-primary)]'
                             }`}
                           >
@@ -5340,7 +5365,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       onClick={() => handleSetApptStage(voucherAppt, st.key)}
                       className={`py-1.5 px-1.5 rounded text-[10px] font-semibold transition-colors ${
                         isCurrent
-                          ? 'bg-[var(--nx-primary)] text-white'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                           : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border border-[var(--nx-border)] hover:text-[var(--nx-text)]'
                       }`}
                     >

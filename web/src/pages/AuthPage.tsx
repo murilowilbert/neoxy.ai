@@ -232,23 +232,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   return (
     <div className="min-h-screen md:h-screen md:overflow-hidden bg-[var(--nx-bg)] text-[var(--nx-text)] flex flex-col justify-between px-4 py-3 sm:px-8 sm:py-5 transition-colors">
-      {/* Topo discreto com Voltar e ThemeToggle */}
-      <div className="max-w-5xl w-full mx-auto flex items-center justify-between shrink-0 animate-fade-down">
-        <button
-          onClick={onBackToLanding}
-          className="inline-flex items-center gap-2 text-xs font-medium text-[var(--nx-muted)] hover:text-[var(--nx-text)] transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Voltar para a página inicial
-        </button>
-        <ThemeToggle />
+      {/* Topo flutuante Apple Liquid Glass com Voltar, Cubo NEO e ThemeToggle */}
+      <div className="max-w-5xl w-full mx-auto shrink-0 animate-fade-down">
+        <div className="nx-liquid-glass rounded-full px-4 py-2 flex items-center justify-between">
+          <button
+            onClick={onBackToLanding}
+            className="inline-flex items-center gap-2 text-xs font-medium text-[var(--nx-muted)] hover:text-[var(--nx-text)] transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Voltar para a página inicial
+          </button>
+          <NeoxyLogo variant="cube" height={20} className="hidden sm:inline-block" />
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Cartão Centralizado Amplo em 2 Colunas (Tela Única Sem Rolagem) */}
       <div className="max-w-5xl w-full mx-auto my-auto animate-fade-up">
         <div className="bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] rounded-2xl shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-12 md:h-[580px]">
           {/* COLUNA ESQUERDA: Carrossel de Imagens / Promoções gerenciado pelo Admin */}
-          <div className="md:col-span-6 relative min-h-[240px] md:h-full bg-[#0D1117] overflow-hidden flex flex-col justify-between">
+          <div className="md:col-span-6 relative min-h-[240px] md:h-full bg-[#070708] overflow-hidden flex flex-col justify-between">
             {slides.map((slide, idx) => (
               <div
                 key={slide.id}
@@ -265,18 +268,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   className="absolute inset-0"
                   style={{
                     background:
-                      'linear-gradient(180deg, rgba(13,17,23,0.45) 0%, rgba(13,17,23,0.18) 45%, rgba(13,17,23,0.88) 100%)'
+                      'linear-gradient(180deg, rgba(5,5,6,0.48) 0%, rgba(5,5,6,0.18) 45%, rgba(5,5,6,0.90) 100%)'
                   }}
                 />
               </div>
             ))}
 
-            {/* Marca no topo da vitrine */}
+            {/* Marca NEO em branco absoluto no topo da vitrine */}
             <div className="relative z-10 p-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <NeoxyLogo height={18} className="text-white" />
-                <div>
-                  <span className="text-[11px] text-white/75 block leading-none">
+                <NeoxyLogo variant="lockup" height={17} tone="white" />
+                <div className="border-l border-white/20 pl-3">
+                  <span className="text-[11px] text-white/80 block leading-none">
                     Sistema Operacional de Atendimento
                   </span>
                 </div>
@@ -289,7 +292,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     onClick={() =>
                       setActiveSlideIdx((prev) => (prev - 1 + slides.length) % slides.length)
                     }
-                    className="w-7 h-7 rounded-full bg-black/35 text-white/90 hover:bg-black/60 flex items-center justify-center transition-colors"
+                    className="w-7 h-7 rounded-full bg-black/45 backdrop-blur-md border border-white/15 text-white/90 hover:bg-black/70 flex items-center justify-center transition-colors"
                     aria-label="Slide anterior"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -297,7 +300,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveSlideIdx((prev) => (prev + 1) % slides.length)}
-                    className="w-7 h-7 rounded-full bg-black/35 text-white/90 hover:bg-black/60 flex items-center justify-center transition-colors"
+                    className="w-7 h-7 rounded-full bg-black/45 backdrop-blur-md border border-white/15 text-white/90 hover:bg-black/70 flex items-center justify-center transition-colors"
                     aria-label="Próximo slide"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -309,15 +312,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             {/* Legenda e Indicadores do Carrossel no rodapé da imagem */}
             <div className="relative z-10 p-6 space-y-3">
               {currentSlide.badge && (
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-primary)] text-white">
+                <span className="inline-block px-3 py-0.5 rounded-full text-[11px] nx-volt-badge">
                   {currentSlide.badge}
                 </span>
               )}
-              <h2 className="text-xl font-bold text-white leading-snug">
+              <h2 className="text-[24px] font-bold text-white leading-tight">
                 {currentSlide.title}
               </h2>
               {currentSlide.subtitle && (
-                <p className="text-xs text-white/80 leading-relaxed max-w-md">
+                <p className="text-[14px] text-white/80 leading-relaxed max-w-md">
                   {currentSlide.subtitle}
                 </p>
               )}
@@ -332,8 +335,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                       aria-label={`Ir para slide ${idx + 1}`}
                       className={`h-1.5 rounded-full transition-all ${
                         idx === activeSlideIdx % slides.length
-                          ? 'w-7 bg-white'
-                          : 'w-2 bg-white/40 hover:bg-white/70'
+                          ? 'w-8 bg-[#D4FF00]'
+                          : 'w-2 bg-white/35 hover:bg-white/65'
                       }`}
                     />
                   ))}
@@ -529,19 +532,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                           }`}
                         >
                           <div
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                               isActive
-                                ? 'bg-[var(--nx-primary)] text-white'
-                                : 'bg-[var(--nx-surface)] text-[var(--nx-primary)] border border-[var(--nx-border)]'
+                                ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
+                                : 'bg-[var(--nx-surface)] text-[var(--nx-text)] border border-[var(--nx-border)]'
                             }`}
                           >
                             <Icon className="w-5 h-5" />
                           </div>
                           <div className="mt-3">
-                            <div className="text-sm font-bold text-[var(--nx-text)]">
+                            <div className="text-[15px] font-bold text-[var(--nx-text)]">
                               {profile.title}
                             </div>
-                            <div className="text-[11px] text-[var(--nx-muted)] mt-0.5 leading-snug">
+                            <div className="text-[12px] text-[var(--nx-muted)] mt-0.5 leading-snug">
                               {profile.desc}
                             </div>
                           </div>
@@ -728,13 +731,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <button
                     type="button"
                     onClick={() => fillDemo('contato@desentupidoraguri.com.br')}
-                    className="col-span-2 p-2 text-left rounded-md border border-[var(--nx-primary)] bg-[var(--nx-primary-soft)] hover:opacity-90 transition-opacity flex items-center justify-between gap-2"
+                    className="col-span-2 p-2.5 text-left rounded-xl border border-[var(--nx-volt-border)] bg-[var(--nx-volt-surface)] hover:opacity-95 transition-opacity flex items-center justify-between gap-2"
                   >
                     <div className="min-w-0">
-                      <div className="font-semibold text-[var(--nx-primary)] truncate">Desentupidora Guri</div>
-                      <div className="text-[10px] text-[var(--nx-muted)] truncate">Serviços 24h / Hidrojateamento & Agenda</div>
+                      <div className="font-semibold text-[var(--nx-text)] truncate">Desentupidora Guri</div>
+                      <div className="text-[11px] text-[var(--nx-muted)] truncate">Serviços 24h / Hidrojateamento & Agenda</div>
                     </div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[var(--nx-primary)] text-white shrink-0">
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full nx-volt-badge shrink-0">
                       Teste Novo
                     </span>
                   </button>

@@ -3,6 +3,7 @@ import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ThemeProvider } from './components/ThemeProvider';
+import { AppBootSkeleton } from './components/Skeleton';
 import { apiFetch, getToken, setToken } from './lib/api';
 
 class AppErrorBoundary extends Component<
@@ -84,9 +85,7 @@ export function App() {
     <ThemeProvider>
       <AppErrorBoundary>
         {initializing ? (
-          <div className="min-h-screen bg-[var(--nx-bg)] text-[var(--nx-muted)] flex items-center justify-center text-sm font-medium">
-            Carregando ambiente operacional Neoxy.ai...
-          </div>
+          <AppBootSkeleton />
         ) : view === 'dashboard' && user ? (
           <DashboardPage
             user={user}

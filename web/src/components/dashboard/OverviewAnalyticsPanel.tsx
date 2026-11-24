@@ -27,6 +27,8 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { useTheme } from '../ThemeProvider';
+import { OverviewSkeleton } from '../Skeleton';
 
 interface HourBucket {
   hour: number;
@@ -94,6 +96,7 @@ interface OverviewAnalyticsPanelProps {
   analytics: TenantAnalytics | null;
   metrics: any;
   enabledModules: string[];
+  loading?: boolean;
   onQuickCreateFromDemand: (name: string) => void;
   onNavigateTab: (tab: string) => void;
   onOpenConversation?: (customerPhone: string) => void;
@@ -157,13 +160,23 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
   analytics,
   metrics,
   enabledModules,
+  loading = false,
   onQuickCreateFromDemand,
   onNavigateTab,
   onOpenConversation
 }) => {
+  const { theme } = useTheme();
   const [chartRange, setChartRange] = useState<'today' | '7d'>('today');
   const [chartStyle, setChartStyle] = useState<'area' | 'bar'>('area');
   const [expandedMissedId, setExpandedMissedId] = useState<string | null>(null);
+
+  if (loading && !analytics) {
+    return <OverviewSkeleton />;
+  }
+
+  const receivedColor = theme === 'dark' ? '#D4FF00' : '#111113';
+  const aiColor = theme === 'dark' ? '#4ADE80' : '#15803D';
+  const humanColor = theme === 'dark' ? '#FACC15' : '#D97706';
 
   const aiVsHuman = analytics?.aiVsHuman || {
     totalConversations: metrics?.activeSessions || 0,
@@ -208,13 +221,13 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
             name: '100% pela IA',
             value: aiVsHuman.aiOnlySessions,
             pct: Math.round((aiVsHuman.aiOnlySessions / totalSessionsSafe) * 100),
-            fill: '#15803D'
+            fill: aiColor
           },
           {
             name: 'Tratado por Humano',
             value: aiVsHuman.humanIntervenedSessions,
             pct: Math.round((aiVsHuman.humanIntervenedSessions / totalSessionsSafe) * 100),
-            fill: '#D97706'
+            fill: humanColor
           }
         ].filter((d) => d.value > 0)
       : [
@@ -410,16 +423,16 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                 <AreaChart data={series} margin={{ top: 10, right: 12, left: -18, bottom: 0 }}>
                   <defs>
                     <linearGradient id="nxGradReceived" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#0F4C81" stopOpacity={0.28} />
-                      <stop offset="95%" stopColor="#0F4C81" stopOpacity={0.01} />
+                      <stop offset="0%" stopColor={receivedColor} stopOpacity={0.28} />
+                      <stop offset="95%" stopColor={receivedColor} stopOpacity={0.01} />
                     </linearGradient>
                     <linearGradient id="nxGradAi" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#15803D" stopOpacity={0.28} />
-                      <stop offset="95%" stopColor="#15803D" stopOpacity={0.01} />
+                      <stop offset="0%" stopColor={aiColor} stopOpacity={0.28} />
+                      <stop offset="95%" stopColor={aiColor} stopOpacity={0.01} />
                     </linearGradient>
                     <linearGradient id="nxGradHuman" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#D97706" stopOpacity={0.26} />
-                      <stop offset="95%" stopColor="#D97706" stopOpacity={0.01} />
+                      <stop offset="0%" stopColor={humanColor} stopOpacity={0.26} />
+                      <stop offset="95%" stopColor={humanColor} stopOpacity={0.01} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
@@ -449,28 +462,28 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                     type="monotone"
                     dataKey="received"
                     name="Recebidas"
-                    stroke="#0F4C81"
+                    stroke={receivedColor}
                     strokeWidth={2.2}
                     fill="url(#nxGradReceived)"
-                    activeDot={{ r: 5, stroke: 'var(--nx-surface)', strokeWidth: 2, fill: '#0F4C81' }}
+                    activeDot={{ r: 5, stroke: 'var(--nx-surface)', strokeWidth: 2, fill: receivedColor }}
                   />
                   <Area
                     type="monotone"
                     dataKey="aiReplies"
                     name="Respostas IA"
-                    stroke="#15803D"
+                    stroke={aiColor}
                     strokeWidth={2.2}
                     fill="url(#nxGradAi)"
-                    activeDot={{ r: 5, stroke: 'var(--nx-surface)', strokeWidth: 2, fill: '#15803D' }}
+                    activeDot={{ r: 5, stroke: 'var(--nx-surface)', strokeWidth: 2, fill: aiColor }}
                   />
                   <Area
                     type="monotone"
                     dataKey="humanReplies"
                     name="Humano"
-                    stroke="#D97706"
+                    stroke={humanColor}
                     strokeWidth={2}
                     fill="url(#nxGradHuman)"
-                    activeDot={{ r: 5, stroke: 'var(--nx-surface)', strokeWidth: 2, fill: '#D97706' }}
+                    activeDot={{ r: 5, stroke: 'var(--nx-surface)', strokeWidth: 2, fill: humanColor }}
                   />
                 </AreaChart>
               ) : (
@@ -498,9 +511,9 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                     content={<MessagesFloatingTooltip />}
                     cursor={{ fill: 'var(--nx-primary-soft)', radius: 6 }}
                   />
-                  <Bar dataKey="received" name="Recebidas" fill="#0F4C81" radius={[5, 5, 0, 0]} maxBarSize={16} />
-                  <Bar dataKey="aiReplies" name="Respostas IA" fill="#15803D" radius={[5, 5, 0, 0]} maxBarSize={16} />
-                  <Bar dataKey="humanReplies" name="Humano" fill="#D97706" radius={[5, 5, 0, 0]} maxBarSize={16} />
+                  <Bar dataKey="received" name="Recebidas" fill={receivedColor} radius={[5, 5, 0, 0]} maxBarSize={16} />
+                  <Bar dataKey="aiReplies" name="Respostas IA" fill={aiColor} radius={[5, 5, 0, 0]} maxBarSize={16} />
+                  <Bar dataKey="humanReplies" name="Humano" fill={humanColor} radius={[5, 5, 0, 0]} maxBarSize={16} />
                 </BarChart>
               )}
             </ResponsiveContainer>
@@ -508,27 +521,27 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
 
           <div className="mt-3 pt-2.5 border-t border-[var(--nx-border)] flex flex-wrap items-center gap-4 text-[11px] text-[var(--nx-muted)]">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#0F4C81' }} />
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: receivedColor }} />
               Recebidas
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#15803D' }} />
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: aiColor }} />
               Respostas IA
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#D97706' }} />
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: humanColor }} />
               Atendente Humano
             </span>
           </div>
         </div>
 
         {/* Col 5: Donut Moderno Interativo (IA 100% vs Intervenção Humana) */}
-        <div className="lg:col-span-5 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-xl p-5 flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-2xl p-5 flex flex-col justify-between">
           <div className="mb-2">
-            <h3 className="text-sm font-bold text-[var(--nx-text)]">
+            <h3 className="text-base font-bold text-[var(--nx-text)]">
               Atendimento 100% IA vs Humano
             </h3>
-            <p className="text-[11px] text-[var(--nx-muted)]">
+            <p className="text-xs text-[var(--nx-muted)] mt-0.5">
               Conversas resolvidas sem intervenção comparadas com transbordos para equipe.
             </p>
           </div>
@@ -565,10 +578,10 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
             </div>
 
             <div className="flex-1 w-full space-y-2.5 min-w-0">
-              <div className="p-3 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+              <div className="p-3 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)]">
                 <div className="flex items-center justify-between text-xs">
                   <span className="inline-flex items-center gap-2 font-semibold text-[var(--nx-text)]">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#15803D' }} />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: aiColor }} />
                     100% pela IA
                   </span>
                   <span className="font-bold tabular-data text-[var(--nx-text)]">
@@ -580,10 +593,10 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+              <div className="p-3 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)]">
                 <div className="flex items-center justify-between text-xs">
                   <span className="inline-flex items-center gap-2 font-semibold text-[var(--nx-text)]">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#D97706' }} />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: humanColor }} />
                     Tratado por Humano
                   </span>
                   <span className="font-bold tabular-data text-[var(--nx-text)]">

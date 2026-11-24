@@ -3,49 +3,90 @@
 @tailwind utilities;
 
 :root {
-  /* Paleta Mineral e Industrial ERP Modo Claro */
-  --nx-bg: #F6F8FA;
+  /* Paleta NEO — Alabastro Neutro, Preto Carbono & NEO Volt (Amarelo Neon) */
+  --nx-bg: #F6F6F4;
   --nx-surface: #FFFFFF;
-  --nx-surface-alt: #EDF1F5;
-  --nx-text: #111827;
-  --nx-muted: #4B5563;
-  --nx-subtle: #6B7280;
-  --nx-primary: #0F4C81;
-  --nx-primary-hover: #0B3861;
-  --nx-primary-soft: rgba(15, 76, 129, 0.08);
-  --nx-primary-ring: rgba(15, 76, 129, 0.14);
-  --nx-accent: #166534;
-  --nx-accent-bg: #ECFDF3;
-  --nx-accent-border: #BBF7D0;
-  --nx-border: #DCE2EA;
-  --nx-border-strong: #C4CDD8;
-  --nx-error: #B91C1C;
+  --nx-surface-alt: #EFEFED;
+  --nx-text: #0A0A0B;
+  --nx-muted: #52525B;
+  --nx-subtle: #71717A;
+
+  /* Primária funcional (Modo Claro: Carbono de alto contraste; Modo Escuro: NEO Volt) */
+  --nx-primary: #111113;
+  --nx-primary-hover: #27272A;
+  --nx-primary-fg: #FFFFFF;
+  --nx-primary-soft: rgba(189, 254, 1, 0.24);
+  --nx-primary-ring: rgba(189, 254, 1, 0.50);
+
+  /* Terceira Cor da Marca: NEO Volt (Degradê Amarelo-Lima Neon extraído da referência) */
+  --nx-volt: #D4FF00;
+  --nx-volt-lime: #BDFE01;
+  --nx-volt-yellow: #FFEA02;
+  --nx-volt-soft: #FFFD65;
+  --nx-volt-fg: #09090B;
+  --nx-volt-ink: #3D5A00;
+  --nx-volt-surface: rgba(212, 255, 0, 0.22);
+  --nx-volt-border: rgba(132, 204, 22, 0.45);
+  --nx-volt-gradient: linear-gradient(135deg, #FFFD65 0%, #DBFF02 42%, #BDFE01 74%, #FFEA02 100%);
+  --nx-volt-gradient-hover: linear-gradient(135deg, #F4FF01 0%, #BDFE01 52%, #D9FE02 100%);
+  --nx-volt-aura: radial-gradient(circle at 25% 25%, rgba(255, 253, 101, 0.34), rgba(189, 254, 1, 0.22) 48%, rgba(255, 234, 2, 0.12) 76%, transparent 100%);
+
+  /* Cores Semânticas & Combinações Harmônicas (Esmeralda + Âmbar Solar + Carmim) */
+  --nx-accent: #15803D;
+  --nx-accent-bg: #ECFDF5;
+  --nx-accent-border: #A7F3D0;
+  --nx-border: #E4E4E7;
+  --nx-border-strong: #D4D4D8;
+  --nx-error: #DC2626;
   --nx-error-bg: #FEF2F2;
   --nx-amber: #B45309;
-  --nx-amber-bg: #FFFBEB;
+  --nx-amber-bg: #FEFCE8;
+
+  /* Skeleton Loading */
+  --nx-skeleton-base: #E4E4E7;
+  --nx-skeleton-shine: #F4F4F5;
 }
 
 :root.dark {
-  /* Paleta Mineral e Industrial ERP Modo Escuro */
-  --nx-bg: #141A23;
-  --nx-surface: #1B2330;
-  --nx-surface-alt: #222C3C;
-  --nx-text: #F3F4F6;
-  --nx-muted: #9CA3AF;
-  --nx-subtle: #6B7280;
-  --nx-primary: #3B82F6;
-  --nx-primary-hover: #2563EB;
-  --nx-primary-soft: rgba(59, 130, 246, 0.14);
-  --nx-primary-ring: rgba(59, 130, 246, 0.22);
-  --nx-accent: #5C9E73;
-  --nx-accent-bg: rgba(22, 101, 52, 0.28);
-  --nx-accent-border: rgba(92, 158, 115, 0.35);
-  --nx-border: #2A3648;
-  --nx-border-strong: #37465B;
+  /* Paleta NEO — Preto Absoluto & Carbono (zero azul escuro) + NEO Volt */
+  --nx-bg: #050506;
+  --nx-surface: #0E0E10;
+  --nx-surface-alt: #17171A;
+  --nx-text: #FAFAFA;
+  --nx-muted: #A1A1AA;
+  --nx-subtle: #71717A;
+
+  --nx-primary: #D4FF00;
+  --nx-primary-hover: #E3FF4D;
+  --nx-primary-fg: #09090B;
+  --nx-primary-soft: rgba(212, 255, 0, 0.12);
+  --nx-primary-ring: rgba(212, 255, 0, 0.28);
+
+  --nx-volt: #D4FF00;
+  --nx-volt-lime: #BDFE01;
+  --nx-volt-yellow: #FFEA02;
+  --nx-volt-soft: #FFFD65;
+  --nx-volt-fg: #09090B;
+  --nx-volt-ink: #D4FF00;
+  --nx-volt-surface: rgba(212, 255, 0, 0.14);
+  --nx-volt-border: rgba(212, 255, 0, 0.36);
+  --nx-volt-gradient: linear-gradient(135deg, #FFFD65 0%, #DBFF02 42%, #BDFE01 74%, #FFEA02 100%);
+  --nx-volt-gradient-hover: linear-gradient(135deg, #F4FF01 0%, #BDFE01 52%, #D9FE02 100%);
+  --nx-volt-aura: radial-gradient(circle at 25% 25%, rgba(255, 253, 101, 0.16), rgba(189, 254, 1, 0.12) 48%, rgba(255, 234, 2, 0.06) 76%, transparent 100%);
+
+  --nx-accent: #4ADE80;
+  --nx-accent-bg: rgba(21, 128, 61, 0.20);
+  --nx-accent-border: rgba(74, 222, 128, 0.30);
+  --nx-border: #222226;
+  --nx-border-strong: #2F2F35;
   --nx-error: #F87171;
-  --nx-error-bg: rgba(185, 28, 28, 0.2);
-  --nx-amber: #FBBF24;
-  --nx-amber-bg: rgba(180, 83, 9, 0.22);
+  --nx-error-bg: rgba(220, 38, 38, 0.18);
+  --nx-amber: #FACC15;
+  --nx-amber-bg: rgba(202, 138, 4, 0.18);
+
+  /* Skeleton Loading Modo Escuro Preto */
+  --nx-skeleton-base: #1A1A1E;
+  --nx-skeleton-shine: #27272C;
 }
 
 @layer base {
@@ -93,14 +134,14 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--nx-primary);
+  background-color: var(--nx-volt-lime);
 }
 
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-/* Animacoes inspiradas no MedPet */
+/* Animacoes */
 @keyframes nxFadeUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: none; }
@@ -125,11 +166,15 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes nxSkeletonShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @keyframes nxShake {
   0%, 100% { transform: translateX(0); }
   20%      { transform: translateX(-5px); }
-  40%      { transform: translateX(5px);
-  }
+  40%      { transform: translateX(5px); }
   60%      { transform: translateX(-3px); }
   80%      { transform: translateX(3px); }
 }
@@ -146,40 +191,124 @@
   animation: nxSlideDown 0.18s ease both;
 }
 
-/* Botao Primario com Reflexo Sutil e Elevacao */
+/* ─── Apple Liquid Glass (Efeito de Vidro Flutuante com Refração & Borda Especular) ─── */
+.nx-liquid-glass {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.74) 0%,
+    rgba(255, 255, 255, 0.50) 52%,
+    rgba(255, 255, 255, 0.68) 100%
+  );
+  backdrop-filter: blur(22px) saturate(190%) brightness(1.03);
+  -webkit-backdrop-filter: blur(22px) saturate(190%) brightness(1.03);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.92),
+    inset 0 -1px 1px rgba(10, 10, 11, 0.05),
+    0 10px 32px rgba(10, 10, 11, 0.08),
+    0 2px 8px rgba(10, 10, 11, 0.04);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.nx-liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(212, 255, 0, 0.28) 38%,
+    rgba(255, 255, 255, 0.2) 68%,
+    rgba(255, 255, 255, 0.75) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+:root.dark .nx-liquid-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(22, 22, 25, 0.74) 0%,
+    rgba(10, 10, 12, 0.58) 52%,
+    rgba(24, 24, 28, 0.68) 100%
+  );
+  backdrop-filter: blur(24px) saturate(195%) brightness(1.06);
+  -webkit-backdrop-filter: blur(24px) saturate(195%) brightness(1.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.22),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.55),
+    0 14px 40px rgba(0, 0, 0, 0.60),
+    0 2px 10px rgba(0, 0, 0, 0.42);
+}
+
+:root.dark .nx-liquid-glass::before {
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.24) 0%,
+    rgba(212, 255, 0, 0.26) 36%,
+    rgba(255, 255, 255, 0.05) 68%,
+    rgba(255, 255, 255, 0.16) 100%
+  );
+}
+
+/* ─── Skeleton Loading State (Estilo Referência Imagem 4) ─────────── */
+.nx-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    var(--nx-skeleton-base) 25%,
+    var(--nx-skeleton-shine) 50%,
+    var(--nx-skeleton-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: nxSkeletonShimmer 1.55s ease-in-out infinite;
+}
+
+/* ─── Botão Primário NEO Volt (Degradê Amarelo Neon + Texto Preto) ── */
 .nx-btn-primary {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--nx-primary);
-  color: #ffffff;
-  font-weight: 500;
-  border-radius: 8px;
-  border: none;
+  background: var(--nx-volt-gradient);
+  color: var(--nx-volt-fg);
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid rgba(9, 9, 11, 0.14);
   cursor: pointer;
   overflow: hidden;
-  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 2px 8px rgba(10, 10, 11, 0.08);
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .nx-btn-primary::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.08));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, transparent 48%);
   pointer-events: none;
 }
 
 .nx-btn-primary:hover:not(:disabled) {
-  background: var(--nx-primary-hover);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+  background: var(--nx-volt-gradient-hover);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 8px 24px rgba(189, 254, 1, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.14);
   transform: translateY(-1px);
 }
 
 .nx-btn-primary:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: none;
+  box-shadow: 0 2px 6px rgba(189, 254, 1, 0.22);
 }
 
 .nx-btn-primary:disabled {
@@ -187,28 +316,96 @@
   cursor: not-allowed;
 }
 
+/* Botão secundário pílula harmonizado com hierarquia de cards (Imagem 5) */
+.nx-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--nx-surface-alt);
+  color: var(--nx-text);
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid var(--nx-border-strong);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.nx-btn-secondary:hover:not(:disabled) {
+  background: var(--nx-surface);
+  border-color: var(--nx-text);
+  transform: translateY(-1px);
+}
+
+/* Badge NEO Volt com contraste garantido */
+.nx-volt-badge {
+  background: var(--nx-volt-gradient);
+  color: var(--nx-volt-fg);
+  border: 1px solid rgba(9, 9, 11, 0.12);
+  font-weight: 700;
+}
+
 .nx-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #ffffff;
+  border: 2px solid rgba(9, 9, 11, 0.25);
+  border-top-color: #09090B;
   border-radius: 50%;
   animation: nxSpin 0.7s linear infinite;
   flex-shrink: 0;
 }
 
-/* ─── Cartão Interativo com Halo no Hover ────────────────────────── */
+/* ─── Cartão Interativo com Hierarquia Visual (Referência Imagem 5) ── */
 .nx-card-interactive {
   background: var(--nx-surface);
   border: 1px solid var(--nx-border);
-  border-radius: 10px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.22s ease, transform 0.2s ease;
+}
+
+:root.dark .nx-card-interactive {
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }
 
 .nx-card-interactive:hover {
-  border-color: var(--nx-primary);
-  box-shadow: 0 0 0 3px var(--nx-primary-ring);
-  transform: translateY(-1px);
+  border-color: var(--nx-border-strong);
+  box-shadow: 0 0 0 3px var(--nx-primary-ring), 0 12px 28px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+:root.dark .nx-card-interactive:hover {
+  border-color: var(--nx-volt-border);
+  box-shadow: 0 0 0 2px var(--nx-primary-ring), 0 14px 32px rgba(0, 0, 0, 0.55);
+}
+
+/* Escala tipográfica dedicada para Cards escaneáveis (24px / 16px / 14px / 16px) */
+.nx-card-headline {
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--nx-text);
+}
+
+.nx-card-subhead {
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--nx-muted);
+}
+
+.nx-card-body {
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--nx-muted);
+}
+
+.nx-card-btn-label {
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 600;
 }
 
 /* ─── Inputs com Floating Labels (Padrão Neoxy Industrial) ────────── */
@@ -317,7 +514,7 @@
 
 .nx-num-stepper button:active {
   background: var(--nx-primary);
-  color: #ffffff;
+  color: var(--nx-primary-fg);
 }
 
 .nx-field textarea {
@@ -857,7 +1054,7 @@
 .nx-smart-chip.active {
   background: var(--nx-primary);
   border-color: var(--nx-primary);
-  color: #ffffff;
+  color: var(--nx-primary-fg);
 }
 
 @media (max-width: 900px) {
@@ -881,14 +1078,20 @@
   background: var(--nx-surface);
   border: 1px solid var(--nx-border);
   border-top: 2px solid var(--nx-border-strong);
-  border-radius: 10px;
-  padding: 16px 18px;
+  border-radius: 16px;
+  padding: 18px 20px;
   transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .nx-kpi-tile:hover {
-  border-top-color: var(--nx-primary);
-  box-shadow: 0 4px 16px rgba(15, 76, 129, 0.06);
+  border-top-color: var(--nx-volt);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+:root.dark .nx-kpi-tile:hover {
+  border-top-color: var(--nx-volt);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.50);
 }
 
 .nx-submenu-rail {
@@ -902,84 +1105,87 @@
   margin-bottom: 4px;
 }
 
-/* ─── Estilo Fiel ao WhatsApp Web (Inbox ao Vivo — Claro & Escuro) ─────── */
+/* ─── Estilo Fiel ao WhatsApp Web (Inbox ao Vivo — Claro & Escuro Preto Real) ─────── */
 .nx-wa-header {
-  background-color: #F0F2F5;
-  border-bottom: 1px solid #D1D7DB;
+  background-color: #F4F4F5;
+  border-bottom: 1px solid #E4E4E7;
 }
 
 :root.dark .nx-wa-header {
-  background-color: #202C33;
-  border-bottom: 1px solid #2A3942;
+  background-color: #121214;
+  border-bottom: 1px solid #222226;
 }
 
 .nx-wa-canvas {
   background-color: #EFEAE2;
-  background-image: radial-gradient(rgba(17, 27, 33, 0.045) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(17, 17, 19, 0.05) 1px, transparent 1px);
   background-size: 18px 18px;
 }
 
 :root.dark .nx-wa-canvas {
-  background-color: #0B141A;
-  background-image: radial-gradient(rgba(233, 237, 239, 0.04) 1px, transparent 1px);
+  background-color: #070708;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 18px 18px;
 }
 
 .nx-wa-bubble-in {
   background-color: #FFFFFF;
-  color: #111B21;
-  border-radius: 0 10px 10px 10px;
-  box-shadow: 0 1px 1.5px rgba(11, 20, 26, 0.12);
+  color: #111113;
+  border-radius: 0 12px 12px 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 :root.dark .nx-wa-bubble-in {
-  background-color: #202C33;
-  color: #E9EDEF;
-  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.35);
+  background-color: #161619;
+  color: #FAFAFA;
+  border: 1px solid #232328;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 .nx-wa-bubble-out {
-  background-color: #D9FDD3;
-  color: #111B21;
-  border-radius: 10px 0 10px 10px;
-  box-shadow: 0 1px 1.5px rgba(11, 20, 26, 0.12);
+  background-color: #EBFDD0;
+  color: #111113;
+  border-radius: 12px 0 12px 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 :root.dark .nx-wa-bubble-out {
-  background-color: #005C4B;
-  color: #E9EDEF;
-  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.35);
+  background-color: #1A2408;
+  color: #F4F4F5;
+  border: 1px solid rgba(212, 255, 0, 0.22);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 .nx-wa-bubble-human {
-  background-color: #C7F9CC;
-  color: #111B21;
-  border-radius: 10px 0 10px 10px;
-  box-shadow: 0 1px 1.5px rgba(11, 20, 26, 0.12);
+  background-color: #DCFCE7;
+  color: #111113;
+  border-radius: 12px 0 12px 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 :root.dark .nx-wa-bubble-human {
-  background-color: #025144;
-  color: #E9EDEF;
-  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.35);
+  background-color: #10261A;
+  color: #F4F4F5;
+  border: 1px solid rgba(74, 222, 128, 0.22);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 .nx-wa-meta {
-  color: #667781;
+  color: #71717A;
 }
 
 :root.dark .nx-wa-meta {
-  color: rgba(233, 237, 239, 0.65);
+  color: rgba(250, 250, 250, 0.58);
 }
 
 .nx-wa-composer {
-  background-color: #F0F2F5;
-  border-top: 1px solid #D1D7DB;
+  background-color: #F4F4F5;
+  border-top: 1px solid #E4E4E7;
 }
 
 :root.dark .nx-wa-composer {
-  background-color: #202C33;
-  border-top: 1px solid #2A3942;
+  background-color: #121214;
+  border-top: 1px solid #222226;
 }
 
 /* ─── CustomSelect (Mesmo estilo da caixa de autocomplete de e-mail) ──── */

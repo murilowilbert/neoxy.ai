@@ -1,41 +1,95 @@
 import React from 'react';
+import neoWordmarkSrc from '../assets/brand/neo_logo.png';
+import neoCubeSrc from '../assets/brand/neo_cubo_logo.png';
+
+export type NeoxyLogoVariant = 'wordmark' | 'cube' | 'lockup';
+export type NeoxyLogoTone = 'auto' | 'black' | 'white';
 
 interface NeoxyLogoProps {
   className?: string;
   height?: number;
+  variant?: NeoxyLogoVariant;
+  tone?: NeoxyLogoTone;
+  gap?: number;
+}
+
+function getToneFilterClass(tone: NeoxyLogoTone): string {
+  if (tone === 'white') return 'brightness-0 invert';
+  if (tone === 'black') return 'brightness-0';
+  return 'brightness-0 dark:invert';
 }
 
 /**
- * Marca geométrica NEO enviada pelo usuário.
- * Usa currentColor para se adaptar automaticamente ao modo claro, escuro e fundos fotográficos.
+ * Identidade visual oficial NEO (Neoxy.ai).
+ * Suporta o ícone geométrico em cubo ("neo_cubo_logo"), o logotipo em texto ("neo_logo")
+ * ou a assinatura combinada ("lockup"), em preto absoluto, branco absoluto ou adaptativo ao tema.
  */
-export const NeoxyLogo: React.FC<NeoxyLogoProps> = ({ className = '', height = 20 }) => {
-  const width = Math.round(height * 3.85);
-  return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 154 40"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-label="NEO / Neoxy.ai"
-    >
-      {/* Letra N geométrica (barra vertical esquerda + diagonal) */}
-      <path d="M2 38V2H11L36 30.5V38H27L10 18.5V38H2Z" fill="currentColor" />
-      {/* Letra E geométrica (três barras horizontais paralelas) */}
-      <rect x="52" y="2" width="40" height="8" fill="currentColor" />
-      <rect x="52" y="16" width="40" height="8" fill="currentColor" />
-      <rect x="52" y="30" width="40" height="8" fill="currentColor" />
-      {/* Letra O geométrica (quadrado vazado) */}
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M108 2H152V38H108V2ZM116 10V30H144V10H116Z"
-        fill="currentColor"
+export const NeoxyLogo: React.FC<NeoxyLogoProps> = ({
+  className = '',
+  height = 22,
+  variant = 'wordmark',
+  tone = 'auto',
+  gap
+}) => {
+  const filterClass = getToneFilterClass(tone);
+
+  if (variant === 'cube') {
+    return (
+      <img
+        src={neoCubeSrc}
+        alt="NEO"
+        draggable={false}
+        style={{ height: `${height}px`, width: 'auto' }}
+        className={`inline-block object-contain select-none shrink-0 transition-[filter] duration-200 ${filterClass} ${className}`}
       />
-    </svg>
+    );
+  }
+
+  if (variant === 'lockup') {
+    const cubeHeight = Math.round(height * 1.32);
+    const computedGap = gap ?? Math.max(8, Math.round(height * 0.48));
+    return (
+      <span
+        className={`inline-flex items-center select-none shrink-0 ${className}`}
+        style={{ gap: `${computedGap}px` }}
+        aria-label="NEO / Neoxy.ai"
+      >
+        <img
+          src={neoCubeSrc}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          style={{ height: `${cubeHeight}px`, width: 'auto' }}
+          className={`object-contain shrink-0 transition-[filter] duration-200 ${filterClass}`}
+        />
+        <img
+          src={neoWordmarkSrc}
+          alt="NEO"
+          draggable={false}
+          style={{ height: `${height}px`, width: 'auto' }}
+          className={`object-contain shrink-0 transition-[filter] duration-200 ${filterClass}`}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={neoWordmarkSrc}
+      alt="NEO"
+      draggable={false}
+      style={{ height: `${height}px`, width: 'auto' }}
+      className={`inline-block object-contain select-none shrink-0 transition-[filter] duration-200 ${filterClass} ${className}`}
+    />
   );
 };
+
+export const NeoCubeIcon: React.FC<{
+  size?: number;
+  tone?: NeoxyLogoTone;
+  className?: string;
+}> = ({ size = 24, tone = 'auto', className = '' }) => (
+  <NeoxyLogo variant="cube" height={size} tone={tone} className={className} />
+);
 
 export default NeoxyLogo;

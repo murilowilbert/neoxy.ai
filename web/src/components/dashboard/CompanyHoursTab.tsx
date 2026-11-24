@@ -646,7 +646,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                 <button
                   type="button"
                   onClick={handleAddException}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-[var(--nx-primary)] text-white text-xs font-semibold hover:opacity-90"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] text-xs font-semibold hover:opacity-90"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Adicionar Data
