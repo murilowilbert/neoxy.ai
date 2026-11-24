@@ -3,6 +3,7 @@ import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ThemeProvider } from './components/ThemeProvider';
+import { LanguageProvider } from './components/LanguageProvider';
 import { AppBootSkeleton } from './components/Skeleton';
 import { NeoTooltipLayer } from './components/NeoTooltipLayer';
 import { useCardSpotlight } from './hooks/useCardSpotlight';
@@ -85,46 +86,48 @@ export function App() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <NeoTooltipLayer />
-      <AppErrorBoundary>
-        {initializing ? (
-          <AppBootSkeleton />
-        ) : view === 'dashboard' && user ? (
-          <DashboardPage
-            user={user}
-            tenants={tenants}
-            onLogout={() => {
-              setUser(null);
-              setTenants([]);
-              setView('landing');
-            }}
-            onRefreshSession={restoreSession}
-          />
-        ) : view === 'login' || view === 'register' ? (
-          <AuthPage
-            initialMode={view === 'register' ? 'register' : 'login'}
-            prefillEmail={prefillEmail}
-            onSuccess={(authData) => {
-              setUser(authData.user);
-              setTenants(authData.tenants || []);
-              setView('dashboard');
-            }}
-            onBackToLanding={() => setView('landing')}
-          />
-        ) : (
-          <LandingPage
-            onGoToLogin={(email) => {
-              setPrefillEmail(email || '');
-              setView('login');
-            }}
-            onGoToRegister={() => {
-              setPrefillEmail('');
-              setView('register');
-            }}
-          />
-        )}
-      </AppErrorBoundary>
-    </ThemeProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <NeoTooltipLayer />
+        <AppErrorBoundary>
+          {initializing ? (
+            <AppBootSkeleton />
+          ) : view === 'dashboard' && user ? (
+            <DashboardPage
+              user={user}
+              tenants={tenants}
+              onLogout={() => {
+                setUser(null);
+                setTenants([]);
+                setView('landing');
+              }}
+              onRefreshSession={restoreSession}
+            />
+          ) : view === 'login' || view === 'register' ? (
+            <AuthPage
+              initialMode={view === 'register' ? 'register' : 'login'}
+              prefillEmail={prefillEmail}
+              onSuccess={(authData) => {
+                setUser(authData.user);
+                setTenants(authData.tenants || []);
+                setView('dashboard');
+              }}
+              onBackToLanding={() => setView('landing')}
+            />
+          ) : (
+            <LandingPage
+              onGoToLogin={(email) => {
+                setPrefillEmail(email || '');
+                setView('login');
+              }}
+              onGoToRegister={() => {
+                setPrefillEmail('');
+                setView('register');
+              }}
+            />
+          )}
+        </AppErrorBoundary>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }

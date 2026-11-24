@@ -6,16 +6,22 @@ export interface RotatingTextProps {
   rotationInterval?: number;
   staggerDuration?: number;
   className?: string;
+  charClassName?: string;
 }
 
 export const RotatingText: React.FC<RotatingTextProps> = ({
   texts,
   rotationInterval = 2600,
-  staggerDuration = 0.028,
-  className = ''
+  staggerDuration = 0.024,
+  className = '',
+  charClassName = ''
 }) => {
   const [index, setIndex] = useState(0);
   const reduced = useReducedMotion();
+
+  useEffect(() => {
+    setIndex(0);
+  }, [texts]);
 
   useEffect(() => {
     if (reduced || texts.length <= 1) return undefined;
@@ -32,29 +38,29 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
     <motion.span
       layout
       transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-      className={`inline-flex items-center justify-center relative overflow-hidden align-baseline ${className}`}
+      className={`inline-flex items-baseline relative overflow-hidden align-baseline ${className}`}
       aria-live="polite"
     >
       <span className="sr-only">{current}</span>
-      <AnimatePresence mode="popLayout" initial={false}>
+      <AnimatePresence mode="wait" initial={false}>
         <motion.span
           key={`${current}-${index}`}
           className="inline-flex whitespace-pre"
           aria-hidden="true"
         >
           {chars.map((char, i) => (
-            <span key={i} className="inline-flex overflow-hidden">
+            <span key={i} className="inline-flex overflow-hidden pb-[0.12em] -mb-[0.12em]">
               <motion.span
                 initial={reduced ? { opacity: 0 } : { y: '105%', opacity: 0 }}
                 animate={{ y: '0%', opacity: 1 }}
-                exit={reduced ? { opacity: 0 } : { y: '-115%', opacity: 0 }}
+                exit={reduced ? { opacity: 0 } : { y: '-110%', opacity: 0 }}
                 transition={{
                   type: 'spring',
                   damping: 26,
-                  stiffness: 340,
+                  stiffness: 360,
                   delay: reduced ? 0 : i * staggerDuration
                 }}
-                className="inline-block will-change-transform"
+                className={`inline-block will-change-transform ${charClassName}`}
               >
                 {char === ' ' ? '\u00A0' : char}
               </motion.span>

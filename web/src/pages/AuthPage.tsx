@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
 import NeoxyLogo from '../components/NeoxyLogo';
 
 interface AuthPageProps {
@@ -242,7 +243,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             <ArrowLeft className="w-3.5 h-3.5" />
             Voltar para a página inicial
           </button>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 

@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
 import { MediaFieldBox } from '../components/MediaFieldBox';
 import NeoxyLogo from '../components/NeoxyLogo';
 import { OverviewAnalyticsPanel, TenantAnalytics } from '../components/dashboard/OverviewAnalyticsPanel';
@@ -2012,7 +2013,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div
               className="flex items-center gap-2.5 cursor-pointer"
               onClick={() => setActiveTab('overview')}
-              title="NEO"
+              title={sidebarCollapsed ? 'NEO — Resumo' : undefined}
             >
               {sidebarCollapsed ? (
                 <div className="w-9 h-9 rounded-xl nx-volt-badge flex items-center justify-center shadow-sm shrink-0">
@@ -2026,7 +2027,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               )}
             </div>
 
-            <div className={`flex items-center ${sidebarCollapsed ? 'flex-col gap-2' : 'gap-2'}`}>
+            <div className={`flex items-center ${sidebarCollapsed ? 'flex-col gap-2' : 'gap-1.5'}`}>
+              <LanguageToggle />
               <ThemeToggle />
               <button
                 type="button"

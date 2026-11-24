@@ -12,11 +12,14 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
 import NeoxyLogo from '../components/NeoxyLogo';
 import { useTheme } from '../components/ThemeProvider';
+import { useLanguage } from '../components/LanguageProvider';
+import { LANDING_COPY } from '../lib/landingCopy';
 import AnimatedContent from '../components/reactbits/AnimatedContent';
 import CardNav, { type CardNavItem } from '../components/reactbits/CardNav';
-import DriftWall, { type DriftWallItem } from '../components/reactbits/DriftWall';
+import DriftWall from '../components/reactbits/DriftWall';
 import GradientBlinds from '../components/reactbits/GradientBlinds';
 import RotatingText from '../components/reactbits/RotatingText';
 import StarBorder from '../components/reactbits/StarBorder';
@@ -26,216 +29,58 @@ interface LandingPageProps {
   onGoToRegister: () => void;
 }
 
-const HERO_WALL_ITEMS: DriftWallItem[] = [
-  {
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=700&q=80',
-    title: 'Escritório moderno NEO'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=700&q=80',
-    title: 'Atendimento e vendas'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=700&q=80',
-    title: 'Estoque e catálogo sincronizado'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=700&q=80',
-    title: 'Equipe operacional conectada'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=700&q=80',
-    title: 'Clínicas e consultórios'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=700&q=80',
-    title: 'Oficinas e assistência técnica'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=700&q=80',
-    title: 'Pet shop e banho e tosa'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=700&q=80',
-    title: 'PDV e balcão inteligente'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=700&q=80',
-    title: 'Ferragens e construção'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=700&q=80',
-    title: 'Gestão comercial em tempo real'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=700&q=80',
-    title: 'Reuniões e agendamentos'
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=700&q=80',
-    title: 'Métricas e desempenho'
-  }
-];
+const FEATURE_ICONS = {
+  agenda: Calendar,
+  catalogo: Package,
+  atendimento: MessageSquare
+} as const;
 
-const FEATURE_CARDS = [
-  {
-    id: 'agenda',
-    icon: Calendar,
-    headline: 'Agenda & OS',
-    subhead: 'Controle operacional em 4 etapas',
-    body: 'Preços por porte, equipe com comissões, vistoria de entrada e aviso automático de retirada no WhatsApp.',
-    imageUrl:
-      'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=900&q=80',
-    secondaryCta: 'Ver demo',
-    primaryCta: 'Testar agora',
-    demoEmail: 'contato@desentupidoraguri.com.br'
-  },
-  {
-    id: 'catalogo',
-    icon: Package,
-    headline: 'Catálogo & PDV',
-    subhead: 'Estoque vivo conectado à IA',
-    body: 'Envie fotos e vídeos no WhatsApp, importe planilhas Excel ou CSV e mantenha preços sincronizados com seu PDV.',
-    imageUrl:
-      'https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=900&q=80',
-    secondaryCta: 'Ver demo',
-    primaryCta: 'Testar agora',
-    demoEmail: 'contato@ferragensmarlene.com.br'
-  },
-  {
-    id: 'atendimento',
-    icon: MessageSquare,
-    headline: 'WhatsApp com IA',
-    subhead: 'Atendimento natural e visão de fotos',
-    body: 'Identifica fotos e áudios enviados pelo cliente, responde em tom humano e permite pausa para equipe em 1 clique.',
-    imageUrl:
-      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80',
-    secondaryCta: 'Ver planos',
-    primaryCta: 'Criar conta',
-    demoEmail: null
-  }
-];
-
-const PLANS = [
-  {
-    name: 'Mensal',
-    subhead: 'Flexibilidade total para começar',
-    price: '297',
-    period: '/mês',
-    description: 'Para testar no dia a dia da operação sem compromisso de longo prazo.',
-    features: [
-      'WhatsApp com IA e visão de fotos',
-      'Agenda, Ordens de Serviço e Catálogo',
-      'Importação de estoque em CSV e Excel',
-      'Pausa para atendimento humano em 1 clique',
-      'Cancelamento livre a qualquer momento'
-    ],
-    cta: 'Começar no Mensal',
-    featured: false
-  },
-  {
-    name: 'Semestral',
-    subhead: 'Previsibilidade e economia real',
-    price: '247',
-    period: '/mês',
-    description: 'Equilíbrio entre economia e previsibilidade para empresas em crescimento.',
-    features: [
-      'Tudo do plano Mensal incluso',
-      'Sincronização de preços com API PDV',
-      'Equipe, comissões e preços por porte',
-      'Suporte prioritário na configuração',
-      'Economia de R$ 300 no semestre'
-    ],
-    cta: 'Escolher Semestral',
-    featured: false
-  },
-  {
-    name: 'Anual',
-    subhead: 'Máximo retorno operacional',
-    price: '197',
-    period: '/mês',
-    badge: 'Mais escolhido',
-    description: 'Melhor custo-benefício para operar o WhatsApp e a bancada o ano todo.',
-    features: [
-      'Tudo do plano Semestral incluso',
-      'Onboarding assistido para sua equipe',
-      'Envio de fotos e vídeos do catálogo no bot',
-      'Ciclos de retorno automático de clientes',
-      'Economia de R$ 1.200 no ano'
-    ],
-    cta: 'Garantir plano Anual',
-    featured: true
-  }
-];
-
-const FAQS = [
-  {
-    q: 'Meu WhatsApp pode ser bloqueado?',
-    a: 'A NEO trabalha respondendo apenas clientes que iniciam contato ou aguardam retorno de serviço, sem disparos em massa não solicitados, preservando a reputação do seu número.'
-  },
-  {
-    q: 'Vou perder meu número ou meus contatos?',
-    a: 'Não. Você conecta o seu número comercial atual e mantém todo o histórico, agenda de contatos e conversas intactos.'
-  },
-  {
-    q: 'E se a IA responder errado?',
-    a: 'Você define as regras, preços, estoque e serviços diretamente no painel. A qualquer momento, basta clicar em Pausar IA na conversa para assumir o atendimento humano.'
-  },
-  {
-    q: 'Meus clientes preferem falar com gente.',
-    a: 'A conversa é configurada em tom natural e direto, sem menus numéricos engessados. Quando o assunto exige negociação ou decisão sensível, o atendimento passa para a sua equipe.'
-  },
-  {
-    q: 'Já tenho um chatbot. Qual a diferença?',
-    a: 'Chatbots tradicionais travam o cliente em fluxos de "digite 1 ou 2". A NEO entende texto, identifica fotos enviadas pelo cliente, consulta seu estoque real e registra agendamentos.'
-  },
-  {
-    q: 'Funciona para o meu segmento?',
-    a: 'Sim. Os módulos são ativáveis por perfil (Serviços, Comércio, Escritório ou Operação Completa), e você pode ligar ou desligar cada função quando quiser.'
-  },
-  {
-    q: 'Tem fidelidade?',
-    a: 'No plano Mensal não há fidelidade. Nos planos Semestral e Anual você garante desconto progressivo no valor mensal.'
-  }
-];
+const HIGHLIGHT_ICONS = {
+  zap: Zap,
+  eye: Eye,
+  shield: ShieldCheck
+} as const;
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onGoToLogin,
   onGoToRegister
 }) => {
   const { theme } = useTheme();
+  const { lang } = useLanguage();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const copy = LANDING_COPY[lang];
 
   const navItems = useMemo<CardNavItem[]>(
     () => [
       {
-        label: 'Plataforma',
-        description: 'WhatsApp com IA, agenda operacional e estoque sincronizado.',
+        label: copy.nav.cards.platformTitle,
+        description: copy.nav.cards.platformDesc,
         links: [
-          { label: 'Módulos integrados', href: '#recursos' },
-          { label: 'Agenda & OS', href: '#recursos' },
-          { label: 'Catálogo & PDV', href: '#recursos' }
+          { label: copy.nav.cards.modules, href: '#recursos' },
+          { label: copy.nav.cards.agendaOs, href: '#recursos' },
+          { label: copy.nav.cards.catalogPdv, href: '#recursos' }
         ]
       },
       {
-        label: 'Planos & Ajuda',
-        description: 'Ciclos transparentes sem letras miúdas e dúvidas respondidas.',
+        label: copy.nav.cards.plansTitle,
+        description: copy.nav.cards.plansDesc,
         links: [
-          { label: 'Planos NEO', href: '#planos' },
-          { label: 'Dúvidas frequentes', href: '#duvidas' }
+          { label: copy.nav.cards.plansLink, href: '#planos' },
+          { label: copy.nav.cards.faqLink, href: '#duvidas' }
         ]
       },
       {
-        label: 'Acessar agora',
-        description: 'Explore o painel real com dados de demonstração ou sua conta.',
+        label: copy.nav.cards.accessTitle,
+        description: copy.nav.cards.accessDesc,
         links: [
-          { label: 'Entrar no painel', onClick: () => onGoToLogin() },
-          { label: 'Demo Serviços', onClick: () => onGoToLogin('contato@desentupidoraguri.com.br') },
-          { label: 'Demo Comércio', onClick: () => onGoToLogin('contato@ferragensmarlene.com.br') }
+          { label: copy.nav.cards.enterPanel, onClick: () => onGoToLogin() },
+          { label: copy.nav.cards.demoServices, onClick: () => onGoToLogin('contato@desentupidoraguri.com.br') },
+          { label: copy.nav.cards.demoRetail, onClick: () => onGoToLogin('contato@ferragensmarlene.com.br') }
         ]
       }
     ],
-    [onGoToLogin]
+    [copy, onGoToLogin]
   );
 
   return (
@@ -248,25 +93,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           maxWidth={1120}
           cardHeight={156}
           speed={1.45}
-          menuOpenText="Menu"
-          menuCloseText="Fechar"
+          menuOpenText={copy.nav.menu}
+          menuCloseText={copy.nav.close}
           logo={<NeoxyLogo variant="lockup" height={17} />}
           logoAlt="NEO"
           logoHref="#"
           items={navItems}
           cta={{
-            label: 'Criar conta',
+            label: copy.nav.signup,
             onClick: onGoToRegister
           }}
           rightSlot={
             <>
+              <LanguageToggle />
               <ThemeToggle />
               <button
                 type="button"
                 onClick={() => onGoToLogin()}
                 className="hidden sm:inline-flex items-center px-3.5 h-10 rounded-full text-[13.5px] font-medium text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)]/70 transition-colors"
               >
-                Entrar
+                {copy.nav.login}
               </button>
             </>
           }
@@ -274,42 +120,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </div>
 
       <main className="flex-1">
-        {/* Hero Aberto e Arejado com DriftWall 3D + Fade Superior Suave Próximo à Navbar */}
+        {/* Hero Aberto e Arejado com Texto Neon Rotativo + DriftWall 3D Ampliado com Legenda em Profundidade */}
         <section className="relative pt-24 sm:pt-28 pb-16 sm:pb-24">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -top-24 right-[-10%] w-[520px] h-[520px] rounded-full blur-3xl opacity-70"
+            className="pointer-events-none absolute -top-24 right-[-10%] w-[560px] h-[560px] rounded-full blur-3xl opacity-70"
             style={{ background: 'var(--nx-volt-aura)' }}
           />
 
-          <div className="relative max-w-6xl mx-auto w-full px-6 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+          <div className="relative max-w-[1260px] mx-auto w-full px-6 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-6 items-center">
             <AnimatedContent
               trigger="mount"
               distance={26}
               duration={0.58}
               stagger={0.06}
-              className="lg:col-span-6 space-y-6 pt-6 lg:pt-8"
+              className="lg:col-span-5 space-y-6 pt-6 lg:pt-8 relative z-20"
             >
               <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full nx-volt-badge text-xs shadow-sm">
                 <NeoxyLogo variant="cube" height={15} tone="black" />
-                <span>Plataforma operacional com IA no WhatsApp</span>
+                <span>{copy.hero.badge}</span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-[var(--nx-text)] leading-[1.12]">
-                WhatsApp, agenda e
-                <span className="block my-2">
+              <h1 className="text-4xl sm:text-[46px] font-bold tracking-tight text-[var(--nx-text)] leading-[1.1]">
+                {copy.hero.headlinePrefix}
+                <span className="block mt-1.5 min-h-[1.22em]">
                   <RotatingText
-                    texts={['estoque', 'serviços', 'vendas', 'clientes', 'equipe']}
-                    rotationInterval={2400}
-                    staggerDuration={0.025}
-                    className="px-3.5 py-0.5 rounded-2xl nx-volt-badge !font-bold !text-4xl sm:!text-5xl tracking-tight leading-[1.12] shadow-sm"
+                    texts={copy.hero.rotatingWords}
+                    rotationInterval={2500}
+                    staggerDuration={0.024}
+                    className="font-extrabold tracking-tight leading-[1.12]"
+                    charClassName="nx-rotating-neon"
                   />
                 </span>
-                na mesma bancada.
               </h1>
 
-              <p className="text-base text-[var(--nx-muted)] leading-relaxed max-w-lg">
-                Para clínicas, oficinas, prestadores de serviços e comércios que querem responder clientes no WhatsApp sem perder o controle da operação.
+              <p className="text-base text-[var(--nx-muted)] leading-relaxed max-w-md">
+                {copy.hero.subtitle}
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -318,7 +164,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onClick={onGoToRegister}
                   className="nx-btn-primary px-7 py-3.5 text-base"
                 >
-                  Criar conta
+                  {copy.hero.primaryCta}
                   <ArrowUpRight className="w-4 h-4" />
                 </button>
                 <button
@@ -326,7 +172,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onClick={() => onGoToLogin()}
                   className="nx-btn-secondary px-7 py-3.5 text-base"
                 >
-                  Entrar no painel
+                  {copy.hero.secondaryCta}
                 </button>
               </div>
             </AnimatedContent>
@@ -336,28 +182,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               distance={22}
               delay={0.08}
               duration={0.65}
-              className="lg:col-span-6 relative lg:-mt-10"
+              className="lg:col-span-7 relative lg:-mt-8 z-10"
             >
-              <div className="relative h-[360px] sm:h-[460px] lg:h-[560px] w-full overflow-clip lg:overflow-x-visible lg:overflow-y-clip">
+              {/* Bleed horizontal generoso (-mx-14 / px-14) para que o mask-image vertical nunca corte sombras nem cantos no hover 3D */}
+              <div className="relative h-[400px] sm:h-[500px] lg:h-[600px] w-full lg:-mx-14 lg:w-[calc(100%+7rem)] overflow-clip lg:overflow-x-visible lg:overflow-y-clip">
                 <DriftWall
-                  items={HERO_WALL_ITEMS}
+                  items={copy.wallItems}
                   columns={3}
-                  tileWidth={148}
-                  tileHeight={106}
-                  gap={14}
-                  radius={14}
-                  tilt={11}
-                  turn={-8}
-                  perspective={1200}
-                  depth={76}
-                  speed={30}
+                  tileWidth={204}
+                  tileHeight={144}
+                  gap={16}
+                  radius={16}
+                  tilt={9}
+                  turn={-6}
+                  perspective={1250}
+                  depth={46}
+                  speed={28}
                   direction="up"
                   variance={0.42}
-                  parallax={0.48}
-                  lift={42}
+                  parallax={0.46}
+                  lift={92}
+                  hoverScale={1.22}
                   fade={0.58}
-                  dim={theme === 'dark' ? 0.68 : 0.88}
+                  dim={theme === 'dark' ? 0.72 : 0.90}
                   overlayColor={theme === 'dark' ? '#050506' : '#FFFFFF'}
+                  style={{ paddingInline: '72px' }}
                 />
               </div>
             </AnimatedContent>
@@ -370,10 +219,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <AnimatedContent distance={26} duration={0.55} className="max-w-2xl mb-12 space-y-2">
               <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--nx-volt-ink)]">
                 <span className="w-2 h-2 rounded-full bg-[#D4FF00] ring-2 ring-[#BDFE01]/40" />
-                Módulos integrados
+                {copy.featuresSection.eyebrow}
               </span>
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--nx-text)]">
-                Tudo conectado em cartões claros e fáceis de operar.
+                {copy.featuresSection.heading}
               </h2>
             </AnimatedContent>
 
@@ -383,8 +232,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               stagger={0.07}
               className="grid grid-cols-1 md:grid-cols-3 gap-6"
             >
-              {FEATURE_CARDS.map((card) => {
-                const Icon = card.icon;
+              {copy.featuresSection.cards.map((card) => {
+                const Icon = FEATURE_ICONS[card.id];
                 return (
                   <article
                     key={card.id}
@@ -439,24 +288,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               stagger={0.06}
               className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6"
             >
-              {[
-                {
-                  icon: Zap,
-                  title: 'Respostas instantâneas',
-                  body: 'Seu cliente recebe retorno em segundos no WhatsApp com preço real, disponibilidade e link de agendamento.'
-                },
-                {
-                  icon: Eye,
-                  title: 'Leitura de fotos, áudios e PDFs',
-                  body: 'A IA identifica peças em fotos enviadas, entende mensagens de voz e extrai dados de comprovantes.'
-                },
-                {
-                  icon: ShieldCheck,
-                  title: 'Assuma em 1 clique',
-                  body: 'Pause a IA em qualquer conversa instantaneamente para conduzir negociações sensíveis com sua equipe.'
-                }
-              ].map((item) => {
-                const Icon = item.icon;
+              {copy.featuresSection.highlights.map((item) => {
+                const Icon = HIGHLIGHT_ICONS[item.iconKey];
                 return (
                   <div key={item.title} className="nx-card-interactive p-6 flex flex-col gap-5">
                     <div className="nx-icon-tile">
@@ -519,13 +352,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="max-w-xl space-y-2.5">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-[#D4FF00] backdrop-blur-md">
                   <NeoxyLogo variant="cube" height={14} tone="white" />
-                  <span>Planos NEO</span>
+                  <span>{copy.plansSection.badge}</span>
                 </div>
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-                  Planos diretos ao ponto.
+                  {copy.plansSection.heading}
                 </h2>
                 <p className="text-base text-zinc-300/90">
-                  Valores ilustrativos para demonstração. Escolha o ciclo que melhor se adapta à rotina da sua empresa.
+                  {copy.plansSection.subtitle}
                 </p>
               </div>
               <NeoxyLogo variant="wordmark" height={20} tone="white" className="opacity-35 hidden sm:inline-block" />
@@ -537,7 +370,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               stagger={0.07}
               className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch"
             >
-              {PLANS.map((plan) => (
+              {copy.plansSection.plans.map((plan) => (
                 <div
                   key={plan.name}
                   className={`nx-spotlight-card nx-spotlight-card--dark p-7 flex flex-col justify-between !backdrop-blur-md ${
@@ -564,7 +397,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </div>
 
                     <div className="flex items-baseline gap-1.5 my-5">
-                      <span className="text-sm text-zinc-400">R$</span>
+                      <span className="text-sm text-zinc-400">{copy.plansSection.currency}</span>
                       <span
                         className={`text-4xl font-bold tracking-tight tabular-data ${
                           plan.featured ? 'text-[#D4FF00]' : 'text-white'
@@ -636,13 +469,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Seção de Dúvidas Frequentes (FAQ Acordeão) */}
         <section id="duvidas" className="bg-[var(--nx-bg)] border-t border-[var(--nx-border)]">
           <div className="max-w-3xl mx-auto px-6 py-20">
-            <AnimatedContent distance={32} duration={0.7}>
+            <AnimatedContent distance={26} duration={0.55}>
               <h2 className="text-3xl font-bold tracking-tight text-[var(--nx-text)] text-center mb-10">
-                Dúvidas frequentes
+                {copy.faqSection.heading}
               </h2>
 
               <div className="divide-y divide-[var(--nx-border)] border-t border-b border-[var(--nx-border)]">
-                {FAQS.map((item, idx) => {
+                {copy.faqSection.items.map((item, idx) => {
                   const isOpen = openFaq === idx;
                   return (
                     <div key={item.q}>
@@ -691,21 +524,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               onClick={() => onGoToLogin('contato@desentupidoraguri.com.br')}
               className="hover:text-[var(--nx-text)] transition-colors"
             >
-              Demo Serviços
+              {copy.footer.demoServices}
             </button>
             <button
               type="button"
               onClick={() => onGoToLogin('contato@ferragensmarlene.com.br')}
               className="hover:text-[var(--nx-text)] transition-colors"
             >
-              Demo Comércio
+              {copy.footer.demoRetail}
             </button>
             <button
               type="button"
               onClick={() => onGoToLogin('admin@neoxy.ai')}
               className="hover:text-[var(--nx-text)] transition-colors"
             >
-              Admin
+              {copy.footer.admin}
             </button>
           </div>
         </div>
