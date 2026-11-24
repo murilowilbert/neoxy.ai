@@ -102,7 +102,7 @@ const PLANS = [
 const FAQS = [
   {
     q: 'Meu WhatsApp pode ser bloqueado?',
-    a: 'A Neoxy trabalha respondendo apenas clientes que iniciam contato ou aguardam retorno de serviço, sem disparos em massa não solicitados, preservando a reputação do seu número.'
+    a: 'A NEO trabalha respondendo apenas clientes que iniciam contato ou aguardam retorno de serviço, sem disparos em massa não solicitados, preservando a reputação do seu número.'
   },
   {
     q: 'Vou perder meu número ou meus contatos?',
@@ -118,7 +118,7 @@ const FAQS = [
   },
   {
     q: 'Já tenho um chatbot. Qual a diferença?',
-    a: 'Chatbots tradicionais travam o cliente em fluxos de "digite 1 ou 2". A Neoxy entende texto, identifica fotos enviadas pelo cliente, consulta seu estoque real e registra agendamentos.'
+    a: 'Chatbots tradicionais travam o cliente em fluxos de "digite 1 ou 2". A NEO entende texto, identifica fotos enviadas pelo cliente, consulta seu estoque real e registra agendamentos.'
   },
   {
     q: 'Funciona para o meu segmento?',
@@ -140,16 +140,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <div className="min-h-screen bg-[var(--nx-bg)] text-[var(--nx-text)] flex flex-col justify-between transition-colors relative overflow-x-clip">
       {/* Navegação Flutuante Fixa com Apple Liquid Glass (Descolada do topo e das laterais) */}
       <div className="fixed top-4 left-4 right-4 z-50 pointer-events-none">
-        <header className="max-w-6xl mx-auto nx-liquid-glass rounded-2xl sm:rounded-full px-4 sm:px-6 h-16 flex items-center justify-between pointer-events-auto">
+        <header className="max-w-6xl mx-auto nx-liquid-glass rounded-2xl sm:rounded-full pl-5 sm:pl-6 pr-3 h-16 flex items-center justify-between pointer-events-auto">
           <a
             href="#"
-            className="flex items-center gap-2.5 group"
-            aria-label="NEO / Neoxy.ai"
+            className="flex items-center group"
+            aria-label="NEO"
           >
             <NeoxyLogo variant="lockup" height={17} />
-            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--nx-volt-surface)] text-[var(--nx-volt-ink)] border border-[var(--nx-volt-border)]">
-              .ai
-            </span>
           </a>
 
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-[var(--nx-muted)]">
@@ -176,7 +173,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               type="button"
               onClick={onGoToRegister}
-              className="nx-btn-primary px-5 py-2 text-sm"
+              className="nx-btn-primary px-5 py-2.5 text-sm"
             >
               Criar conta
             </button>
@@ -490,7 +487,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-6xl mx-auto px-6 py-7 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--nx-subtle)]">
           <div className="flex items-center gap-3">
             <NeoxyLogo variant="lockup" height={14} />
-            <span className="text-[var(--nx-muted)]">Neoxy.ai</span>
           </div>
           <div className="flex items-center gap-5">
             <button

@@ -52,7 +52,7 @@ export const NeoxyLogo: React.FC<NeoxyLogoProps> = ({
       <span
         className={`inline-flex items-center select-none shrink-0 ${className}`}
         style={{ gap: `${computedGap}px` }}
-        aria-label="NEO / Neoxy.ai"
+        aria-label="NEO"
       >
         <img
           src={neoCubeSrc}

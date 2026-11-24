@@ -2010,7 +2010,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div
               className="flex items-center gap-2.5 cursor-pointer"
               onClick={() => setActiveTab('overview')}
-              title="Neoxy.ai"
+              title="NEO"
             >
               {sidebarCollapsed ? (
                 <div className="w-9 h-9 rounded-xl nx-volt-badge flex items-center justify-center shadow-sm shrink-0">
@@ -2024,12 +2024,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               )}
             </div>
 
-            <div className={`flex items-center ${sidebarCollapsed ? 'flex-col gap-2' : 'gap-1.5'}`}>
+            <div className={`flex items-center ${sidebarCollapsed ? 'flex-col gap-2' : 'gap-2'}`}>
               <ThemeToggle />
               <button
                 type="button"
                 onClick={() => setSidebarCollapsed((c) => !c)}
-                className="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-[var(--nx-muted)] hover:text-[var(--nx-text)] transition-colors"
+                className="hidden md:flex h-9 w-9 rounded-full border border-[var(--nx-border-strong)] bg-[var(--nx-surface)]/80 text-[var(--nx-text)] hover:border-[var(--nx-volt)] hover:shadow-[0_0_0_3px_var(--nx-primary-ring)] transition-all items-center justify-center"
                 title={sidebarCollapsed ? 'Expandir menu lateral' : 'Minimizar menu lateral'}
                 aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Minimizar menu lateral'}
               >

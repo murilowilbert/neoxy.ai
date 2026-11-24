@@ -403,7 +403,7 @@ export const WhatsAppInboxTab: React.FC<WhatsAppInboxTabProps> = ({
                                       ? displayName
                                       : isHuman
                                       ? 'Você (Atendente)'
-                                      : 'IA Neoxy'}
+                                      : 'IA NEO'}
                                   </span>
                                 </div>
 

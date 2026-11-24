@@ -49,7 +49,7 @@ const FALLBACK_SLIDES: AuthSlide[] = [
     id: 'fallback-3',
     title: 'Atendimento Humanizado 24h no WhatsApp',
     subtitle: 'Consulta de estoque, agendamento inteligente e transbordo humano em 1 clique.',
-    badge: 'Plataforma Neoxy',
+    badge: 'Plataforma NEO',
     imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80'
   }
 ];
@@ -232,9 +232,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   return (
     <div className="min-h-screen md:h-screen md:overflow-hidden bg-[var(--nx-bg)] text-[var(--nx-text)] flex flex-col justify-between px-4 py-3 sm:px-8 sm:py-5 transition-colors">
-      {/* Topo flutuante Apple Liquid Glass com Voltar, Cubo NEO e ThemeToggle */}
+      {/* Topo flutuante Apple Liquid Glass com Voltar e ThemeToggle alinhado concentricamente */}
       <div className="max-w-5xl w-full mx-auto shrink-0 animate-fade-down">
-        <div className="nx-liquid-glass rounded-full px-4 py-2 flex items-center justify-between">
+        <div className="nx-liquid-glass rounded-full pl-5 pr-2 py-2 flex items-center justify-between">
           <button
             onClick={onBackToLanding}
             className="inline-flex items-center gap-2 text-xs font-medium text-[var(--nx-muted)] hover:text-[var(--nx-text)] transition-colors"
@@ -242,7 +242,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             <ArrowLeft className="w-3.5 h-3.5" />
             Voltar para a página inicial
           </button>
-          <NeoxyLogo variant="cube" height={20} className="hidden sm:inline-block" />
           <ThemeToggle />
         </div>
       </div>
