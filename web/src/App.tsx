@@ -4,6 +4,7 @@ import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AppBootSkeleton } from './components/Skeleton';
+import { NeoTooltipLayer } from './components/NeoTooltipLayer';
 import { useCardSpotlight } from './hooks/useCardSpotlight';
 import { apiFetch, getToken, setToken } from './lib/api';
 
@@ -85,6 +86,7 @@ export function App() {
 
   return (
     <ThemeProvider>
+      <NeoTooltipLayer />
       <AppErrorBoundary>
         {initializing ? (
           <AppBootSkeleton />

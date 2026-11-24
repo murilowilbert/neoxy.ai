@@ -1,0 +1,82 @@
+.jelly-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jr-gap, 6px);
+  padding: var(--jr-pad-y, 4px) var(--jr-pad-x, 8px);
+  border-radius: 14px;
+  border: 1px solid var(--nx-border-strong);
+  background: var(--nx-surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 1px 4px rgba(0, 0, 0, 0.04);
+  user-select: none;
+  vertical-align: middle;
+}
+
+:root.dark .jelly-radio {
+  background: #111114;
+  border-color: rgba(255, 255, 255, 0.11);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.42);
+}
+
+.jelly-radio[data-disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.jelly-radio__chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--jr-h, 30px);
+  min-width: var(--jr-h, 30px);
+  padding: 0 var(--jr-px, 10px);
+  border-radius: var(--jr-radius, 10px);
+  border: 1px solid transparent;
+  background: var(--jr-chip, transparent);
+  color: var(--jr-text, var(--nx-muted));
+  font-size: var(--jr-font, 12px);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transform-origin: center center;
+  will-change: transform;
+  transition: background 0.2s ease, color 0.18s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.jelly-radio__chip:hover:not([data-on='true']) {
+  color: var(--nx-text);
+  border-color: var(--nx-border);
+}
+
+.jelly-radio__chip[data-on='true'] {
+  background: var(--jr-active, var(--nx-volt-gradient));
+  color: var(--jr-active-text, #09090B);
+  border-color: rgba(9, 9, 11, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 4px 14px rgba(189, 254, 1, 0.30);
+  z-index: 2;
+}
+
+.jelly-radio__chip:focus-visible {
+  outline: 2px solid #D4FF00;
+  outline-offset: 2px;
+}
+
+.jelly-radio__skin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.jelly-radio__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jelly-radio__label {
+  white-space: nowrap;
+}

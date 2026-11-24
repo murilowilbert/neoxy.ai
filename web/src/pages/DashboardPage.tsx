@@ -63,6 +63,7 @@ import {
 import { CompanyHoursTab } from '../components/dashboard/CompanyHoursTab';
 import { WhatsAppInboxTab } from '../components/dashboard/WhatsAppInboxTab';
 import { NumberField } from '../components/NumberField';
+import JellyRadio from '../components/reactbits/JellyRadio';
 import { CustomSelect } from '../components/CustomSelect';
 import { CardGridSkeleton, TableSkeleton, ChatReplySkeleton } from '../components/Skeleton';
 
@@ -3121,47 +3122,43 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <h2 className="text-lg font-bold text-[var(--nx-text)]">Serviços</h2>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex rounded-xl border border-[var(--nx-border-strong)] p-1 bg-[var(--nx-surface)] gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setServiceViewMode('list')}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      serviceViewMode === 'list'
-                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
-                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                    }`}
-                    title="Linhas"
-                    aria-label="Visualizar em linhas"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setServiceViewMode('grid')}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      serviceViewMode === 'grid'
-                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
-                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                    }`}
-                    title="Grade padrão"
-                    aria-label="Visualizar em grade padrão"
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setServiceViewMode('compact')}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      serviceViewMode === 'compact'
-                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
-                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                    }`}
-                    title={sidebarCollapsed ? 'Grade compacta (6 por linha)' : 'Grade compacta (5 por linha)'}
-                    aria-label="Visualizar em grade compacta"
-                  >
-                    <Grid3X3 className="w-4 h-4" />
-                  </button>
-                </div>
+                <JellyRadio
+                  ariaLabel="Modo de visualização de serviços"
+                  value={serviceViewMode}
+                  onChange={(val) => setServiceViewMode(val as 'list' | 'grid' | 'compact')}
+                  size="sm"
+                  gap={5}
+                  radius={9}
+                  swell={0.14}
+                  barge={3}
+                  shrink={0.04}
+                  jelly={0.95}
+                  bounce={0.28}
+                  chipColor="transparent"
+                  activeColor="var(--nx-volt-gradient)"
+                  textColor="var(--nx-muted)"
+                  activeTextColor="#09090B"
+                  items={[
+                    {
+                      value: 'list',
+                      icon: <List className="w-4 h-4" />,
+                      title: 'Linhas',
+                      ariaLabel: 'Visualizar em linhas'
+                    },
+                    {
+                      value: 'grid',
+                      icon: <LayoutGrid className="w-4 h-4" />,
+                      title: 'Grade padrão',
+                      ariaLabel: 'Visualizar em grade padrão'
+                    },
+                    {
+                      value: 'compact',
+                      icon: <Grid3X3 className="w-4 h-4" />,
+                      title: sidebarCollapsed ? 'Grade compacta (6 por linha)' : 'Grade compacta (5 por linha)',
+                      ariaLabel: 'Visualizar em grade compacta'
+                    }
+                  ]}
+                />
 
                 {renderMedPetToolbar({
                   searchPlaceholder: 'Buscar serviço, categoria, SKU...',
@@ -3782,47 +3779,43 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-bold text-[var(--nx-text)]">Catálogo</h2>
-                <div className="flex rounded-xl border border-[var(--nx-border-strong)] p-1 bg-[var(--nx-surface)] gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setCatalogViewMode('list')}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      catalogViewMode === 'list'
-                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
-                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                    }`}
-                    title="Linhas"
-                    aria-label="Visualizar em linhas"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCatalogViewMode('grid')}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      catalogViewMode === 'grid'
-                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
-                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                    }`}
-                    title={sidebarCollapsed ? 'Grade padrão (4 por linha)' : 'Grade padrão (3 por linha)'}
-                    aria-label="Visualizar em grade padrão"
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCatalogViewMode('compact')}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      catalogViewMode === 'compact'
-                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
-                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                    }`}
-                    title={sidebarCollapsed ? 'Grade compacta (6 por linha)' : 'Grade compacta (5 por linha)'}
-                    aria-label="Visualizar em grade compacta"
-                  >
-                    <Grid3X3 className="w-4 h-4" />
-                  </button>
-                </div>
+                <JellyRadio
+                  ariaLabel="Modo de visualização do catálogo"
+                  value={catalogViewMode}
+                  onChange={(val) => setCatalogViewMode(val as 'list' | 'grid' | 'compact')}
+                  size="sm"
+                  gap={5}
+                  radius={9}
+                  swell={0.14}
+                  barge={3}
+                  shrink={0.04}
+                  jelly={0.95}
+                  bounce={0.28}
+                  chipColor="transparent"
+                  activeColor="var(--nx-volt-gradient)"
+                  textColor="var(--nx-muted)"
+                  activeTextColor="#09090B"
+                  items={[
+                    {
+                      value: 'list',
+                      icon: <List className="w-4 h-4" />,
+                      title: 'Linhas',
+                      ariaLabel: 'Visualizar em linhas'
+                    },
+                    {
+                      value: 'grid',
+                      icon: <LayoutGrid className="w-4 h-4" />,
+                      title: sidebarCollapsed ? 'Grade padrão (4 por linha)' : 'Grade padrão (3 por linha)',
+                      ariaLabel: 'Visualizar em grade padrão'
+                    },
+                    {
+                      value: 'compact',
+                      icon: <Grid3X3 className="w-4 h-4" />,
+                      title: sidebarCollapsed ? 'Grade compacta (6 por linha)' : 'Grade compacta (5 por linha)',
+                      ariaLabel: 'Visualizar em grade compacta'
+                    }
+                  ]}
+                />
               </div>
 
               <div className="flex flex-wrap items-center gap-3">

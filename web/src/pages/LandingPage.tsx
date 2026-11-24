@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ArrowUpRight,
   Calendar,
@@ -13,11 +13,68 @@ import {
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import NeoxyLogo from '../components/NeoxyLogo';
+import { useTheme } from '../components/ThemeProvider';
+import AnimatedContent from '../components/reactbits/AnimatedContent';
+import CardNav, { type CardNavItem } from '../components/reactbits/CardNav';
+import DriftWall, { type DriftWallItem } from '../components/reactbits/DriftWall';
+import GradientBlinds from '../components/reactbits/GradientBlinds';
+import StarBorder from '../components/reactbits/StarBorder';
 
 interface LandingPageProps {
   onGoToLogin: (prefillEmail?: string) => void;
   onGoToRegister: () => void;
 }
+
+const HERO_WALL_ITEMS: DriftWallItem[] = [
+  {
+    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=700&q=80',
+    title: 'Escritório moderno NEO'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=700&q=80',
+    title: 'Atendimento e vendas'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=700&q=80',
+    title: 'Estoque e catálogo sincronizado'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=700&q=80',
+    title: 'Equipe operacional conectada'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=700&q=80',
+    title: 'Clínicas e consultórios'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=700&q=80',
+    title: 'Oficinas e assistência técnica'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=700&q=80',
+    title: 'Pet shop e banho e tosa'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=700&q=80',
+    title: 'PDV e balcão inteligente'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=700&q=80',
+    title: 'Ferragens e construção'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=700&q=80',
+    title: 'Gestão comercial em tempo real'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=700&q=80',
+    title: 'Reuniões e agendamentos'
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=700&q=80',
+    title: 'Métricas e desempenho'
+  }
+];
 
 const FEATURE_CARDS = [
   {
@@ -145,64 +202,93 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onGoToLogin,
   onGoToRegister
 }) => {
+  const { theme } = useTheme();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const navItems = useMemo<CardNavItem[]>(
+    () => [
+      {
+        label: 'Plataforma',
+        description: 'WhatsApp com IA, agenda operacional e estoque sincronizado.',
+        links: [
+          { label: 'Módulos integrados', href: '#recursos' },
+          { label: 'Agenda & OS', href: '#recursos' },
+          { label: 'Catálogo & PDV', href: '#recursos' }
+        ]
+      },
+      {
+        label: 'Planos & Ajuda',
+        description: 'Ciclos transparentes sem letras miúdas e dúvidas respondidas.',
+        links: [
+          { label: 'Planos NEO', href: '#planos' },
+          { label: 'Dúvidas frequentes', href: '#duvidas' }
+        ]
+      },
+      {
+        label: 'Acessar agora',
+        description: 'Explore o painel real com dados de demonstração ou sua conta.',
+        links: [
+          { label: 'Entrar no painel', onClick: () => onGoToLogin() },
+          { label: 'Demo Serviços', onClick: () => onGoToLogin('contato@desentupidoraguri.com.br') },
+          { label: 'Demo Comércio', onClick: () => onGoToLogin('contato@ferragensmarlene.com.br') }
+        ]
+      }
+    ],
+    [onGoToLogin]
+  );
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg)] text-[var(--nx-text)] flex flex-col justify-between transition-colors relative overflow-x-clip">
-      {/* Navegação Flutuante Fixa com Apple Liquid Glass (Descolada do topo e das laterais) */}
+      {/* Navbar Flutuante Centralizada com Abertura em Cards (CardNav + Liquid Glass NEO) */}
       <div className="fixed top-4 left-4 right-4 z-50 pointer-events-none">
-        <header className="max-w-6xl mx-auto nx-liquid-glass rounded-2xl sm:rounded-full pl-5 sm:pl-6 pr-3 h-16 flex items-center justify-between pointer-events-auto">
-          <a
-            href="#"
-            className="flex items-center group"
-            aria-label="NEO"
-          >
-            <NeoxyLogo variant="lockup" height={17} />
-          </a>
-
-          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-[var(--nx-muted)]">
-            <a href="#recursos" className="hover:text-[var(--nx-text)] transition-colors">
-              Recursos
-            </a>
-            <a href="#planos" className="hover:text-[var(--nx-text)] transition-colors">
-              Planos
-            </a>
-            <a href="#duvidas" className="hover:text-[var(--nx-text)] transition-colors">
-              Dúvidas
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-2.5">
-            <ThemeToggle />
-            <button
-              type="button"
-              onClick={() => onGoToLogin()}
-              className="px-4 py-2 rounded-full text-sm font-medium text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)]/70 transition-colors"
-            >
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={onGoToRegister}
-              className="nx-btn-primary px-5 py-2.5 text-sm"
-            >
-              Criar conta
-            </button>
-          </div>
-        </header>
+        <CardNav
+          theme={theme}
+          surface="glass"
+          maxWidth={1120}
+          cardHeight={156}
+          speed={1.45}
+          menuOpenText="Menu"
+          menuCloseText="Fechar"
+          logo={<NeoxyLogo variant="lockup" height={17} />}
+          logoAlt="NEO"
+          logoHref="#"
+          items={navItems}
+          cta={{
+            label: 'Criar conta',
+            onClick: onGoToRegister
+          }}
+          rightSlot={
+            <>
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={() => onGoToLogin()}
+                className="hidden sm:inline-flex items-center px-3.5 h-10 rounded-full text-[13.5px] font-medium text-[var(--nx-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)]/70 transition-colors"
+              >
+                Entrar
+              </button>
+            </>
+          }
+        />
       </div>
 
       <main className="flex-1">
-        {/* Hero Aberto e Arejado com Aura NEO Volt Sutil */}
-        <section className="relative pt-28 sm:pt-36 pb-16 sm:pb-24">
+        {/* Hero Aberto e Arejado com DriftWall 3D + Fade Superior Suave Próximo à Navbar */}
+        <section className="relative pt-24 sm:pt-28 pb-16 sm:pb-24">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -top-24 right-[-10%] w-[520px] h-[520px] rounded-full blur-3xl opacity-75"
+            className="pointer-events-none absolute -top-24 right-[-10%] w-[520px] h-[520px] rounded-full blur-3xl opacity-70"
             style={{ background: 'var(--nx-volt-aura)' }}
           />
 
-          <div className="relative max-w-6xl mx-auto w-full px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <div className="lg:col-span-6 space-y-6 animate-fade-up">
+          <div className="relative max-w-6xl mx-auto w-full px-6 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+            <AnimatedContent
+              trigger="mount"
+              distance={26}
+              duration={0.58}
+              stagger={0.06}
+              className="lg:col-span-6 space-y-6 pt-6 lg:pt-8"
+            >
               <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full nx-volt-badge text-xs shadow-sm">
                 <NeoxyLogo variant="cube" height={15} tone="black" />
                 <span>Plataforma operacional com IA no WhatsApp</span>
@@ -233,54 +319,75 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Entrar no painel
                 </button>
               </div>
-            </div>
+            </AnimatedContent>
 
-            <div className="lg:col-span-6 animate-fade-up">
-              <div className="relative rounded-3xl p-3 border border-[var(--nx-border)] bg-[var(--nx-surface)] shadow-xl">
-                <div className="relative rounded-2xl overflow-hidden aspect-[4/3] bg-[#0A0A0B]">
-                  <img
-                    src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1400&q=80"
-                    alt="Ambiente operacional moderno NEO"
-                    className="w-full h-full object-cover"
-                  />
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        'linear-gradient(180deg, rgba(5,5,6,0.12) 0%, rgba(5,5,6,0.05) 45%, rgba(5,5,6,0.72) 100%)'
-                    }}
-                  />
-
-                  {/* Selo flutuante Liquid Glass sobre a imagem do Hero */}
-                  <div className="absolute bottom-4 left-4 right-4 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 bg-black/55 backdrop-blur-xl border border-white/15 text-white">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#0A0A0B] border border-white/15">
-                        <NeoxyLogo variant="cube" height={22} tone="white" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-white truncate">
-                          Atendimento inteligente 24h
-                        </div>
-                        <div className="text-xs text-white/75 truncate">
-                          Visão de fotos, estoque ao vivo e agenda conectada
-                        </div>
-                      </div>
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#D4FF00] text-[#09090B] shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#09090B]" />
-                      Ativo
-                    </span>
-                  </div>
-                </div>
+            <AnimatedContent
+              trigger="mount"
+              distance={22}
+              delay={0.08}
+              duration={0.65}
+              className="lg:col-span-6 relative lg:-mt-10"
+            >
+              <div className="relative h-[360px] sm:h-[460px] lg:h-[560px] w-full rounded-3xl overflow-hidden">
+                <DriftWall
+                  items={HERO_WALL_ITEMS}
+                  columns={4}
+                  tileWidth={168}
+                  tileHeight={116}
+                  gap={14}
+                  radius={14}
+                  tilt={14}
+                  turn={-12}
+                  perspective={1150}
+                  depth={90}
+                  speed={32}
+                  direction="up"
+                  variance={0.42}
+                  parallax={0.55}
+                  lift={48}
+                  fade={0.58}
+                  dim={theme === 'dark' ? 0.68 : 0.88}
+                  overlayColor={theme === 'dark' ? '#050506' : '#FFFFFF'}
+                />
+                {/* Fade superior suave próximo à navbar (branco no modo claro, preto real no modo escuro) */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-28 z-10"
+                  style={{
+                    background:
+                      'linear-gradient(to bottom, var(--nx-bg) 0%, var(--nx-bg) 18%, transparent 100%)'
+                  }}
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-20 z-10"
+                  style={{
+                    background: 'linear-gradient(to top, var(--nx-bg) 0%, transparent 100%)'
+                  }}
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 left-0 w-10 z-10"
+                  style={{
+                    background: 'linear-gradient(to right, var(--nx-bg) 0%, transparent 100%)'
+                  }}
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 right-0 w-10 z-10"
+                  style={{
+                    background: 'linear-gradient(to left, var(--nx-bg) 0%, transparent 100%)'
+                  }}
+                />
               </div>
-            </div>
+            </AnimatedContent>
           </div>
         </section>
 
-        {/* Seção de 3 Pilares com Cards Estruturados (Hierarquia 24px / 16px / 14px / 16px) */}
+        {/* Seção de 3 Pilares com Cards Estruturados + Animação Fluida no Scroll */}
         <section id="recursos" className="border-t border-[var(--nx-border)] bg-[var(--nx-surface)]/60">
           <div className="max-w-6xl mx-auto px-6 py-20">
-            <div className="max-w-2xl mb-12 space-y-2">
+            <AnimatedContent distance={26} duration={0.55} className="max-w-2xl mb-12 space-y-2">
               <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--nx-volt-ink)]">
                 <span className="w-2 h-2 rounded-full bg-[#D4FF00] ring-2 ring-[#BDFE01]/40" />
                 Módulos integrados
@@ -288,9 +395,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--nx-text)]">
                 Tudo conectado em cartões claros e fáceis de operar.
               </h2>
-            </div>
+            </AnimatedContent>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <AnimatedContent
+              distance={32}
+              duration={0.58}
+              stagger={0.07}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            >
               {FEATURE_CARDS.map((card) => {
                 const Icon = card.icon;
                 return (
@@ -299,7 +411,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     className="nx-card-interactive group p-5 flex flex-col justify-between"
                   >
                     <div>
-                      {/* Mídia arredondada interna com contenção sutil e micro-zoom no hover */}
                       <div className="relative h-44 rounded-xl overflow-hidden bg-[var(--nx-surface-alt)] ring-1 ring-inset ring-black/10 dark:ring-white/10 mb-5">
                         <img
                           src={card.imageUrl}
@@ -311,13 +422,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         </div>
                       </div>
 
-                      {/* Hierarquia Tipográfica exata: 24px Headline -> 16px Subhead -> 14px Body */}
                       <h3 className="nx-card-headline">{card.headline}</h3>
                       <p className="nx-card-subhead mt-1">{card.subhead}</p>
                       <p className="nx-card-body mt-3">{card.body}</p>
                     </div>
 
-                    {/* Botões-pílula balanceados (16px label) */}
                     <div className="flex items-center gap-2.5 pt-6">
                       <button
                         type="button"
@@ -341,10 +450,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </article>
                 );
               })}
-            </div>
+            </AnimatedContent>
 
             {/* Faixa de Destaques — Cartões com Luz Superior, Borda Especular & Spotlight no Cursor */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <AnimatedContent
+              distance={28}
+              duration={0.55}
+              stagger={0.06}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6"
+            >
               {[
                 {
                   icon: Zap,
@@ -379,45 +493,76 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 );
               })}
-            </div>
+            </AnimatedContent>
           </div>
         </section>
 
-        {/* Seção de Planos — Preto Real (#050506) + Destaque NEO Volt + Cards Spotlight */}
+        {/* Seção de Planos — Preto Real (#050506) + GradientBlinds WebGL2 + StarBorder no Hover */}
         <section id="planos" className="bg-[#050506] text-white border-t border-[#1D1D21] relative overflow-hidden">
+          <GradientBlinds
+            gradientColors={['#0B0B0E', '#2B3606', '#8DB300', '#D4FF00']}
+            lightColor="#F0FF8A"
+            angle={18}
+            noise={0.2}
+            blindCount={18}
+            blindMinWidth={56}
+            spotlightRadius={0.62}
+            spotlightSoftness={1.1}
+            spotlightOpacity={0.96}
+            shine={0.55}
+            relief={0.55}
+            glow={0.7}
+            sway={0.32}
+            speed={0.85}
+            hoverTilt={0.65}
+            clickEffect="ripple"
+            idle="drift"
+            mixBlendMode="screen"
+            lightMode={false}
+            style={{ opacity: 0.78 }}
+          />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[780px] h-[280px] rounded-full blur-3xl opacity-20"
+            className="pointer-events-none absolute inset-0"
             style={{
               background:
-                'radial-gradient(ellipse at center, #D4FF00 0%, #BDFE01 40%, transparent 72%)'
+                'linear-gradient(180deg, rgba(5,5,6,0.74) 0%, rgba(5,5,6,0.38) 45%, rgba(5,5,6,0.84) 100%)'
             }}
           />
 
-          <div className="relative max-w-6xl mx-auto px-6 py-24">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-14">
+          <div className="relative z-10 max-w-6xl mx-auto px-6 py-24">
+            <AnimatedContent
+              distance={26}
+              duration={0.55}
+              className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-14"
+            >
               <div className="max-w-xl space-y-2.5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-[#D4FF00]">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-[#D4FF00] backdrop-blur-md">
                   <NeoxyLogo variant="cube" height={14} tone="white" />
                   <span>Planos NEO</span>
                 </div>
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
                   Planos diretos ao ponto.
                 </h2>
-                <p className="text-base text-zinc-400">
+                <p className="text-base text-zinc-300/90">
                   Valores ilustrativos para demonstração. Escolha o ciclo que melhor se adapta à rotina da sua empresa.
                 </p>
               </div>
-              <NeoxyLogo variant="wordmark" height={20} tone="white" className="opacity-30 hidden sm:inline-block" />
-            </div>
+              <NeoxyLogo variant="wordmark" height={20} tone="white" className="opacity-35 hidden sm:inline-block" />
+            </AnimatedContent>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+            <AnimatedContent
+              distance={32}
+              duration={0.58}
+              stagger={0.07}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch"
+            >
               {PLANS.map((plan) => (
                 <div
                   key={plan.name}
-                  className={`nx-spotlight-card nx-spotlight-card--dark p-7 flex flex-col justify-between ${
+                  className={`nx-spotlight-card nx-spotlight-card--dark p-7 flex flex-col justify-between !backdrop-blur-md ${
                     plan.featured
-                      ? '!border-[#D4FF00]/60 shadow-[0_0_42px_rgba(212,255,0,0.12)]'
+                      ? '!border-[#D4FF00]/60 shadow-[0_0_42px_rgba(212,255,0,0.14)]'
                       : ''
                   }`}
                 >
@@ -472,63 +617,84 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </ul>
                   </div>
 
-                  <button
+                  <StarBorder
+                    as="button"
                     type="button"
                     onClick={onGoToRegister}
-                    className={`w-full py-3.5 px-5 rounded-full text-[16px] font-semibold transition-all ${
+                    hover="reveal"
+                    theme="dark"
+                    radius={999}
+                    stars={2}
+                    duration={plan.featured ? 3.1 : 3.6}
+                    thickness={plan.featured ? 2 : 1.5}
+                    glow={plan.featured ? 0.85 : 0.72}
+                    sparkle={true}
+                    clickPulse={true}
+                    color={plan.featured ? '#FFFFFF' : '#D4FF00'}
+                    trailColor={plan.featured ? '#D4FF00' : '#BDFE01'}
+                    backgroundColor={
                       plan.featured
-                        ? 'nx-btn-primary'
-                        : 'bg-[#1A1A1F] hover:bg-[#24242B] text-white border border-white/12'
+                        ? 'linear-gradient(135deg, #FFFD65 0%, #DBFF02 42%, #BDFE01 74%, #FFEA02 100%)'
+                        : '#16161C'
+                    }
+                    textColor={plan.featured ? '#09090B' : '#FFFFFF'}
+                    borderColor={plan.featured ? 'rgba(9, 9, 11, 0.16)' : 'rgba(255, 255, 255, 0.14)'}
+                    className={`w-full py-3.5 px-5 text-[16px] font-semibold ${
+                      plan.featured
+                        ? 'shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_6px_22px_rgba(189,254,1,0.30)]'
+                        : 'hover:bg-[#1E1E26]'
                     }`}
                   >
                     {plan.cta}
-                  </button>
+                  </StarBorder>
                 </div>
               ))}
-            </div>
+            </AnimatedContent>
           </div>
         </section>
 
         {/* Seção de Dúvidas Frequentes (FAQ Acordeão) */}
         <section id="duvidas" className="bg-[var(--nx-bg)] border-t border-[var(--nx-border)]">
           <div className="max-w-3xl mx-auto px-6 py-20">
-            <h2 className="text-3xl font-bold tracking-tight text-[var(--nx-text)] text-center mb-10">
-              Dúvidas frequentes
-            </h2>
+            <AnimatedContent distance={32} duration={0.7}>
+              <h2 className="text-3xl font-bold tracking-tight text-[var(--nx-text)] text-center mb-10">
+                Dúvidas frequentes
+              </h2>
 
-            <div className="divide-y divide-[var(--nx-border)] border-t border-b border-[var(--nx-border)]">
-              {FAQS.map((item, idx) => {
-                const isOpen = openFaq === idx;
-                return (
-                  <div key={item.q}>
-                    <button
-                      type="button"
-                      onClick={() => setOpenFaq(isOpen ? null : idx)}
-                      className="w-full py-5 flex items-center justify-between gap-4 text-left group"
-                      aria-expanded={isOpen}
-                    >
-                      <span className="text-base font-semibold text-[var(--nx-text)] group-hover:text-[var(--nx-volt-ink)] transition-colors">
-                        {item.q}
-                      </span>
-                      <span
-                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                          isOpen
-                            ? 'bg-[var(--nx-volt)] text-[#09090B]'
-                            : 'bg-[var(--nx-surface-alt)] text-[var(--nx-muted)]'
-                        }`}
+              <div className="divide-y divide-[var(--nx-border)] border-t border-b border-[var(--nx-border)]">
+                {FAQS.map((item, idx) => {
+                  const isOpen = openFaq === idx;
+                  return (
+                    <div key={item.q}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenFaq(isOpen ? null : idx)}
+                        className="w-full py-5 flex items-center justify-between gap-4 text-left group"
+                        aria-expanded={isOpen}
                       >
-                        {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                      </span>
-                    </button>
-                    {isOpen && (
-                      <div className="pb-5 pr-8 text-[14px] text-[var(--nx-muted)] leading-relaxed animate-fade-up">
-                        {item.a}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                        <span className="text-base font-semibold text-[var(--nx-text)] group-hover:text-[var(--nx-volt-ink)] transition-colors">
+                          {item.q}
+                        </span>
+                        <span
+                          className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                            isOpen
+                              ? 'bg-[var(--nx-volt)] text-[#09090B]'
+                              : 'bg-[var(--nx-surface-alt)] text-[var(--nx-muted)]'
+                          }`}
+                        >
+                          {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                        </span>
+                      </button>
+                      {isOpen && (
+                        <div className="pb-5 pr-8 text-[14px] text-[var(--nx-muted)] leading-relaxed animate-fade-up">
+                          {item.a}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </AnimatedContent>
           </div>
         </section>
       </main>
