@@ -250,7 +250,7 @@ const CardNav = ({
     '--cn-bar': '64px',
     '--cn-inset': '8px',
     '--cn-gap': '8px',
-    '--cn-radius': '22px',
+    '--cn-radius': '32px',
     '--cn-logo': '22px',
     '--cn-card': `${cardHeight}px`
   };

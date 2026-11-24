@@ -11,13 +11,19 @@
   position: relative;
   width: 100%;
   height: var(--cn-bar, 64px);
-  border-radius: var(--cn-radius, 22px);
+  border-radius: var(--cn-radius, 32px);
   background: var(--cn-panel);
   backdrop-filter: var(--cn-blur, blur(24px) saturate(185%));
   -webkit-backdrop-filter: var(--cn-blur, blur(24px) saturate(185%));
   box-shadow: var(--cn-shadow);
   overflow: hidden;
   will-change: height;
+  transition: border-radius 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card-nav[data-open] .card-nav__panel,
+.card-nav[data-shown] .card-nav__panel {
+  border-radius: 26px;
 }
 
 .card-nav__rim {

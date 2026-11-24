@@ -2509,8 +2509,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       </aside>
 
       {/* ÁREA DE TRABALHO PRINCIPAL */}
-      <main className="flex-1 min-w-0 p-5 sm:p-8 overflow-y-auto w-full max-w-[1680px] mx-auto">
-        {selectedTenant && (
+      <main className="flex-1 min-w-0 p-5 sm:p-8 overflow-y-auto nx-main-scroll w-full max-w-[1680px] mx-auto">
+        {selectedTenant && activeTab === 'overview' && (
           <header className="sticky top-3 z-30 nx-liquid-glass rounded-2xl px-5 py-3.5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -3119,9 +3119,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {activeTab === 'services' && (
           <div className="space-y-5 animate-fade-up">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <h2 className="text-lg font-bold text-[var(--nx-text)]">Serviços</h2>
-
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold text-[var(--nx-text)]">Serviços</h2>
                 <JellyRadio
                   ariaLabel="Modo de visualização de serviços"
                   value={serviceViewMode}
@@ -3159,7 +3158,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     }
                   ]}
                 />
+              </div>
 
+              <div className="flex flex-wrap items-center gap-3">
                 {renderMedPetToolbar({
                   searchPlaceholder: 'Buscar serviço, categoria, SKU...',
                   filterOptions: serviceCategories.map((c) => ({ key: c, label: c })),

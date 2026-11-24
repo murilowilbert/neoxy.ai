@@ -18,6 +18,7 @@ import AnimatedContent from '../components/reactbits/AnimatedContent';
 import CardNav, { type CardNavItem } from '../components/reactbits/CardNav';
 import DriftWall, { type DriftWallItem } from '../components/reactbits/DriftWall';
 import GradientBlinds from '../components/reactbits/GradientBlinds';
+import RotatingText from '../components/reactbits/RotatingText';
 import StarBorder from '../components/reactbits/StarBorder';
 
 interface LandingPageProps {
@@ -294,8 +295,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <span>Plataforma operacional com IA no WhatsApp</span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-[var(--nx-text)] leading-[1.06]">
-                WhatsApp, agenda e estoque na mesma bancada.
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-[var(--nx-text)] leading-[1.12]">
+                WhatsApp, agenda e
+                <span className="block my-2">
+                  <RotatingText
+                    texts={['estoque', 'serviços', 'vendas', 'clientes', 'equipe']}
+                    rotationInterval={2400}
+                    staggerDuration={0.025}
+                    className="px-3.5 py-0.5 rounded-2xl nx-volt-badge !font-bold !text-4xl sm:!text-5xl tracking-tight leading-[1.12] shadow-sm"
+                  />
+                </span>
+                na mesma bancada.
               </h1>
 
               <p className="text-base text-[var(--nx-muted)] leading-relaxed max-w-lg">
@@ -328,56 +338,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               duration={0.65}
               className="lg:col-span-6 relative lg:-mt-10"
             >
-              <div className="relative h-[360px] sm:h-[460px] lg:h-[560px] w-full rounded-3xl overflow-hidden">
+              <div className="relative h-[360px] sm:h-[460px] lg:h-[560px] w-full overflow-clip lg:overflow-x-visible lg:overflow-y-clip">
                 <DriftWall
                   items={HERO_WALL_ITEMS}
-                  columns={4}
-                  tileWidth={168}
-                  tileHeight={116}
+                  columns={3}
+                  tileWidth={148}
+                  tileHeight={106}
                   gap={14}
                   radius={14}
-                  tilt={14}
-                  turn={-12}
-                  perspective={1150}
-                  depth={90}
-                  speed={32}
+                  tilt={11}
+                  turn={-8}
+                  perspective={1200}
+                  depth={76}
+                  speed={30}
                   direction="up"
                   variance={0.42}
-                  parallax={0.55}
-                  lift={48}
+                  parallax={0.48}
+                  lift={42}
                   fade={0.58}
                   dim={theme === 'dark' ? 0.68 : 0.88}
                   overlayColor={theme === 'dark' ? '#050506' : '#FFFFFF'}
-                />
-                {/* Fade superior suave próximo à navbar (branco no modo claro, preto real no modo escuro) */}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 top-0 h-28 z-10"
-                  style={{
-                    background:
-                      'linear-gradient(to bottom, var(--nx-bg) 0%, var(--nx-bg) 18%, transparent 100%)'
-                  }}
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-20 z-10"
-                  style={{
-                    background: 'linear-gradient(to top, var(--nx-bg) 0%, transparent 100%)'
-                  }}
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 left-0 w-10 z-10"
-                  style={{
-                    background: 'linear-gradient(to right, var(--nx-bg) 0%, transparent 100%)'
-                  }}
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 right-0 w-10 z-10"
-                  style={{
-                    background: 'linear-gradient(to left, var(--nx-bg) 0%, transparent 100%)'
-                  }}
                 />
               </div>
             </AnimatedContent>

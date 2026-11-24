@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scrollbar-gutter: stable;
+}
+
+.nx-main-scroll {
+  scrollbar-gutter: stable;
+}
+
 :root {
   /* Paleta NEO — Alabastro Neutro, Preto Carbono & NEO Volt (Amarelo Neon) */
   --nx-bg: #F6F6F4;
