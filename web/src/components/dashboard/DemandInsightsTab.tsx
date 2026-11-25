@@ -13,6 +13,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import JellyRadio from '../reactbits/JellyRadio';
 
 interface DemandOccurrence {
   customerPhone: string;
@@ -191,28 +192,26 @@ export const DemandInsightsTab: React.FC<DemandInsightsTabProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="inline-flex items-center gap-1 text-[11px] text-[var(--nx-subtle)] mr-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-[11px] text-[var(--nx-subtle)]">
               <Calendar className="w-3.5 h-3.5" />
               Período:
             </span>
-            {PERIOD_OPTIONS.map((opt) => {
-              const active = days === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setDays(opt.key)}
-                  className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all border ${
-                    active
-                      ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] border-transparent shadow-sm'
-                      : 'bg-[var(--nx-bg)] text-[var(--nx-muted)] border-[var(--nx-border-strong)] hover:text-[var(--nx-text)]'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
+            <JellyRadio
+              ariaLabel="Selecionar período de análise"
+              size="sm"
+              radius={10}
+              gap={5}
+              swell={0.08}
+              barge={3}
+              shrink={0.02}
+              value={days}
+              onChange={(val) => setDays(val)}
+              items={PERIOD_OPTIONS.map((opt) => ({
+                value: opt.key,
+                label: opt.label
+              }))}
+            />
           </div>
         </div>
       </div>

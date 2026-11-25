@@ -29,6 +29,7 @@ import {
 } from 'recharts';
 import { useTheme } from '../ThemeProvider';
 import { OverviewSkeleton } from '../Skeleton';
+import JellyRadio from '../reactbits/JellyRadio';
 
 interface HourBucket {
   hour: number;
@@ -373,55 +374,37 @@ export const OverviewAnalyticsPanel: React.FC<OverviewAnalyticsPanelProps> = ({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex rounded-lg border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-bg)] text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setChartStyle('area')}
-                  className={`px-2 py-1 rounded-md font-medium transition-colors ${
-                    chartStyle === 'area'
-                      ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
-                      : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                  }`}
-                >
-                  Curva
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartStyle('bar')}
-                  className={`px-2 py-1 rounded-md font-medium transition-colors ${
-                    chartStyle === 'bar'
-                      ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
-                      : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                  }`}
-                >
-                  Barras
-                </button>
-              </div>
+              <JellyRadio
+                ariaLabel="Estilo do gráfico"
+                size="sm"
+                radius={9}
+                gap={4}
+                swell={0.08}
+                barge={2}
+                shrink={0.02}
+                value={chartStyle}
+                onChange={(val) => setChartStyle(val as 'area' | 'bar')}
+                items={[
+                  { value: 'area', label: 'Curva' },
+                  { value: 'bar', label: 'Barras' }
+                ]}
+              />
 
-              <div className="flex rounded-lg border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-bg)] text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setChartRange('today')}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
-                    chartRange === 'today'
-                      ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
-                      : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                  }`}
-                >
-                  Hoje
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartRange('7d')}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
-                    chartRange === '7d'
-                      ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
-                      : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                  }`}
-                >
-                  7 dias
-                </button>
-              </div>
+              <JellyRadio
+                ariaLabel="Período do gráfico"
+                size="sm"
+                radius={9}
+                gap={4}
+                swell={0.08}
+                barge={2}
+                shrink={0.02}
+                value={chartRange}
+                onChange={(val) => setChartRange(val as 'today' | '7d')}
+                items={[
+                  { value: 'today', label: 'Hoje' },
+                  { value: '7d', label: '7 dias' }
+                ]}
+              />
             </div>
           </div>
 

@@ -143,13 +143,13 @@ export const QuickRepliesTab: React.FC<QuickRepliesTabProps> = ({
   }
 
   return (
-    <div className="space-y-5 animate-fade-up">
-      <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 animate-fade-up">
+      <div className="nx-spotlight-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-sm font-bold text-[var(--nx-text)]">
+          <h2 className="text-base font-bold text-[var(--nx-text)]">
             Respostas Rápidas (/atalho) & Gatilhos Automáticos
           </h2>
-          <p className="text-xs text-[var(--nx-muted)]">
+          <p className="text-xs text-[var(--nx-muted)] mt-0.5">
             Crie atalhos para a equipe usar no atendimento ou ative gatilhos por palavra-chave para resposta imediata no WhatsApp.
           </p>
         </div>
@@ -161,15 +161,15 @@ export const QuickRepliesTab: React.FC<QuickRepliesTabProps> = ({
       </div>
 
       {quickReplies.length === 0 ? (
-        <div className="bg-[var(--nx-surface)] border border-dashed border-[var(--nx-border-strong)] rounded-lg p-12 text-center text-xs text-[var(--nx-subtle)]">
+        <div className="nx-spotlight-card border-dashed p-12 text-center text-xs text-[var(--nx-subtle)]">
           Nenhum atalho cadastrado. Crie respostas como <code>/pix</code> ou <code>/endereco</code>.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {quickReplies.map((qr) => (
             <div
               key={qr.id}
-              className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-5 flex flex-col justify-between gap-3"
+              className="nx-spotlight-card p-5 flex flex-col justify-between gap-3"
             >
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
@@ -425,17 +425,17 @@ export const FollowUpRadarTab: React.FC<FollowUpRadarTabProps> = ({
   }
 
   return (
-    <div className="space-y-5 animate-fade-up">
-      <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-6 animate-fade-up">
+      <div className="nx-spotlight-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[var(--nx-amber-bg)] text-[var(--nx-amber)] flex items-center justify-center shrink-0">
-            <Radio className="w-4 h-4" />
+          <div className="nx-icon-tile nx-icon-tile--sm shrink-0">
+            <Radio className="w-4 h-4 text-amber-500" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-[var(--nx-text)]">
+            <h2 className="text-base font-bold text-[var(--nx-text)]">
               Radar de Conversas & Follow-up
             </h2>
-            <p className="text-xs text-[var(--nx-muted)]">
+            <p className="text-xs text-[var(--nx-muted)] mt-0.5">
               Conversas aguardando atendente humano ou esfriando sem retorno para ninguém ficar sem resposta.
             </p>
           </div>
@@ -443,7 +443,7 @@ export const FollowUpRadarTab: React.FC<FollowUpRadarTabProps> = ({
         <button
           type="button"
           onClick={onOpenInbox}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)]"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)] shrink-0"
         >
           <MessageSquare className="w-3.5 h-3.5" />
           Ir para Conversas ao Vivo
@@ -451,7 +451,7 @@ export const FollowUpRadarTab: React.FC<FollowUpRadarTabProps> = ({
       </div>
 
       {radar.length === 0 ? (
-        <div className="bg-[var(--nx-surface)] border border-dashed border-[var(--nx-border-strong)] rounded-lg p-12 text-center text-xs text-[var(--nx-subtle)]">
+        <div className="nx-spotlight-card border-dashed p-12 text-center text-xs text-[var(--nx-subtle)]">
           Nenhuma conversa pendente no radar no momento. Tudo em dia!
         </div>
       ) : (

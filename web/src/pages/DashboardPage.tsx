@@ -75,6 +75,7 @@ import {
   WhatsAppSyncPreferences
 } from '../components/dashboard/WhatsAppSyncTab';
 import { DemandInsightsTab } from '../components/dashboard/DemandInsightsTab';
+import { FeatureMotionTooltip, FeatureDemoId } from '../components/FeatureMotionTooltip';
 import { NumberField } from '../components/NumberField';
 import JellyRadio from '../components/reactbits/JellyRadio';
 import { CustomSelect } from '../components/CustomSelect';
@@ -3880,7 +3881,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 Nenhum ciclo de retorno programado até o momento.
               </div>
             ) : (
-              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
+              <div className="nx-spotlight-card overflow-hidden">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] text-xs font-semibold text-[var(--nx-muted)]">
@@ -4403,7 +4404,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </button>
             </div>
 
-            <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
+            <div className="nx-spotlight-card overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] text-xs font-semibold text-[var(--nx-muted)]">
@@ -4778,43 +4779,53 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
               {/* Comportamento do Atendente no WhatsApp (movido de Sincronização para Ajustes da IA) */}
               <div className="nx-spotlight-card p-6 space-y-4">
-                <div>
-                  <h3 className="text-sm font-bold text-[var(--nx-text)]">
-                    Comportamento & Proteção no WhatsApp
-                  </h3>
-                  <p className="text-[11px] text-[var(--nx-muted)] mt-0.5">
-                    Controle como o atendente NEO interage com grupos, ligações, recibos de leitura e ritmo humanizado.
-                  </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--nx-text)]">
+                      Comportamento & Proteção no WhatsApp
+                    </h3>
+                    <p className="text-xs text-[var(--nx-muted)] mt-0.5">
+                      Controle como o atendente NEO interage com grupos, ligações, recibos de leitura e ritmo humanizado.
+                    </p>
+                  </div>
+                  <span className="text-[10.5px] font-medium text-[var(--nx-subtle)] px-2.5 py-1 rounded-full bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+                    Passe o mouse p/ ver em ação
+                  </span>
                 </div>
 
                 <div className="divide-y divide-[var(--nx-border)]">
                   {[
                     {
                       key: 'ignoreGroups' as const,
+                      demo: 'ignoreGroups' as FeatureDemoId,
                       title: 'Ignorar mensagens de grupos',
                       desc: 'Evita que o atendente NEO responda conversas de grupos familiares ou internos.',
                       icon: <Users className="w-4 h-4" />
                     },
                     {
                       key: 'rejectCalls' as const,
+                      demo: 'rejectCalls' as FeatureDemoId,
                       title: 'Rejeitar chamadas automaticamente',
                       desc: 'Recusa ligações de voz/vídeo no WhatsApp comercial para manter o fluxo por texto e áudio.',
                       icon: <PhoneOff className="w-4 h-4" />
                     },
                     {
                       key: 'typingIndicator' as const,
+                      demo: 'typingIndicator' as FeatureDemoId,
                       title: 'Indicador "digitando..." humanizado',
                       desc: 'Simula digitação proporcional ao tamanho da resposta (proteção anti-banimento).',
                       icon: <MessageCircle className="w-4 h-4" />
                     },
                     {
                       key: 'readReceipts' as const,
+                      demo: 'readReceipts' as FeatureDemoId,
                       title: 'Confirmar leitura (dois riscos azuis)',
                       desc: 'Marca mensagens recebidas como lidas com atraso natural antes de responder.',
                       icon: <Eye className="w-4 h-4" />
                     },
                     {
                       key: 'alwaysOnline' as const,
+                      demo: 'alwaysOnline' as FeatureDemoId,
                       title: 'Manter status "Online"',
                       desc: 'Exibe a conta como disponível continuamente no WhatsApp dos clientes.',
                       icon: <Radio className="w-4 h-4" />
@@ -4822,97 +4833,108 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   ].map((item) => {
                     const checked = Boolean(whatsappSyncStatus?.preferences?.[item.key]);
                     return (
-                      <div
-                        key={item.key}
-                        className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4"
-                      >
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-[var(--nx-surface-alt)] border border-[var(--nx-border)] flex items-center justify-center text-[var(--nx-muted)] shrink-0 mt-0.5">
-                            {item.icon}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-[var(--nx-text)]">
-                              {item.title}
+                      <FeatureMotionTooltip key={item.key} feature={item.demo}>
+                        <div className="py-3.5 first:pt-1 last:pb-0 flex items-center justify-between gap-4">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-[var(--nx-surface-alt)] border border-[var(--nx-border)] flex items-center justify-center text-[var(--nx-muted)] shrink-0 mt-0.5">
+                              {item.icon}
                             </div>
-                            <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed mt-0.5">
-                              {item.desc}
-                            </p>
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold text-[var(--nx-text)]">
+                                {item.title}
+                              </div>
+                              <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed mt-0.5">
+                                {item.desc}
+                              </p>
+                            </div>
                           </div>
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={checked}
+                            aria-label={item.title}
+                            onClick={() => handleToggleWhatsAppBehaviorPref(item.key)}
+                            className="nx-checkbox shrink-0"
+                          >
+                            {checked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          role="checkbox"
-                          aria-checked={checked}
-                          aria-label={item.title}
-                          onClick={() => handleToggleWhatsAppBehaviorPref(item.key)}
-                          className="nx-checkbox shrink-0"
-                        >
-                          {checked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </button>
-                      </div>
+                      </FeatureMotionTooltip>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Card de Recursos Inteligentes do Bot WhatsApp (7 Funções Configuráveis) */}
+              {/* Card de Recursos Inteligentes da IA (mesmo estilo de linhas divididas + mini-tutoriais motion no hover) */}
               <div className="nx-spotlight-card p-6 space-y-4">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-bold text-[var(--nx-text)]">
+                    <h3 className="text-base font-bold text-[var(--nx-text)]">
                       Recursos Inteligentes da IA
                     </h3>
-                    <p className="text-[11px] text-[var(--nx-muted)]">
+                    <p className="text-xs text-[var(--nx-muted)] mt-0.5">
                       Ative ou desative cada recurso de voz, PDF, anti-banimento, localização, avaliação e sentimento.
                     </p>
                   </div>
-                  {savingBotFeatures && (
-                    <span className="text-[11px] text-[var(--nx-volt-ink)] font-semibold">
-                      Salvando...
+                  <div className="flex items-center gap-2">
+                    {savingBotFeatures && (
+                      <span className="text-[11px] text-[var(--nx-volt-ink)] font-semibold">
+                        Salvando...
+                      </span>
+                    )}
+                    <span className="text-[10.5px] font-medium text-[var(--nx-subtle)] px-2.5 py-1 rounded-full bg-[var(--nx-bg)] border border-[var(--nx-border)]">
+                      Passe o mouse p/ ver em ação
                     </span>
-                  )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="divide-y divide-[var(--nx-border)]" data-testid="ai-smart-features-list">
                   {[
                     {
                       key: 'audioUnderstandingEnabled' as const,
+                      demo: 'audioUnderstanding' as FeatureDemoId,
                       title: 'Compreensão de Áudio',
                       desc: 'Ouve e entende áudios (.ogg/.mp3) do WhatsApp via Gemini.',
                       icon: Mic
                     },
                     {
                       key: 'pdfReadingEnabled' as const,
+                      demo: 'pdfReading' as FeatureDemoId,
                       title: 'Leitura de PDF & PIX',
                       desc: 'Lê boletos/comprovantes e registra em Documentos.',
                       icon: FileText
                     },
                     {
                       key: 'antiBanEnabled' as const,
+                      demo: 'antiBan' as FeatureDemoId,
                       title: 'Ritmo Humano Anti-Ban',
                       desc: 'Tempo proporcional de digitação, atraso de leitura e throttle.',
                       icon: Clock
                     },
                     {
                       key: 'quotedRepliesEnabled' as const,
+                      demo: 'quotedReplies' as FeatureDemoId,
                       title: 'Citação de Mensagens',
                       desc: 'Responde citando diretamente a mensagem enviada pelo cliente.',
                       icon: MessageSquare
                     },
                     {
                       key: 'reactionsEnabled' as const,
+                      demo: 'reactions' as FeatureDemoId,
                       title: 'Reações com Emoji',
                       desc: 'Reage com joinha ou coração ao receber comprovantes e confirmações.',
                       icon: ThumbsUp
                     },
                     {
                       key: 'locationPinEnabled' as const,
+                      demo: 'locationPin' as FeatureDemoId,
                       title: 'Pin no Mapa & vCard',
                       desc: 'Envia localização clicável e cartão de contato quando solicitado.',
                       icon: MapPin
                     },
                     {
                       key: 'sentimentAlertEnabled' as const,
+                      demo: 'sentimentAlert' as FeatureDemoId,
                       title: 'Alerta Vermelho de Sentimento',
                       desc: 'Detecta cliente irritado/urgente, pausa IA e alerta em vermelho.',
                       icon: AlertCircle
@@ -4921,40 +4943,33 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     const active = Boolean(botFeatures[feat.key]);
                     const Icon = feat.icon;
                     return (
-                      <div
-                        key={feat.key}
-                        className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
-                          active
-                            ? 'border-[var(--nx-volt-border)] bg-[var(--nx-volt-surface)]/45'
-                            : 'border-[var(--nx-border)] bg-[var(--nx-bg)]'
-                        }`}
-                      >
-                        <div className="flex items-start gap-2.5 min-w-0">
-                          <Icon
-                            className={`w-4 h-4 mt-0.5 shrink-0 ${
-                              active ? 'text-[var(--nx-volt-ink)]' : 'text-[var(--nx-muted)]'
-                            }`}
-                          />
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-[var(--nx-text)]">
-                              {feat.title}
+                      <FeatureMotionTooltip key={feat.key} feature={feat.demo}>
+                        <div className="py-3.5 first:pt-1 last:pb-0 flex items-center justify-between gap-4">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-[var(--nx-surface-alt)] border border-[var(--nx-border)] flex items-center justify-center text-[var(--nx-muted)] shrink-0 mt-0.5">
+                              <Icon className="w-4 h-4" />
                             </div>
-                            <p className="text-[11px] text-[var(--nx-muted)] leading-snug mt-0.5">
-                              {feat.desc}
-                            </p>
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold text-[var(--nx-text)]">
+                                {feat.title}
+                              </div>
+                              <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed mt-0.5">
+                                {feat.desc}
+                              </p>
+                            </div>
                           </div>
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={active}
+                            aria-label={feat.title}
+                            onClick={() => handleUpdateBotFeatures({ [feat.key]: !active })}
+                            className="nx-checkbox shrink-0"
+                          >
+                            {active && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          role="checkbox"
-                          aria-checked={active}
-                          aria-label={feat.title}
-                          onClick={() => handleUpdateBotFeatures({ [feat.key]: !active })}
-                          className="nx-checkbox shrink-0"
-                        >
-                          {active && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </button>
-                      </div>
+                      </FeatureMotionTooltip>
                     );
                   })}
                 </div>
@@ -5061,7 +5076,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </p>
             </div>
 
-            <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
+            <div className="nx-spotlight-card overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[var(--nx-surface-alt)] border-b border-[var(--nx-border)] text-xs font-semibold text-[var(--nx-muted)]">

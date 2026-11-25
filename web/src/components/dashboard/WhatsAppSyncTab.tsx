@@ -24,6 +24,8 @@ import {
   X
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import JellyRadio from '../reactbits/JellyRadio';
+import { FeatureMotionTooltip, FeatureDemoId } from '../FeatureMotionTooltip';
 
 export interface WhatsAppSyncPreferences {
   autoReconnect: boolean;
@@ -763,34 +765,31 @@ export const WhatsAppSyncTab: React.FC<WhatsAppSyncTabProps> = ({
                   </div>
                 </div>
 
-                {/* Alternador de modo: QR Code vs Código de Pareamento */}
-                <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)]">
-                  <button
-                    type="button"
-                    onClick={() => setPairMode('qr')}
-                    data-testid="mode-qr-btn"
-                    className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
-                      pairMode === 'qr'
-                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] shadow-sm'
-                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                    }`}
-                  >
-                    <QrCode className="w-3.5 h-3.5" />
-                    QR Code
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPairMode('pairing')}
-                    data-testid="mode-pairing-btn"
-                    className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
-                      pairMode === 'pairing'
-                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] shadow-sm'
-                        : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                    }`}
-                  >
-                    <Smartphone className="w-3.5 h-3.5" />
-                    Código 8 dígitos
-                  </button>
+                {/* Alternador de modo: QR Code vs Código de Pareamento com JellyRadio */}
+                <div className="flex justify-center sm:justify-start">
+                  <JellyRadio
+                    ariaLabel="Modo de pareamento do WhatsApp"
+                    size="sm"
+                    radius={10}
+                    gap={6}
+                    swell={0.08}
+                    barge={3}
+                    shrink={0.02}
+                    value={pairMode}
+                    onChange={(val) => setPairMode(val as 'qr' | 'pairing')}
+                    items={[
+                      {
+                        value: 'qr',
+                        icon: <QrCode className="w-3.5 h-3.5" />,
+                        label: 'QR Code'
+                      },
+                      {
+                        value: 'pairing',
+                        icon: <Smartphone className="w-3.5 h-3.5" />,
+                        label: 'Código 8 dígitos'
+                      }
+                    ]}
+                  />
                 </div>
 
                 {pairMode === 'qr' ? (
@@ -1015,36 +1014,37 @@ export const WhatsAppSyncTab: React.FC<WhatsAppSyncTabProps> = ({
             <div className="divide-y divide-[var(--nx-border)]">
               {preferenceItems.map((item) => {
                 const checked = Boolean(prefs[item.key]);
+                const demoId: FeatureDemoId =
+                  item.key === 'autoReconnect' ? 'autoReconnect' : 'syncContacts';
                 return (
-                  <div
-                    key={item.key}
-                    className="py-3.5 first:pt-1 last:pb-0 flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-[var(--nx-surface-alt)] border border-[var(--nx-border)] flex items-center justify-center text-[var(--nx-muted)] shrink-0 mt-0.5">
-                        {item.icon}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-[var(--nx-text)]">
-                          {item.title}
+                  <FeatureMotionTooltip key={item.key} feature={demoId}>
+                    <div className="py-3.5 first:pt-1 last:pb-0 flex items-center justify-between gap-4">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-[var(--nx-surface-alt)] border border-[var(--nx-border)] flex items-center justify-center text-[var(--nx-muted)] shrink-0 mt-0.5">
+                          {item.icon}
                         </div>
-                        <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed mt-0.5">
-                          {item.desc}
-                        </p>
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-[var(--nx-text)]">
+                            {item.title}
+                          </div>
+                          <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed mt-0.5">
+                            {item.desc}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={checked}
-                      aria-label={item.title}
-                      onClick={() => handleTogglePreference(item.key)}
-                      className="nx-checkbox shrink-0"
-                    >
-                      {checked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={checked}
+                        aria-label={item.title}
+                        onClick={() => handleTogglePreference(item.key)}
+                        className="nx-checkbox shrink-0"
+                      >
+                        {checked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </button>
+                    </div>
+                  </FeatureMotionTooltip>
                 );
               })}
             </div>

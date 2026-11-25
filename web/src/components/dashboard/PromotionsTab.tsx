@@ -290,14 +290,14 @@ export const PromotionsTab: React.FC<PromotionsTabProps> = ({
   const totalSelectedCount = form.targetItemIds.length + form.targetServiceIds.length;
 
   return (
-    <div className="space-y-5 animate-fade-up">
+    <div className="space-y-6 animate-fade-up">
       {/* Cabeçalho e Ações Rápidas */}
-      <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="nx-spotlight-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-sm font-bold text-[var(--nx-text)]">
+          <h2 className="text-base font-bold text-[var(--nx-text)]">
             Promoções & Ofertas (Produtos e Serviços)
           </h2>
-          <p className="text-xs text-[var(--nx-muted)]">
+          <p className="text-xs text-[var(--nx-muted)] mt-0.5">
             Aplique descontos percentuais gerais/por categoria ou preços manuais em produtos e serviços específicos. O bot divulga os valores automaticamente.
           </p>
         </div>
@@ -306,9 +306,9 @@ export const PromotionsTab: React.FC<PromotionsTabProps> = ({
           <button
             type="button"
             onClick={() => openCreate('PERCENT')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)] transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:border-[var(--nx-primary)] text-xs font-medium text-[var(--nx-text)] transition-colors"
           >
-            <Percent className="w-3.5 h-3.5 text-[var(--nx-primary)]" />
+            <Percent className="w-3.5 h-3.5 text-[var(--nx-volt-ink)]" />
             Desconto % Geral
           </button>
           <button

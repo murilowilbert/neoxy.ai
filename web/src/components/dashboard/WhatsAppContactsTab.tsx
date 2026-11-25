@@ -14,6 +14,7 @@ import {
   Users
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import JellyRadio from '../reactbits/JellyRadio';
 
 export interface WhatsAppContactItem {
   id: string;
@@ -274,41 +275,37 @@ export const WhatsAppContactsTab: React.FC<WhatsAppContactsTabProps> = ({
   }
 
   return (
-    <div className="space-y-5 animate-fade-up">
+    <div className="space-y-6 animate-fade-up">
       {/* Barra de Ferramentas */}
-      <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="nx-spotlight-card p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3 flex-1">
           <div className="relative flex-1 min-w-[220px] max-w-md">
-            <Search className="w-4 h-4 text-[var(--nx-subtle)] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[var(--nx-subtle)] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome, usuário do WhatsApp ou etiqueta..."
-              className="w-full pl-9 pr-3 py-2 rounded-md bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+              className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
             />
           </div>
 
-          <div className="flex rounded-md border border-[var(--nx-border-strong)] p-0.5 bg-[var(--nx-bg)] text-xs">
-            {[
-              { key: 'all' as const, label: `Todos (${contacts.length})` },
-              { key: 'allowed' as const, label: `IA Ativa (${contacts.length - blockedCount})` },
-              { key: 'blocked' as const, label: `IA Bloqueada (${blockedCount})` }
-            ].map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFilter(f.key)}
-                className={`px-3 py-1.5 rounded font-medium transition-colors ${
-                  filter === f.key
-                    ? 'bg-[var(--nx-surface)] text-[var(--nx-text)] shadow-sm'
-                    : 'text-[var(--nx-muted)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+          <JellyRadio
+            ariaLabel="Filtrar contatos por status da IA"
+            size="sm"
+            radius={10}
+            gap={5}
+            swell={0.08}
+            barge={3}
+            shrink={0.02}
+            value={filter}
+            onChange={(val) => setFilter(val as 'all' | 'allowed' | 'blocked')}
+            items={[
+              { value: 'all', label: `Todos (${contacts.length})` },
+              { value: 'allowed', label: `IA Ativa (${contacts.length - blockedCount})` },
+              { value: 'blocked', label: `IA Bloqueada (${blockedCount})` }
+            ]}
+          />
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
@@ -316,7 +313,7 @@ export const WhatsAppContactsTab: React.FC<WhatsAppContactsTabProps> = ({
             type="button"
             onClick={handleSync}
             disabled={syncing}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
             Sincronizar WhatsApp
@@ -324,7 +321,7 @@ export const WhatsAppContactsTab: React.FC<WhatsAppContactsTabProps> = ({
           <button
             type="button"
             onClick={handleExportCsv}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:bg-[var(--nx-surface-alt)] text-xs font-medium text-[var(--nx-text)] transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
             Exportar CSV
@@ -341,7 +338,7 @@ export const WhatsAppContactsTab: React.FC<WhatsAppContactsTabProps> = ({
       </div>
 
       {/* Lista Visual de Contatos com Foto de Perfil + Nome + Usuário */}
-      <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg overflow-hidden">
+      <div className="nx-spotlight-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>

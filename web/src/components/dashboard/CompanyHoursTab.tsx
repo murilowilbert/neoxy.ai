@@ -10,7 +10,7 @@ import {
   Check,
   Building2,
   Sparkles,
-  ExternalLink,
+  ArrowUpRight,
   Search,
   Star,
   CheckSquare,
@@ -20,6 +20,7 @@ import { apiFetch } from '../../lib/api';
 import { CustomSelect } from '../CustomSelect';
 import { CustomTimePicker } from '../CustomTimePicker';
 import { CustomDatePicker } from '../CustomDatePicker';
+import JellyRadio from '../reactbits/JellyRadio';
 
 export interface StoreLocationItem {
   id: string;
@@ -555,37 +556,33 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
           </button>
         </div>
 
-        {/* Seletor de unidades quando há 1 ou mais locais */}
+        {/* Seletor de unidades com animação JellyRadio */}
         <div className="flex items-center gap-2 flex-wrap pb-3 border-b border-[var(--nx-border)]">
-          {locations.map((loc, idx) => {
-            const isSelected = activeLocation?.id === loc.id;
-            return (
-              <button
-                key={loc.id}
-                type="button"
-                onClick={() => setSelectedLocId(loc.id)}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                  isSelected
-                    ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] border-transparent shadow-sm'
-                    : 'bg-[var(--nx-bg)] text-[var(--nx-muted)] border-[var(--nx-border-strong)] hover:text-[var(--nx-text)]'
-                }`}
-              >
-                <MapPin className="w-3.5 h-3.5 shrink-0" />
-                <span>{loc.name || (idx === 0 ? 'Matriz' : `Filial ${idx + 1}`)}</span>
-                {loc.isPrimary && (
-                  <span
-                    className={`px-1.5 py-0.5 rounded-full text-[9.5px] font-bold uppercase ${
-                      isSelected
-                        ? 'bg-black/15 text-current'
-                        : 'bg-[var(--nx-volt-surface)] text-[var(--nx-volt-ink)] border border-[var(--nx-volt-border)]'
-                    }`}
-                  >
-                    Principal
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          <JellyRadio
+            ariaLabel="Selecionar unidade comercial"
+            size="sm"
+            radius={10}
+            gap={6}
+            swell={0.08}
+            barge={3}
+            shrink={0.02}
+            value={activeLocation?.id || locations[0]?.id}
+            onChange={(val) => setSelectedLocId(val)}
+            items={locations.map((loc, idx) => ({
+              value: loc.id,
+              icon: <MapPin className="w-3.5 h-3.5 shrink-0" />,
+              label: (
+                <span className="inline-flex items-center gap-1.5">
+                  <span>{loc.name || (idx === 0 ? 'Matriz' : `Filial ${idx + 1}`)}</span>
+                  {loc.isPrimary && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-black/15 dark:bg-black/25">
+                      Principal
+                    </span>
+                  )}
+                </span>
+              )
+            }))}
+          />
         </div>
 
         {activeLocation && (
@@ -721,7 +718,7 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
               </div>
             </div>
 
-            {/* Linha 4: Google Maps automático + Link de Avaliação Google */}
+            {/* Linha 4: Google Maps automático + Link de Avaliação Google (seta ArrowUpRight inline + fade) */}
             <div className="p-4 rounded-2xl bg-[var(--nx-bg)] border border-[var(--nx-border)] space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-[var(--nx-text)]">
@@ -742,54 +739,63 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-semibold text-[var(--nx-muted)]">
-                      Link do Google Maps
-                    </label>
+                  <label className="block text-[11px] font-semibold text-[var(--nx-muted)] mb-1">
+                    Link do Google Maps
+                  </label>
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] focus-within:border-[var(--nx-primary)] transition-colors">
+                    <input
+                      type="url"
+                      value={activeLocation.mapsUrl}
+                      onChange={(e) => updateActiveLocation({ mapsUrl: e.target.value })}
+                      placeholder="Preenchido automaticamente ao digitar o endereço"
+                      className={`flex-1 min-w-0 px-1.5 py-1.5 bg-transparent text-xs text-[var(--nx-text)] focus:outline-none ${
+                        activeLocation.mapsUrl ? 'nx-link-input-fade' : ''
+                      }`}
+                    />
                     {activeLocation.mapsUrl && (
                       <a
                         href={activeLocation.mapsUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[var(--nx-volt-ink)] hover:underline"
+                        title="Abrir no Google Maps"
+                        aria-label="Abrir no Google Maps"
+                        data-testid="btn-open-maps-inline"
+                        className="nx-inline-arrow-btn inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--nx-surface-alt)] border border-[var(--nx-border)] text-[var(--nx-text)] hover:border-[var(--nx-volt-border)] hover:bg-[var(--nx-volt-surface)] hover:text-[var(--nx-volt-ink)] transition-colors shrink-0"
                       >
-                        Abrir mapa <ExternalLink className="w-2.5 h-2.5" />
+                        <ArrowUpRight className="w-3.5 h-3.5" />
                       </a>
                     )}
                   </div>
-                  <input
-                    type="url"
-                    value={activeLocation.mapsUrl}
-                    onChange={(e) => updateActiveLocation({ mapsUrl: e.target.value })}
-                    placeholder="Preenchido automaticamente ao digitar o endereço"
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
-                  />
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-semibold text-[var(--nx-muted)] flex items-center gap-1">
-                      <Star className="w-3 h-3 text-amber-500" />
-                      Link de Avaliação Google Meu Negócio
-                    </label>
+                  <label className="text-[11px] font-semibold text-[var(--nx-muted)] flex items-center gap-1 mb-1">
+                    <Star className="w-3 h-3 text-amber-500" />
+                    Link de Avaliação Google Meu Negócio
+                  </label>
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] focus-within:border-[var(--nx-primary)] transition-colors">
+                    <input
+                      type="url"
+                      value={activeLocation.googleReviewUrl}
+                      onChange={(e) => updateActiveLocation({ googleReviewUrl: e.target.value })}
+                      placeholder="Preenchido automaticamente ou cole seu g.page/r/.../review"
+                      className={`flex-1 min-w-0 px-1.5 py-1.5 bg-transparent text-xs text-[var(--nx-text)] focus:outline-none ${
+                        activeLocation.googleReviewUrl ? 'nx-link-input-fade' : ''
+                      }`}
+                    />
                     {activeLocation.googleReviewUrl && (
                       <a
                         href={activeLocation.googleReviewUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[var(--nx-volt-ink)] hover:underline"
+                        title="Abrir link de avaliação"
+                        aria-label="Abrir link de avaliação"
+                        className="nx-inline-arrow-btn inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--nx-surface-alt)] border border-[var(--nx-border)] text-[var(--nx-text)] hover:border-[var(--nx-volt-border)] hover:bg-[var(--nx-volt-surface)] hover:text-[var(--nx-volt-ink)] transition-colors shrink-0"
                       >
-                        Testar link <ExternalLink className="w-2.5 h-2.5" />
+                        <ArrowUpRight className="w-3.5 h-3.5" />
                       </a>
                     )}
                   </div>
-                  <input
-                    type="url"
-                    value={activeLocation.googleReviewUrl}
-                    onChange={(e) => updateActiveLocation({ googleReviewUrl: e.target.value })}
-                    placeholder="Preenchido automaticamente ou cole seu g.page/r/.../review"
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
-                  />
                 </div>
               </div>
               <p className="text-[11px] text-[var(--nx-subtle)]">
