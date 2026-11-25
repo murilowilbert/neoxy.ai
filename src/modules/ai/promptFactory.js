@@ -238,6 +238,50 @@ ${locationEnabled && (hasCoordinates || storeInfo.mapsUrl) ? `- Localização Na
     }.
 ${sentimentEnabled ? `- Termômetro de Sentimento (OBRIGATÓRIO EM TODA RESPOSTA): Sempre termine com UMA tag invisível indicando o humor atual do cliente: [SENTIMENT:POSITIVE], [SENTIMENT:NEUTRAL], [SENTIMENT:FRUSTRATED] ou [SENTIMENT:URGENT]. Se o cliente estiver irritado, reclamando de atraso/defeito, pedindo cancelamento ou relatando urgência crítica, use [SENTIMENT:FRUSTRATED] ou [SENTIMENT:URGENT], responda com empatia imediata e adicione [HANDOFF] para alertar a equipe humana.\n` : ''}`;
 
+    const AMENITY_LABELS = {
+      ownParking: 'Possui estacionamento próprio',
+      freeParking: 'Estacionamento gratuito para clientes',
+      wheelchairAccess: 'Acessibilidade / entrada adaptada para PCD e cadeirantes',
+      delivery: 'Possui tele-entrega / delivery',
+      counterPickup: 'Permite retirada rápida no balcão',
+      petFriendly: 'Espaço Pet Friendly (aceita pets)',
+      wifi: 'Wi-Fi gratuito para clientes',
+      airConditioning: 'Ambiente climatizado',
+      pixAndCards: 'Aceita PIX e cartões de crédito/débito',
+      byAppointment: 'Atendimento com hora marcada'
+    };
+
+    const amenitiesObj = storeInfo.amenities || {};
+    const activeAmenities = Object.entries(AMENITY_LABELS)
+      .filter(([key]) => Boolean(amenitiesObj[key]))
+      .map(([, label]) => label);
+    if (storeInfo.amenitiesNotes && String(storeInfo.amenitiesNotes).trim()) {
+      activeAmenities.push(String(storeInfo.amenitiesNotes).trim());
+    }
+
+    const locationsList = Array.isArray(storeInfo.locations) && storeInfo.locations.length > 0
+      ? storeInfo.locations
+      : [];
+
+    const locationsBlock = locationsList.length > 0
+      ? locationsList
+          .map((loc, idx) => {
+            const addrParts = [
+              loc.street ? `${loc.street}${loc.number ? `, ${loc.number}` : ''}` : loc.address,
+              loc.neighborhood,
+              loc.city ? `${loc.city}${loc.state ? ` - ${loc.state}` : ''}` : null
+            ].filter(Boolean);
+            const fullAddr = addrParts.join(', ') || 'Endereço não informado';
+            const extras = [
+              loc.referencePoint ? `Ponto de referência: ${loc.referencePoint}` : null,
+              loc.phone ? `Telefone: ${loc.phone}` : null,
+              loc.mapsUrl ? `Maps: ${loc.mapsUrl}` : null
+            ].filter(Boolean);
+            return `  ${idx + 1}. ${loc.name || `Unidade ${idx + 1}`}${loc.isPrimary ? ' (Principal)' : ''}: ${fullAddr}${extras.length ? ` | ${extras.join(' | ')}` : ''}`;
+          })
+          .join('\n')
+      : null;
+
     return `# SEGURANÇA E POLÍTICA DE NEGÓCIO
 - Proibido conceder descontos extras fora das promoções oficiais cadastradas, alterar preços ou inventar dados técnicos.
 - Palavras expressamente PROIBIDAS no vocabulário com o cliente: ${forbiddenWords}.
@@ -252,11 +296,14 @@ ${sentimentEnabled ? `- Termômetro de Sentimento (OBRIGATÓRIO EM TODA RESPOSTA
 
 # INFORMAÇÕES OFICIAIS DO ESTABELECIMENTO
 - Nome: ${storeName}
-- Endereço / Localização: ${storeInfo.address || 'Consulte nosso atendimento'}${storeInfo.city ? ` (${storeInfo.city})` : ''}
-${storeInfo.phone ? `- Telefone comercial: ${storeInfo.phone}\n` : ''}- Entregas / Atendimento: ${storeInfo.deliveryPolicy || settings.rules?.deliveryPolicy || 'Atendimento presencial e digital.'}
+${
+  locationsBlock
+    ? `- Unidades e Endereços Oficiais (${locationsList.length} ${locationsList.length === 1 ? 'local' : 'locais'}):\n${locationsBlock}\n`
+    : `- Endereço / Localização: ${storeInfo.address || 'Consulte nosso atendimento'}${storeInfo.city ? ` (${storeInfo.city})` : ''}${storeInfo.referencePoint ? ` | Ponto de referência: ${storeInfo.referencePoint}` : ''}\n`
+}${storeInfo.phone ? `- Telefone comercial: ${storeInfo.phone}\n` : ''}- Entregas / Atendimento: ${storeInfo.deliveryPolicy || settings.rules?.deliveryPolicy || 'Atendimento presencial e digital.'}
 - Formas de Pagamento: ${settings.rules?.paymentMethods || 'PIX, Cartão e Boleto.'}
 - Horário padrão da semana: ${scheduleLine}
-${socialEntries.length > 0 ? `- Canais e Links Oficiais: ${socialEntries.join(' | ')}\n` : ''}${exceptionsBlock ? `\n# FERIADOS E DATAS ESPECIAIS PROGRAMADOS\n${exceptionsBlock}\n` : ''}- Informações Adicionais: ${storeInfo.about || ''}
+${activeAmenities.length > 0 ? `- Comodidades e Facilidades do Local (responda direto sem precisar chamar humano): ${activeAmenities.join('; ')}.\n` : ''}${socialEntries.length > 0 ? `- Canais e Links Oficiais: ${socialEntries.join(' | ')}\n` : ''}${exceptionsBlock ? `\n# FERIADOS E DATAS ESPECIAIS PROGRAMADOS\n${exceptionsBlock}\n` : ''}- Informações Adicionais: ${storeInfo.about || ''}
 ${nicheSection}
 # REGRAS DE CATÁLOGO, SERVIÇOS E PROMOÇÕES (ZERO INVENÇÃO — OBRIGATÓRIO)
 - PROIBIÇÃO ABSOLUTA: Você SÓ pode mencionar, oferecer ou informar preço de produtos/serviços que apareçam EXPLICITAMENTE na seção "ITENS E SERVIÇOS CADASTRADOS" desta conversa.

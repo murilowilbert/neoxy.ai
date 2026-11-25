@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   MapPin,
   Clock,
@@ -7,12 +7,36 @@ import {
   Trash2,
   Download,
   Share2,
-  Check
+  Check,
+  Building2,
+  Sparkles,
+  ExternalLink,
+  Search,
+  Star,
+  CheckSquare,
+  Save
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
-import { AutoScrollLabel } from '../AutoScrollLabel';
 import { CustomSelect } from '../CustomSelect';
 import { CustomTimePicker } from '../CustomTimePicker';
+import { CustomDatePicker } from '../CustomDatePicker';
+
+export interface StoreLocationItem {
+  id: string;
+  name: string;
+  isPrimary?: boolean;
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  referencePoint: string;
+  phone: string;
+  mapsUrl: string;
+  googleReviewUrl: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
 
 interface TimeSlot {
   start: string;
@@ -43,24 +67,116 @@ const WEEK_DAYS = [
   { key: '0', label: 'Domingo' }
 ];
 
+const BRAZIL_UFS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO',
+  'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI',
+  'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
+const AMENITY_OPTIONS: Array<{ key: string; label: string; desc: string }> = [
+  { key: 'ownParking', label: 'Estacionamento próprio', desc: 'Vagas exclusivas no local' },
+  { key: 'freeParking', label: 'Estacionamento gratuito', desc: 'Sem custo para clientes' },
+  { key: 'wheelchairAccess', label: 'Acessibilidade / PCD', desc: 'Entrada adaptada para cadeirantes' },
+  { key: 'delivery', label: 'Tele-entrega / Delivery', desc: 'Entrega em domicílio ou obra' },
+  { key: 'counterPickup', label: 'Retirada no balcão', desc: 'Pedido pronto para retirar na loja' },
+  { key: 'petFriendly', label: 'Espaço Pet Friendly', desc: 'Animais são bem-vindos' },
+  { key: 'wifi', label: 'Wi-Fi para clientes', desc: 'Internet gratuita na recepção' },
+  { key: 'airConditioning', label: 'Ambiente climatizado', desc: 'Ar-condicionado no local' },
+  { key: 'pixAndCards', label: 'Aceita PIX e cartões', desc: 'Débito, crédito e PIX' },
+  { key: 'byAppointment', label: 'Hora marcada', desc: 'Atendimento sob agendamento' }
+];
+
+function createEmptyLocation(index: number, isPrimary = false): StoreLocationItem {
+  return {
+    id: `loc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name: isPrimary ? 'Matriz' : `Filial ${index}`,
+    isPrimary,
+    street: '',
+    number: '',
+    neighborhood: '',
+    city: '',
+    state: 'RS',
+    referencePoint: '',
+    phone: '',
+    mapsUrl: '',
+    googleReviewUrl: '',
+    latitude: null,
+    longitude: null
+  };
+}
+
+function parseLegacyAddress(rawAddress = '', rawCity = ''): Partial<StoreLocationItem> {
+  const result: Partial<StoreLocationItem> = {
+    street: '',
+    number: '',
+    neighborhood: '',
+    city: '',
+    state: ''
+  };
+  if (rawAddress) {
+    const parts = rawAddress.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts[0]) result.street = parts[0];
+    if (parts[1] && /\d|s\/n/i.test(parts[1])) {
+      result.number = parts[1];
+      if (parts[2]) result.neighborhood = parts[2];
+      if (parts[3]) {
+        const cityUf = parts[3].split('-').map((s) => s.trim());
+        result.city = cityUf[0] || '';
+        result.state = (cityUf[1] || '').toUpperCase().slice(0, 2);
+      }
+    } else if (parts[1]) {
+      result.neighborhood = parts[1];
+    }
+  }
+  if (rawCity && !result.city) {
+    const cityUf = rawCity.split(/[-/]/).map((s) => s.trim());
+    result.city = cityUf[0] || '';
+    if (cityUf[1]) result.state = cityUf[1].toUpperCase().slice(0, 2);
+  }
+  return result;
+}
+
+function composeFullAddress(loc: StoreLocationItem): string {
+  const streetPart = [loc.street, loc.number].filter(Boolean).join(', ');
+  const cityUf = [loc.city, loc.state].filter(Boolean).join(' - ');
+  return [streetPart, loc.neighborhood, cityUf].filter(Boolean).join(', ');
+}
+
+function buildSmartMapsUrl(companyName: string, loc: StoreLocationItem): string {
+  const addr = composeFullAddress(loc);
+  if (!addr) return '';
+  const query = companyName ? `${companyName}, ${addr}` : addr;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function buildSmartReviewUrl(companyName: string, loc: StoreLocationItem): string {
+  const base = [companyName, loc.city, loc.state].filter(Boolean).join(' ').trim();
+  if (!base) return '';
+  return `https://www.google.com/search?q=${encodeURIComponent(`${base} avaliar google`)}`;
+}
+
 export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
   tenant,
   onSaved,
   onNotify
 }) => {
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [mapsUrl, setMapsUrl] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [googleReviewUrl, setGoogleReviewUrl] = useState('');
-  const [phone, setPhone] = useState('');
+  // Múltiplas unidades / locais da empresa
+  const [locations, setLocations] = useState<StoreLocationItem[]>([]);
+  const [selectedLocId, setSelectedLocId] = useState<string>('');
+  const [geocoding, setGeocoding] = useState(false);
+
+  // Redes sociais & site
   const [website, setWebsite] = useState('');
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
   const [tiktok, setTiktok] = useState('');
   const [youtube, setYoutube] = useState('');
 
+  // Comodidades do local (para o bot responder sem intervenção humana)
+  const [amenities, setAmenities] = useState<Record<string, boolean>>({});
+  const [amenitiesNotes, setAmenitiesNotes] = useState('');
+
+  // Horários e feriados
   const [schedule, setSchedule] = useState<Record<string, TimeSlot[]>>({});
   const [exceptions, setExceptions] = useState<ScheduleException[]>([]);
 
@@ -82,18 +198,57 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
     const social = info.socialLinks || {};
     const bh = s.businessHours || {};
 
-    setAddress(info.address || '');
-    setCity(info.city || '');
-    setMapsUrl(info.mapsUrl || '');
-    setLatitude(info.latitude !== undefined && info.latitude !== null ? String(info.latitude) : '');
-    setLongitude(info.longitude !== undefined && info.longitude !== null ? String(info.longitude) : '');
-    setGoogleReviewUrl(info.googleReviewUrl || '');
-    setPhone(info.phone || '');
+    let loadedLocations: StoreLocationItem[] = [];
+    if (Array.isArray(info.locations) && info.locations.length > 0) {
+      loadedLocations = info.locations.map((loc: any, idx: number) => ({
+        id: loc.id || `loc-${idx + 1}`,
+        name: loc.name || (idx === 0 ? 'Matriz' : `Filial ${idx + 1}`),
+        isPrimary: idx === 0 ? loc.isPrimary !== false : Boolean(loc.isPrimary),
+        street: loc.street || '',
+        number: loc.number || '',
+        neighborhood: loc.neighborhood || '',
+        city: loc.city || '',
+        state: loc.state || '',
+        referencePoint: loc.referencePoint || '',
+        phone: loc.phone || '',
+        mapsUrl: loc.mapsUrl || '',
+        googleReviewUrl: loc.googleReviewUrl || '',
+        latitude: loc.latitude ?? null,
+        longitude: loc.longitude ?? null
+      }));
+    } else {
+      const parsed = parseLegacyAddress(info.address || '', info.city || '');
+      loadedLocations = [
+        {
+          id: 'loc-principal',
+          name: 'Matriz',
+          isPrimary: true,
+          street: parsed.street || '',
+          number: parsed.number || '',
+          neighborhood: parsed.neighborhood || '',
+          city: parsed.city || '',
+          state: parsed.state || 'RS',
+          referencePoint: info.referencePoint || '',
+          phone: info.phone || '',
+          mapsUrl: info.mapsUrl || '',
+          googleReviewUrl: info.googleReviewUrl || '',
+          latitude: info.latitude ?? null,
+          longitude: info.longitude ?? null
+        }
+      ];
+    }
+
+    setLocations(loadedLocations);
+    setSelectedLocId(loadedLocations[0]?.id || '');
+
     setWebsite(info.website || '');
     setInstagram(social.instagram || '');
     setFacebook(social.facebook || '');
     setTiktok(social.tiktok || '');
     setYoutube(social.youtube || '');
+
+    setAmenities(info.amenities && typeof info.amenities === 'object' ? { ...info.amenities } : {});
+    setAmenitiesNotes(info.amenitiesNotes || '');
 
     const initialSchedule: Record<string, TimeSlot[]> = {};
     for (const d of WEEK_DAYS) {
@@ -104,13 +259,102 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
     setExceptions(Array.isArray(bh.exceptions) ? bh.exceptions : []);
   }, [tenant]);
 
-  function handleMapsUrlChange(val: string) {
-    setMapsUrl(val);
-    const coordMatch = val.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || val.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (coordMatch) {
-      setLatitude(coordMatch[1]);
-      setLongitude(coordMatch[2]);
+  const activeLocation = useMemo(
+    () => locations.find((l) => l.id === selectedLocId) || locations[0] || null,
+    [locations, selectedLocId]
+  );
+
+  function updateActiveLocation(patch: Partial<StoreLocationItem>) {
+    if (!activeLocation) return;
+    setLocations((prev) =>
+      prev.map((loc) => {
+        if (loc.id !== activeLocation.id) return loc;
+        const next = { ...loc, ...patch };
+        // Se alterou qualquer campo de endereço e o link do Maps estava vazio ou auto-gerado, atualiza automaticamente
+        const addressChanged =
+          'street' in patch ||
+          'number' in patch ||
+          'neighborhood' in patch ||
+          'city' in patch ||
+          'state' in patch;
+        if (addressChanged) {
+          const isAutoMaps = !loc.mapsUrl || loc.mapsUrl.includes('google.com/maps/search/?api=1');
+          if (isAutoMaps) {
+            next.mapsUrl = buildSmartMapsUrl(tenant?.name || '', next);
+          }
+          const isAutoReview = !loc.googleReviewUrl || loc.googleReviewUrl.includes('google.com/search?q=');
+          if (isAutoReview && (next.city || tenant?.name)) {
+            next.googleReviewUrl = buildSmartReviewUrl(tenant?.name || '', next);
+          }
+        }
+        return next;
+      })
+    );
+  }
+
+  function handleAddLocation() {
+    const newLoc = createEmptyLocation(locations.length + 1, locations.length === 0);
+    setLocations((prev) => [...prev, newLoc]);
+    setSelectedLocId(newLoc.id);
+    onNotify(`Nova unidade "${newLoc.name}" adicionada. Preencha o endereço e clique em Salvar.`);
+  }
+
+  function handleRemoveLocation(id: string) {
+    if (locations.length <= 1) {
+      onNotify('Mantenha pelo menos uma unidade principal cadastrada.');
+      return;
     }
+    const remaining = locations.filter((l) => l.id !== id);
+    if (!remaining.some((l) => l.isPrimary) && remaining[0]) {
+      remaining[0] = { ...remaining[0], isPrimary: true };
+    }
+    setLocations(remaining);
+    setSelectedLocId(remaining[0]?.id || '');
+  }
+
+  function handleSetPrimaryLocation(id: string) {
+    setLocations((prev) => prev.map((l) => ({ ...l, isPrimary: l.id === id })));
+    onNotify('Unidade principal atualizada.');
+  }
+
+  async function handleAutoGeocode() {
+    if (!activeLocation) return;
+    const addr = composeFullAddress(activeLocation);
+    if (!addr || addr.length < 4) {
+      onNotify('Preencha pelo menos Rua e Cidade para localizar automaticamente no Google Maps.');
+      return;
+    }
+    setGeocoding(true);
+    try {
+      const params = new URLSearchParams({
+        q: addr,
+        companyName: tenant?.name || ''
+      });
+      const res = await apiFetch(`/api/utils/geocode?${params.toString()}`);
+      if (res.result) {
+        updateActiveLocation({
+          mapsUrl: res.result.mapsUrl,
+          latitude: res.result.latitude,
+          longitude: res.result.longitude,
+          ...(activeLocation.googleReviewUrl ? {} : { googleReviewUrl: res.result.reviewSearchUrl })
+        });
+        onNotify(
+          res.result.latitude
+            ? 'Link do Google Maps e Pin de localização preenchidos automaticamente!'
+            : 'Link do Google Maps gerado a partir do seu endereço!'
+        );
+      }
+    } catch (err: any) {
+      const fallbackMaps = buildSmartMapsUrl(tenant?.name || '', activeLocation);
+      updateActiveLocation({ mapsUrl: fallbackMaps });
+      onNotify(`Link do Google Maps montado pelo endereço (${err.message}).`);
+    } finally {
+      setGeocoding(false);
+    }
+  }
+
+  function toggleAmenity(key: string) {
+    setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
   function toggleDayOpen(dayKey: string) {
@@ -125,53 +369,50 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
 
   function updateSlot(dayKey: string, idx: number, field: 'start' | 'end', value: string) {
     setSchedule((prev) => {
-      const list = [...(prev[dayKey] || [])];
-      list[idx] = { ...list[idx], [field]: value };
-      return { ...prev, [dayKey]: list };
+      const slots = [...(prev[dayKey] || [])];
+      slots[idx] = { ...slots[idx], [field]: value };
+      return { ...prev, [dayKey]: slots };
     });
   }
 
-  function addSlot(dayKey: string) {
+  function addSecondSlot(dayKey: string) {
     setSchedule((prev) => {
-      const list = [...(prev[dayKey] || [])];
-      if (list.length >= 2) return prev;
-      list.push({ start: '13:30', end: '18:00' });
-      return { ...prev, [dayKey]: list };
+      const slots = [...(prev[dayKey] || [])];
+      if (slots.length === 1) {
+        slots[0] = { start: slots[0].start || '08:00', end: '12:00' };
+        slots.push({ start: '13:30', end: '18:00' });
+      }
+      return { ...prev, [dayKey]: slots };
     });
   }
 
-  function removeSlot(dayKey: string, idx: number) {
+  function removeSecondSlot(dayKey: string) {
     setSchedule((prev) => {
-      const list = [...(prev[dayKey] || [])].filter((_, i) => i !== idx);
-      return { ...prev, [dayKey]: list };
+      const slots = [...(prev[dayKey] || [])];
+      if (slots.length > 1) {
+        return { ...prev, [dayKey]: [{ start: slots[0].start, end: slots[slots.length - 1].end }] };
+      }
+      return prev;
     });
-  }
-
-  function copyMondayToWeekdays() {
-    const monday = schedule['1'] || [{ start: '08:00', end: '18:00' }];
-    setSchedule((prev) => ({
-      ...prev,
-      '2': monday.map((s) => ({ ...s })),
-      '3': monday.map((s) => ({ ...s })),
-      '4': monday.map((s) => ({ ...s })),
-      '5': monday.map((s) => ({ ...s }))
-    }));
-    onNotify('Horário de segunda-feira copiado para terça a sexta.');
   }
 
   function handleAddException(e: React.FormEvent) {
     e.preventDefault();
-    if (!newExDate || !newExReason.trim()) return;
+    if (!newExDate || !newExReason.trim()) {
+      onNotify('Escolha a data no calendário e o motivo do feriado / data especial.');
+      return;
+    }
     const item: ScheduleException = {
       date: newExDate,
       type: newExType,
       reason: newExReason.trim(),
-      ...(newExType === 'horario_especial'
-        ? { specialHours: { open: newExOpen, close: newExClose } }
-        : { returnDate: newExReturn.trim() || undefined })
+      returnDate: newExReturn || undefined,
+      specialHours:
+        newExType === 'horario_especial' ? { open: newExOpen, close: newExClose } : undefined
     };
+
     setExceptions((prev) => {
-      const filtered = prev.filter((ex) => ex.date !== item.date);
+      const filtered = prev.filter((ex) => ex.date !== newExDate);
       return [...filtered, item].sort((a, b) => a.date.localeCompare(b.date));
     });
     setNewExDate('');
@@ -179,23 +420,19 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
     setNewExReturn('');
   }
 
-  function removeException(date: string) {
+  function handleRemoveException(date: string) {
     setExceptions((prev) => prev.filter((ex) => ex.date !== date));
   }
 
   async function handleImportNationalHolidays() {
     setImportingHolidays(true);
     try {
-      const res = await apiFetch(`/api/system/holidays/${holidayYear}`);
-      const list = Array.isArray(res.holidays) ? res.holidays : [];
-      if (list.length === 0) {
-        onNotify('Nenhum feriado retornado para este ano.');
-        return;
-      }
+      const res = await apiFetch(`/api/holidays/br/${holidayYear}`);
+      const list: Array<{ date: string; name: string }> = res.holidays || [];
+      let added = 0;
       setExceptions((prev) => {
         const existingDates = new Set(prev.map((x) => x.date));
         const merged = [...prev];
-        let added = 0;
         for (const h of list) {
           if (!existingDates.has(h.date)) {
             merged.push({
@@ -206,434 +443,692 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
             added += 1;
           }
         }
-        onNotify(
-          `${added} feriados nacionais de ${holidayYear} importados (clique em Salvar para confirmar).`
-        );
         return merged.sort((a, b) => a.date.localeCompare(b.date));
       });
+      onNotify(`${added} feriados nacionais de ${holidayYear} importados! Clique em "Salvar Dados Comerciais".`);
     } catch (err: any) {
-      onNotify(err.message || 'Falha ao importar feriados.');
+      onNotify(`Erro ao importar feriados: ${err.message}`);
     } finally {
       setImportingHolidays(false);
     }
   }
 
-  async function handleSaveAll(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSaveAll() {
+    if (!tenant?.slug) return;
     setSaving(true);
     try {
-      const currentSettings = tenant?.parsedSettings || tenant?.settings || {};
-      const parsedLat = latitude.trim() !== '' && Number.isFinite(Number(latitude.replace(',', '.')))
-        ? Number(latitude.replace(',', '.'))
-        : null;
-      const parsedLng = longitude.trim() !== '' && Number.isFinite(Number(longitude.replace(',', '.')))
-        ? Number(longitude.replace(',', '.'))
-        : null;
+      const primaryLoc = locations.find((l) => l.isPrimary) || locations[0];
+      const normalizedLocations = locations.map((loc, idx) => {
+        const autoMaps = loc.mapsUrl.trim() || buildSmartMapsUrl(tenant.name || '', loc);
+        return {
+          ...loc,
+          name: loc.name.trim() || (idx === 0 ? 'Matriz' : `Filial ${idx + 1}`),
+          mapsUrl: autoMaps,
+          address: composeFullAddress(loc)
+        };
+      });
 
-      const updatedStoreInfo = {
-        ...(currentSettings.storeInfo || {}),
-        address: address.trim(),
-        city: city.trim(),
-        mapsUrl: mapsUrl.trim(),
-        latitude: parsedLat,
-        longitude: parsedLng,
-        googleReviewUrl: googleReviewUrl.trim(),
-        phone: phone.trim(),
-        website: website.trim(),
-        socialLinks: {
-          instagram: instagram.trim(),
-          facebook: facebook.trim(),
-          tiktok: tiktok.trim(),
-          youtube: youtube.trim()
+      const primaryFullAddress = primaryLoc ? composeFullAddress(primaryLoc) : '';
+      const primaryCityUf = primaryLoc
+        ? [primaryLoc.city, primaryLoc.state].filter(Boolean).join(' - ')
+        : '';
+
+      const currentSettings = tenant.parsedSettings || tenant.settings || {};
+      const updatedSettings = {
+        ...currentSettings,
+        storeInfo: {
+          ...(currentSettings.storeInfo || {}),
+          address: primaryFullAddress,
+          city: primaryCityUf,
+          referencePoint: primaryLoc?.referencePoint || '',
+          mapsUrl: primaryLoc?.mapsUrl || buildSmartMapsUrl(tenant.name || '', primaryLoc),
+          latitude: primaryLoc?.latitude ?? null,
+          longitude: primaryLoc?.longitude ?? null,
+          googleReviewUrl: primaryLoc?.googleReviewUrl || '',
+          phone: primaryLoc?.phone || '',
+          website: website.trim(),
+          locations: normalizedLocations,
+          amenities,
+          amenitiesNotes: amenitiesNotes.trim(),
+          socialLinks: {
+            instagram: instagram.trim(),
+            facebook: facebook.trim(),
+            tiktok: tiktok.trim(),
+            youtube: youtube.trim()
+          }
+        },
+        businessHours: {
+          ...(currentSettings.businessHours || {}),
+          timezone: 'America/Sao_Paulo',
+          schedule,
+          exceptions
         }
-      };
-
-      const updatedBusinessHours = {
-        ...(currentSettings.businessHours || {}),
-        timezone: currentSettings.businessHours?.timezone || 'America/Sao_Paulo',
-        schedule,
-        exceptions
       };
 
       await apiFetch(`/api/tenants/${tenant.slug}/settings`, {
         method: 'PUT',
-        body: JSON.stringify({
-          settings: {
-            storeInfo: updatedStoreInfo,
-            businessHours: updatedBusinessHours
-          }
-        })
+        body: JSON.stringify({ settings: updatedSettings })
       });
-
       await onSaved();
-      onNotify('Endereço, avaliação Google, coordenadas, redes sociais e horários salvos!');
+      onNotify('Dados comerciais, unidades, comodidades, horários e feriados salvos com sucesso!');
     } catch (err: any) {
-      onNotify(err.message || 'Erro ao salvar configurações da empresa.');
+      onNotify(err.message);
     } finally {
       setSaving(false);
     }
   }
 
+  const calendarCustomHolidays = useMemo(
+    () => exceptions.map((ex) => ({ date: ex.date, name: ex.reason, isCustom: true })),
+    [exceptions]
+  );
+
   return (
-    <form onSubmit={handleSaveAll} className="space-y-6 animate-fade-up">
-      {/* Barra superior com ação Salvar */}
-      <div className="nx-spotlight-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold text-[var(--nx-text)]">
-            Localização, Avaliação Google, Redes Sociais, Horários & Feriados
-          </h2>
-          <p className="text-xs text-[var(--nx-muted)] mt-0.5">
-            O bot do WhatsApp usa estes dados para enviar Pin no Mapa, link direto de avaliação no Google Meu Negócio e informar horários em feriados.
-          </p>
-        </div>
-
-        <button type="submit" disabled={saving} className="nx-btn-primary px-5 py-2.5 text-xs shrink-0">
-          {saving ? 'Salvando...' : 'Salvar Empresa & Horários'}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Coluna Esquerda: Localização + Redes Sociais */}
-        <div className="lg:col-span-5 space-y-5">
-          {/* Endereço e Contato */}
-          <div className="nx-spotlight-card p-5 space-y-4">
-            <div className="flex items-center gap-3 text-sm font-bold text-[var(--nx-text)]">
-              <span className="nx-icon-tile nx-icon-tile--sm">
-                <MapPin className="w-4 h-4" />
-              </span>
-              Endereço, Pin de Mapa & Avaliação Google
+    <div className="space-y-6 animate-fade-up" data-testid="dados-comerciais-tab">
+      {/* ================================================================= */}
+      {/* BLOCO 1: UNIDADES, ENDEREÇO ESTRUTURADO & GOOGLE MAPS / AVALIAÇÃO */}
+      {/* ================================================================= */}
+      <div className="nx-spotlight-card p-5 sm:p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="nx-icon-tile nx-icon-tile--sm">
+              <Building2 className="w-4 h-4" />
             </div>
-
-            <div className="space-y-3">
-              <div className="nx-field !mb-0">
-                <input
-                  type="text"
-                  placeholder=" "
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
-                <AutoScrollLabel>Endereço completo (Rua, nº, bairro)</AutoScrollLabel>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="nx-field !mb-0">
-                  <input
-                    type="text"
-                    placeholder=" "
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                  />
-                  <AutoScrollLabel>Cidade / UF</AutoScrollLabel>
-                </div>
-                <div className="nx-field !mb-0">
-                  <input
-                    type="text"
-                    placeholder=" "
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                  <AutoScrollLabel>Telefone comercial (vCard)</AutoScrollLabel>
-                </div>
-              </div>
-
-              <div className="nx-field !mb-0">
-                <input
-                  type="url"
-                  placeholder=" "
-                  value={mapsUrl}
-                  onChange={(e) => handleMapsUrlChange(e.target.value)}
-                />
-                <AutoScrollLabel>Link Google Maps (cole URL com @lat,lng para preencher o Pin)</AutoScrollLabel>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="nx-field !mb-0">
-                  <input
-                    type="text"
-                    placeholder=" "
-                    value={latitude}
-                    onChange={(e) => setLatitude(e.target.value)}
-                  />
-                  <AutoScrollLabel>Latitude (ex: -29.574)</AutoScrollLabel>
-                </div>
-                <div className="nx-field !mb-0">
-                  <input
-                    type="text"
-                    placeholder=" "
-                    value={longitude}
-                    onChange={(e) => setLongitude(e.target.value)}
-                  />
-                  <AutoScrollLabel>Longitude (ex: -50.791)</AutoScrollLabel>
-                </div>
-              </div>
-
-              <div className="nx-field !mb-0">
-                <input
-                  type="url"
-                  placeholder=" "
-                  value={googleReviewUrl}
-                  onChange={(e) => setGoogleReviewUrl(e.target.value)}
-                />
-                <AutoScrollLabel>Link de Avaliação Google Meu Negócio (g.page/r/.../review)</AutoScrollLabel>
-              </div>
-              <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed">
-                Quando configurado, o bot ou atendente pode enviar esse link direto no WhatsApp para o cliente avaliar sua empresa com 5 estrelas no Google.
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-[var(--nx-text)]">
+                Unidades & Localização Comercial
+              </h3>
+              <p className="text-xs text-[var(--nx-muted)]">
+                Cadastre um ou mais endereços da empresa. O bot gera o Pin do mapa, informa pontos de referência e sabe onde cada produto/serviço está disponível.
               </p>
-
-              <div className="nx-field !mb-0">
-                <input
-                  type="url"
-                  placeholder=" "
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                />
-                <AutoScrollLabel>Site oficial (opcional)</AutoScrollLabel>
-              </div>
             </div>
           </div>
 
-          {/* Redes Sociais */}
-          <div className="nx-spotlight-card p-5 space-y-4">
-            <div className="flex items-center gap-3 text-sm font-bold text-[var(--nx-text)]">
-              <span className="nx-icon-tile nx-icon-tile--sm">
-                <Share2 className="w-4 h-4" />
-              </span>
-              Links para Redes Sociais
-            </div>
-
-            <div className="space-y-3">
-              <div className="nx-field nx-field--icon-left !mb-0">
-                <span className="nx-field-prefix" aria-hidden="true" style={{ color: '#E1306C' }}>
-                  <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="2" width="20" height="20" rx="5" />
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder=" "
-                  value={instagram}
-                  onChange={(e) => setInstagram(e.target.value)}
-                />
-                <AutoScrollLabel>Instagram (@perfil ou URL)</AutoScrollLabel>
-              </div>
-
-              <div className="nx-field nx-field--icon-left !mb-0">
-                <span className="nx-field-prefix" aria-hidden="true" style={{ color: '#1877F2' }}>
-                  <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="currentColor">
-                    <path d="M13.5 21v-8.2h2.75l.42-3.2H13.5V7.55c0-.93.26-1.56 1.58-1.56h1.69V3.13c-.29-.04-1.3-.13-2.47-.13-2.45 0-4.12 1.5-4.12 4.24v2.36H7.4v3.2h2.78V21h3.32Z" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder=" "
-                  value={facebook}
-                  onChange={(e) => setFacebook(e.target.value)}
-                />
-                <AutoScrollLabel>Facebook (URL da página)</AutoScrollLabel>
-              </div>
-
-              <div className="nx-field nx-field--icon-left !mb-0">
-                <span className="nx-field-prefix text-[var(--nx-text)]" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="currentColor">
-                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1Z" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder=" "
-                  value={tiktok}
-                  onChange={(e) => setTiktok(e.target.value)}
-                />
-                <AutoScrollLabel>TikTok (@perfil ou URL)</AutoScrollLabel>
-              </div>
-
-              <div className="nx-field nx-field--icon-left !mb-0">
-                <span className="nx-field-prefix" aria-hidden="true" style={{ color: '#FF0000' }}>
-                  <svg viewBox="0 0 24 24" className="w-[19px] h-[19px]" fill="currentColor">
-                    <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 0 0 .5 6.19 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.81 3.02 3.02 0 0 0 2.12 2.14c1.88.55 9.38.55 9.38.55s7.5 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.81ZM9.55 15.57V8.43L15.82 12l-6.27 3.57Z" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder=" "
-                  value={youtube}
-                  onChange={(e) => setYoutube(e.target.value)}
-                />
-                <AutoScrollLabel>YouTube (canal ou URL)</AutoScrollLabel>
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={handleAddLocation}
+            data-testid="btn-add-location"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:border-[var(--nx-primary)] text-xs font-semibold text-[var(--nx-text)] transition-colors shrink-0 self-start sm:self-center"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Adicionar unidade
+          </button>
         </div>
 
-        {/* Coluna Direita: Grade Semanal + Feriados/Datas Especiais */}
-        <div className="lg:col-span-7 space-y-5">
-          {/* Horários de Funcionamento */}
-          <div className="nx-spotlight-card p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="nx-icon-tile nx-icon-tile--sm">
-                  <Clock className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 className="text-sm font-bold text-[var(--nx-text)]">
-                    Horários de Atendimento Semanal
-                  </h3>
-                  <p className="text-[11px] text-[var(--nx-muted)]">
-                    Ative os dias abertos e defina os turnos de atendimento do bot.
-                  </p>
-                </div>
-              </div>
+        {/* Seletor de unidades quando há 1 ou mais locais */}
+        <div className="flex items-center gap-2 flex-wrap pb-3 border-b border-[var(--nx-border)]">
+          {locations.map((loc, idx) => {
+            const isSelected = activeLocation?.id === loc.id;
+            return (
               <button
+                key={loc.id}
                 type="button"
-                onClick={copyMondayToWeekdays}
-                className="nx-btn-secondary px-3.5 py-1.5 text-[11px]"
+                onClick={() => setSelectedLocId(loc.id)}
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                  isSelected
+                    ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)] border-transparent shadow-sm'
+                    : 'bg-[var(--nx-bg)] text-[var(--nx-muted)] border-[var(--nx-border-strong)] hover:text-[var(--nx-text)]'
+                }`}
               >
-                Copiar Segunda para Seg–Sex
-              </button>
-            </div>
-
-            <div className="divide-y divide-[var(--nx-border)] border border-[var(--nx-border)] rounded-2xl bg-[var(--nx-bg)]/80 overflow-hidden">
-              {WEEK_DAYS.map((day) => {
-                const slots = schedule[day.key] || [];
-                const isOpen = slots.length > 0;
-                return (
-                  <div
-                    key={day.key}
-                    className={`px-3.5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
-                      isOpen
-                        ? 'hover:bg-[var(--nx-surface)]/70'
-                        : 'opacity-75 hover:opacity-100 hover:bg-[var(--nx-surface)]/40'
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>{loc.name || (idx === 0 ? 'Matriz' : `Filial ${idx + 1}`)}</span>
+                {loc.isPrimary && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[9.5px] font-bold uppercase ${
+                      isSelected
+                        ? 'bg-black/15 text-current'
+                        : 'bg-[var(--nx-volt-surface)] text-[var(--nx-volt-ink)] border border-[var(--nx-volt-border)]'
                     }`}
                   >
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={isOpen}
-                      onClick={() => toggleDayOpen(day.key)}
-                      className="flex items-center gap-3 min-w-[165px] text-left group cursor-pointer"
-                    >
-                      <span
-                        className="nx-checkbox"
-                        aria-checked={isOpen}
-                      >
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      </span>
-                      <span
-                        className={`text-xs font-semibold transition-colors ${
-                          isOpen
-                            ? 'text-[var(--nx-text)]'
-                            : 'text-[var(--nx-subtle)] group-hover:text-[var(--nx-muted)]'
-                        }`}
-                      >
-                        {day.label}
-                      </span>
-                    </button>
+                    Principal
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-                    {!isOpen ? (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-[var(--nx-surface-alt)] text-[var(--nx-subtle)] border border-[var(--nx-border)] self-end sm:self-auto">
-                        Fechado
-                      </span>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-2 flex-1 justify-end">
-                        {slots.map((slot, idx) => (
-                          <div key={idx} className="inline-flex items-center gap-1.5">
-                            <CustomTimePicker
-                              value={slot.start}
-                              onChange={(val) => updateSlot(day.key, idx, 'start', val)}
-                              ariaLabel={`Início ${day.label} turno ${idx + 1}`}
-                            />
-                            <span className="text-[11px] font-medium text-[var(--nx-subtle)] px-0.5">
-                              às
-                            </span>
-                            <CustomTimePicker
-                              value={slot.end}
-                              onChange={(val) => updateSlot(day.key, idx, 'end', val)}
-                              ariaLabel={`Término ${day.label} turno ${idx + 1}`}
-                            />
-                            {slots.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeSlot(day.key, idx)}
-                                className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--nx-error)] bg-[var(--nx-error-bg)] hover:opacity-90 transition-opacity"
-                                title="Remover turno"
-                                aria-label="Remover turno"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                        {slots.length < 2 && (
-                          <button
-                            type="button"
-                            onClick={() => addSlot(day.key)}
-                            className="px-3 py-1.5 rounded-full border border-dashed border-[var(--nx-border-strong)] bg-[var(--nx-surface)]/70 hover:border-[var(--nx-volt-border)] hover:bg-[var(--nx-volt-surface)] text-[11px] font-semibold text-[var(--nx-muted)] hover:text-[var(--nx-volt-ink)] transition-colors"
-                            title="Adicionar segundo turno (ex: após almoço)"
-                          >
-                            + 2º turno
-                          </button>
-                        )}
-                      </div>
+        {activeLocation && (
+          <div className="space-y-4">
+            {/* Linha 1: Nome da Unidade + Ações da Unidade */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+              <div className="sm:col-span-5">
+                <label className="block text-[11px] font-semibold text-[var(--nx-text)] mb-1">
+                  Nome da unidade / filial
+                </label>
+                <input
+                  type="text"
+                  value={activeLocation.name}
+                  onChange={(e) => updateActiveLocation({ name: e.target.value })}
+                  placeholder="Ex: Matriz - Centro ou Filial Shopping"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                />
+              </div>
+
+              <div className="sm:col-span-4">
+                <label className="block text-[11px] font-semibold text-[var(--nx-text)] mb-1">
+                  Telefone comercial (vCard)
+                </label>
+                <input
+                  type="text"
+                  value={activeLocation.phone}
+                  onChange={(e) => updateActiveLocation({ phone: e.target.value })}
+                  placeholder="(51) 99999-9999"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)] tabular-data"
+                />
+              </div>
+
+              <div className="sm:col-span-3 flex items-center justify-end gap-2">
+                {!activeLocation.isPrimary && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetPrimaryLocation(activeLocation.id)}
+                    className="px-3 py-2 rounded-xl border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:border-[var(--nx-primary)] text-[11px] font-semibold text-[var(--nx-text)] transition-colors"
+                  >
+                    Definir principal
+                  </button>
+                )}
+                {locations.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveLocation(activeLocation.id)}
+                    className="p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors"
+                    title="Remover unidade"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Linha 2: Endereço separado em caixas (Rua, Número, Bairro, Cidade, UF) */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-6">
+                <label className="block text-[11px] font-semibold text-[var(--nx-text)] mb-1">
+                  Rua / Logradouro
+                </label>
+                <input
+                  type="text"
+                  value={activeLocation.street}
+                  onChange={(e) => updateActiveLocation({ street: e.target.value })}
+                  placeholder="Ex: Rua Osvaldo Cruz"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-semibold text-[var(--nx-text)] mb-1">
+                  Número
+                </label>
+                <input
+                  type="text"
+                  value={activeLocation.number}
+                  onChange={(e) => updateActiveLocation({ number: e.target.value })}
+                  placeholder="417"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)] tabular-data"
+                />
+              </div>
+              <div className="sm:col-span-4">
+                <label className="block text-[11px] font-semibold text-[var(--nx-text)] mb-1">
+                  Bairro
+                </label>
+                <input
+                  type="text"
+                  value={activeLocation.neighborhood}
+                  onChange={(e) => updateActiveLocation({ neighborhood: e.target.value })}
+                  placeholder="Ex: Centro"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                />
+              </div>
+            </div>
+
+            {/* Linha 3: Cidade, UF e Ponto de Referência */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-4">
+                <label className="block text-[11px] font-semibold text-[var(--nx-text)] mb-1">
+                  Cidade
+                </label>
+                <input
+                  type="text"
+                  value={activeLocation.city}
+                  onChange={(e) => updateActiveLocation({ city: e.target.value })}
+                  placeholder="Ex: Igrejinha"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-semibold text-[var(--nx-text)] mb-1">
+                  UF
+                </label>
+                <CustomSelect
+                  variant="compact"
+                  value={activeLocation.state || 'RS'}
+                  onChange={(val) => updateActiveLocation({ state: val })}
+                  options={BRAZIL_UFS.map((uf) => ({ value: uf, label: uf }))}
+                  buttonClassName="py-2.5 bg-[var(--nx-bg)] rounded-xl"
+                />
+              </div>
+              <div className="sm:col-span-6">
+                <label className="block text-[11px] font-semibold text-[var(--nx-text)] mb-1">
+                  Ponto de referência
+                </label>
+                <input
+                  type="text"
+                  value={activeLocation.referencePoint}
+                  onChange={(e) => updateActiveLocation({ referencePoint: e.target.value })}
+                  placeholder="Ex: Ao lado da farmácia central / em frente à praça"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                />
+              </div>
+            </div>
+
+            {/* Linha 4: Google Maps automático + Link de Avaliação Google */}
+            <div className="p-4 rounded-2xl bg-[var(--nx-bg)] border border-[var(--nx-border)] space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--nx-text)]">
+                  <Sparkles className="w-3.5 h-3.5 text-[var(--nx-volt-ink)]" />
+                  <span>Google Maps & Avaliação Google (preenchimento automático)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoGeocode}
+                  disabled={geocoding}
+                  data-testid="btn-auto-geocode"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--nx-volt-surface)] text-[var(--nx-volt-ink)] border border-[var(--nx-volt-border)] text-[11px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 self-start sm:self-auto"
+                >
+                  <Search className="w-3 h-3" />
+                  {geocoding ? 'Localizando...' : 'Buscar no Google Maps'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-[var(--nx-muted)]">
+                      Link do Google Maps
+                    </label>
+                    {activeLocation.mapsUrl && (
+                      <a
+                        href={activeLocation.mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[var(--nx-volt-ink)] hover:underline"
+                      >
+                        Abrir mapa <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
                     )}
                   </div>
-                );
-              })}
+                  <input
+                    type="url"
+                    value={activeLocation.mapsUrl}
+                    onChange={(e) => updateActiveLocation({ mapsUrl: e.target.value })}
+                    placeholder="Preenchido automaticamente ao digitar o endereço"
+                    className="w-full px-3 py-2 rounded-xl bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-[var(--nx-muted)] flex items-center gap-1">
+                      <Star className="w-3 h-3 text-amber-500" />
+                      Link de Avaliação Google Meu Negócio
+                    </label>
+                    {activeLocation.googleReviewUrl && (
+                      <a
+                        href={activeLocation.googleReviewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[var(--nx-volt-ink)] hover:underline"
+                      >
+                        Testar link <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    value={activeLocation.googleReviewUrl}
+                    onChange={(e) => updateActiveLocation({ googleReviewUrl: e.target.value })}
+                    placeholder="Preenchido automaticamente ou cole seu g.page/r/.../review"
+                    className="w-full px-3 py-2 rounded-xl bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-[var(--nx-subtle)]">
+                Coordenadas do Pin do WhatsApp são capturadas automaticamente em segundo plano — você não precisa digitar latitude nem longitude.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ================================================================= */}
+      {/* BLOCO 2: COMODIDADES & FACILIDADES (LADO A LADO COM REDES SOCIAIS) */}
+      {/* ================================================================= */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* Comodidades para o Bot responder sem intervenção humana (7 cols) */}
+        <div className="xl:col-span-7 nx-spotlight-card p-5 sm:p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="nx-icon-tile nx-icon-tile--sm">
+              <CheckSquare className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[var(--nx-text)]">
+                Comodidades & Facilidades do Local
+              </h3>
+              <p className="text-xs text-[var(--nx-muted)]">
+                Marque o que sua empresa oferece — o atendente NEO responde dúvidas sobre estacionamento, acessibilidade e tele-entrega automaticamente.
+              </p>
             </div>
           </div>
 
-          {/* Feriados & Datas Especiais */}
-          <div className="nx-spotlight-card p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="nx-icon-tile nx-icon-tile--sm">
-                  <Calendar className="w-4 h-4" />
-                </span>
-                <span className="text-sm font-bold text-[var(--nx-text)]">
-                  Feriados & Horários Especiais
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <CustomSelect
-                  variant="compact"
-                  value={holidayYear}
-                  onChange={(val) => setHolidayYear(val)}
-                  options={[
-                    { value: '2026', label: '2026' },
-                    { value: '2027', label: '2027' }
-                  ]}
-                  buttonClassName="min-w-[82px]"
-                />
-                <button
-                  type="button"
-                  onClick={handleImportNationalHolidays}
-                  disabled={importingHolidays}
-                  className="nx-btn-secondary px-3.5 py-1.5 text-xs"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {AMENITY_OPTIONS.map((item) => {
+              const checked = Boolean(amenities[item.key]);
+              return (
+                <div
+                  key={item.key}
+                  onClick={() => toggleAmenity(item.key)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleAmenity(item.key);
+                    }
+                  }}
+                  className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                    checked
+                      ? 'border-[var(--nx-volt-border)] bg-[var(--nx-volt-surface)]/45'
+                      : 'border-[var(--nx-border)] bg-[var(--nx-bg)] hover:border-[var(--nx-border-strong)]'
+                  }`}
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  {importingHolidays ? 'Importando...' : 'Importar Feriados BR'}
-                </button>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-[var(--nx-text)] truncate">
+                      {item.label}
+                    </div>
+                    <div className="text-[10.5px] text-[var(--nx-muted)] truncate">
+                      {item.desc}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={checked}
+                    aria-label={item.label}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleAmenity(item.key);
+                    }}
+                    className="nx-checkbox shrink-0"
+                  >
+                    {checked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-[var(--nx-text)] mb-1">
+              Outras informações rápidas do local (opcional)
+            </label>
+            <input
+              type="text"
+              value={amenitiesNotes}
+              onChange={(e) => setAmenitiesNotes(e.target.value)}
+              placeholder="Ex: Entregamos grátis acima de R$ 150 na cidade; rampa lateral na rua dos fundos."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+            />
+          </div>
+        </div>
+
+        {/* Redes Sociais & Site Oficial (5 cols) */}
+        <div className="xl:col-span-5 nx-spotlight-card p-5 sm:p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="nx-icon-tile nx-icon-tile--sm">
+              <Share2 className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[var(--nx-text)]">
+                Site & Redes Sociais
+              </h3>
+              <p className="text-xs text-[var(--nx-muted)]">
+                O bot envia os links oficiais sempre que o cliente pedir Instagram, catálogo online ou site.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--nx-muted)] mb-1">
+                Site oficial (opcional)
+              </label>
+              <input
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://suaempresa.com.br"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--nx-muted)] mb-1">
+                Instagram
+              </label>
+              <input
+                type="text"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder="@suaempresa ou https://instagram.com/..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--nx-muted)] mb-1">
+                Facebook
+              </label>
+              <input
+                type="text"
+                value={facebook}
+                onChange={(e) => setFacebook(e.target.value)}
+                placeholder="https://facebook.com/suaempresa"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--nx-muted)] mb-1">
+                  TikTok
+                </label>
+                <input
+                  type="text"
+                  value={tiktok}
+                  onChange={(e) => setTiktok(e.target.value)}
+                  placeholder="@suaempresa"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--nx-muted)] mb-1">
+                  YouTube
+                </label>
+                <input
+                  type="text"
+                  value={youtube}
+                  onChange={(e) => setYoutube(e.target.value)}
+                  placeholder="https://youtube.com/@..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ================================================================= */}
+      {/* BLOCO 3: HORÁRIOS DE FUNCIONAMENTO & FERIADOS LADO A LADO         */}
+      {/* ================================================================= */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Card Esquerdo: Horários de Funcionamento */}
+        <div className="nx-spotlight-card p-5 sm:p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="nx-icon-tile nx-icon-tile--sm">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[var(--nx-text)]">
+                Horários de Funcionamento
+              </h3>
+              <p className="text-xs text-[var(--nx-muted)]">
+                Defina abertura, fechamento e intervalo de almoço de cada dia da semana.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            {WEEK_DAYS.map((day) => {
+              const slots = schedule[day.key] || [];
+              const isOpen = slots.length > 0;
+              return (
+                <div
+                  key={day.key}
+                  className="p-3 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)] flex flex-col gap-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={isOpen}
+                        aria-label={`Abrir em ${day.label}`}
+                        onClick={() => toggleDayOpen(day.key)}
+                        className="nx-checkbox"
+                      >
+                        {isOpen && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </button>
+                      <span className="text-xs font-semibold text-[var(--nx-text)]">
+                        {day.label}
+                      </span>
+                    </div>
+
+                    {isOpen ? (
+                      slots.length === 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => addSecondSlot(day.key)}
+                          className="text-[10.5px] font-semibold text-[var(--nx-volt-ink)] hover:underline"
+                        >
+                          + Intervalo almoço
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => removeSecondSlot(day.key)}
+                          className="text-[10.5px] font-medium text-[var(--nx-muted)] hover:text-[var(--nx-text)]"
+                        >
+                          Turno único
+                        </button>
+                      )
+                    ) : (
+                      <span className="text-[11px] font-medium text-[var(--nx-subtle)]">
+                        Fechado
+                      </span>
+                    )}
+                  </div>
+
+                  {isOpen && (
+                    <div className="flex flex-wrap items-center gap-2 pl-7">
+                      {slots.map((slot, idx) => (
+                        <div key={idx} className="inline-flex items-center gap-1.5">
+                          <CustomTimePicker
+                            value={slot.start}
+                            onChange={(val) => updateSlot(day.key, idx, 'start', val)}
+                          />
+                          <span className="text-[11px] text-[var(--nx-subtle)]">às</span>
+                          <CustomTimePicker
+                            value={slot.end}
+                            onChange={(val) => updateSlot(day.key, idx, 'end', val)}
+                          />
+                          {idx === 0 && slots.length > 1 && (
+                            <span className="text-[11px] text-[var(--nx-subtle)] mx-1">e</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Card Direito: Feriados & Datas Especiais com Calendário NEO */}
+        <div className="nx-spotlight-card p-5 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="nx-icon-tile nx-icon-tile--sm">
+                <Calendar className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[var(--nx-text)]">
+                  Feriados & Datas Especiais
+                </h3>
+                <p className="text-xs text-[var(--nx-muted)]">
+                  O calendário já destaca os feriados nacionais para facilitar o planejamento.
+                </p>
               </div>
             </div>
 
-            {/* Adicionar Data Especial / Feriado */}
-            <div className="p-3.5 rounded-2xl border border-[var(--nx-border)] bg-[var(--nx-bg)]/80 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <input
-                  type="date"
+            <div className="flex items-center gap-1.5 shrink-0">
+              <CustomSelect
+                variant="compact"
+                value={holidayYear}
+                onChange={(val) => setHolidayYear(val)}
+                options={[
+                  { value: String(new Date().getFullYear()), label: String(new Date().getFullYear()) },
+                  { value: String(new Date().getFullYear() + 1), label: String(new Date().getFullYear() + 1) }
+                ]}
+                buttonClassName="py-1.5 bg-[var(--nx-bg)] min-w-[78px]"
+              />
+              <button
+                type="button"
+                onClick={handleImportNationalHolidays}
+                disabled={importingHolidays}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:bg-[var(--nx-surface-alt)] text-[11px] font-semibold text-[var(--nx-text)] transition-colors disabled:opacity-50"
+              >
+                <Download className="w-3 h-3" />
+                {importingHolidays ? 'Importando...' : 'Importar BR'}
+              </button>
+            </div>
+          </div>
+
+          {/* Formulário com Calendário Personalizado NEO */}
+          <form
+            onSubmit={handleAddException}
+            className="p-3.5 rounded-2xl bg-[var(--nx-bg)] border border-[var(--nx-border)] space-y-3"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[10.5px] font-semibold text-[var(--nx-muted)] mb-1">
+                  Data do feriado / folga
+                </label>
+                <CustomDatePicker
                   value={newExDate}
-                  onChange={(e) => setNewExDate(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)] outline-none focus:border-[var(--nx-primary)]"
+                  onChange={setNewExDate}
+                  placeholder="Escolher data"
+                  ariaLabel="Data do feriado"
+                  customHolidays={calendarCustomHolidays}
+                  onHolidayDetected={(holName) => {
+                    if (!newExReason.trim()) setNewExReason(holName);
+                  }}
                 />
-                <input
-                  type="text"
-                  value={newExReason}
-                  onChange={(e) => setNewExReason(e.target.value)}
-                  placeholder="Motivo (ex: Feriado Municipal, Inventário)"
-                  className="px-3 py-2 rounded-xl border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)] outline-none focus:border-[var(--nx-primary)]"
-                />
+              </div>
+              <div>
+                <label className="block text-[10.5px] font-semibold text-[var(--nx-muted)] mb-1">
+                  Situação
+                </label>
                 <CustomSelect
                   variant="compact"
                   value={newExType}
@@ -642,96 +1137,123 @@ export const CompanyHoursTab: React.FC<CompanyHoursTabProps> = ({
                     { value: 'closed', label: 'Fechado o dia todo' },
                     { value: 'horario_especial', label: 'Horário especial' }
                   ]}
-                  className="w-full"
-                  buttonClassName="w-full py-2 !rounded-xl"
+                  buttonClassName="py-2 bg-[var(--nx-surface)] rounded-xl"
                 />
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2.5">
-                {newExType === 'horario_especial' ? (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-[var(--nx-muted)] font-medium">Abre:</span>
-                    <CustomTimePicker
-                      value={newExOpen}
-                      onChange={setNewExOpen}
-                      ariaLabel="Horário especial de abertura"
-                    />
-                    <span className="text-[var(--nx-muted)] font-medium">Fecha:</span>
-                    <CustomTimePicker
-                      value={newExClose}
-                      onChange={setNewExClose}
-                      ariaLabel="Horário especial de fechamento"
-                    />
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={newExReturn}
-                    onChange={(e) => setNewExReturn(e.target.value)}
-                    placeholder="Previsão de retorno (opcional, ex: sexta às 08h)"
-                    className="flex-1 min-w-[200px] px-3 py-2 rounded-xl border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-xs text-[var(--nx-text)] outline-none focus:border-[var(--nx-primary)]"
-                  />
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleAddException}
-                  className="nx-btn-primary px-4 py-2 text-xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Adicionar Data
-                </button>
               </div>
             </div>
 
-            {/* Lista de Datas Programadas */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[10.5px] font-semibold text-[var(--nx-muted)] mb-1">
+                  Motivo / Nome da data
+                </label>
+                <input
+                  type="text"
+                  value={newExReason}
+                  onChange={(e) => setNewExReason(e.target.value)}
+                  placeholder="Ex: Feriado Municipal, Natal..."
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--nx-surface)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10.5px] font-semibold text-[var(--nx-muted)] mb-1">
+                  Data de retorno (opcional)
+                </label>
+                <CustomDatePicker
+                  value={newExReturn}
+                  onChange={setNewExReturn}
+                  placeholder="Opcional"
+                  ariaLabel="Data de retorno"
+                  customHolidays={calendarCustomHolidays}
+                />
+              </div>
+            </div>
+
+            {newExType === 'horario_especial' && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-[11px] font-medium text-[var(--nx-muted)]">Expediente especial:</span>
+                <CustomTimePicker value={newExOpen} onChange={setNewExOpen} />
+                <span className="text-[11px] text-[var(--nx-subtle)]">às</span>
+                <CustomTimePicker value={newExClose} onChange={setNewExClose} />
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <button type="submit" className="nx-btn-primary px-4 py-2 text-xs">
+                <Plus className="w-3.5 h-3.5" />
+                Adicionar data
+              </button>
+            </div>
+          </form>
+
+          {/* Lista de feriados cadastrados */}
+          <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
             {exceptions.length === 0 ? (
-              <div className="text-xs text-[var(--nx-subtle)] text-center py-4">
-                Nenhum feriado ou horário especial programado.
+              <div className="py-8 text-center text-xs text-[var(--nx-muted)] rounded-xl border border-dashed border-[var(--nx-border)]">
+                Nenhum feriado ou folga cadastrada ainda. Clique no calendário acima ou importe os feriados nacionais.
               </div>
             ) : (
-              <div className="max-h-64 overflow-y-auto divide-y divide-[var(--nx-border)] border border-[var(--nx-border)] rounded-lg bg-[var(--nx-bg)]">
-                {exceptions.map((ex) => {
-                  const [y, m, d] = String(ex.date).split('-');
-                  const brDate = d && m && y ? `${d}/${m}/${y}` : ex.date;
-                  return (
-                    <div
-                      key={ex.date}
-                      className="px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="tabular-data font-bold text-[var(--nx-text)] tabular-data shrink-0">
+              exceptions.map((ex) => {
+                const [y, m, d] = (ex.date || '').split('-');
+                const brDate = d && m && y ? `${d}/${m}/${y}` : ex.date;
+                return (
+                  <div
+                    key={ex.date}
+                    className="p-3 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)] flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-[var(--nx-text)] tabular-data">
                           {brDate}
                         </span>
-                        <div className="min-w-0">
-                          <div className="font-medium text-[var(--nx-text)] truncate">
-                            {ex.reason}
-                          </div>
-                          <div className="text-[11px] text-[var(--nx-muted)]">
-                            {ex.type === 'horario_especial' && ex.specialHours
-                              ? `Horário especial: ${ex.specialHours.open} às ${ex.specialHours.close}`
-                              : `Fechado${ex.returnDate ? ` (Retorno: ${ex.returnDate})` : ''}`}
-                          </div>
-                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            ex.type === 'closed'
+                              ? 'bg-rose-500/12 text-rose-600 dark:text-rose-300 border border-rose-500/25'
+                              : 'bg-amber-500/12 text-amber-700 dark:text-amber-300 border border-amber-500/25'
+                          }`}
+                        >
+                          {ex.type === 'closed'
+                            ? 'Fechado'
+                            : `Especial ${ex.specialHours?.open || ''}–${ex.specialHours?.close || ''}`}
+                        </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeException(ex.date)}
-                        className="p-1.5 text-[var(--nx-muted)] hover:text-[var(--nx-error)] shrink-0"
-                        title="Remover data"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="text-[11px] text-[var(--nx-muted)] truncate mt-0.5">
+                        {ex.reason}
+                        {ex.returnDate ? ` · Retorno: ${ex.returnDate.split('-').reverse().join('/')}` : ''}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveException(ex.date)}
+                      className="p-1.5 rounded-lg text-[var(--nx-subtle)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors shrink-0"
+                      title="Remover data"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
       </div>
-    </form>
+
+      {/* Barra inferior limpa de salvamento */}
+      <div className="flex items-center justify-end pt-2">
+        <button
+          type="button"
+          onClick={handleSaveAll}
+          disabled={saving}
+          data-testid="btn-save-dados-comerciais"
+          className="nx-btn-primary px-6 py-2.5 text-xs shadow-lg"
+        >
+          <Save className="w-4 h-4" />
+          {saving ? 'Salvando dados comerciais...' : 'Salvar Dados Comerciais'}
+        </button>
+      </div>
+    </div>
   );
 };
-
-export default CompanyHoursTab;

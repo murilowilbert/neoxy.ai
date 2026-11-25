@@ -17,7 +17,8 @@ function formatCatalogItem(item) {
   if (!item) return item;
   return {
     ...item,
-    mediaGallery: parseJsonSafe(item.mediaGallery, [])
+    mediaGallery: parseJsonSafe(item.mediaGallery, []),
+    availableLocationIds: parseJsonSafe(item.availableLocationIds, [])
   };
 }
 
@@ -31,7 +32,8 @@ function formatService(s) {
   if (!s) return s;
   return {
     ...s,
-    variants: parseJsonSafe(s.variants, [])
+    variants: parseJsonSafe(s.variants, []),
+    availableLocationIds: parseJsonSafe(s.availableLocationIds, [])
   };
 }
 
@@ -154,6 +156,11 @@ async function upsertCatalogItem(tenantId, data) {
     ? data.mediaGallery
     : null;
 
+  const availableLocationIdsJson =
+    Array.isArray(data.availableLocationIds) && data.availableLocationIds.length > 0
+      ? JSON.stringify(data.availableLocationIds)
+      : null;
+
   const payload = {
     code,
     ean: data.ean ? String(data.ean).trim() : null,
@@ -172,6 +179,7 @@ async function upsertCatalogItem(tenantId, data) {
     imageUrl,
     videoUrl,
     mediaGallery: mediaGalleryJson,
+    availableLocationIds: availableLocationIdsJson,
     hasPhoto: Boolean(imageUrl || videoUrl)
   };
 
@@ -486,16 +494,27 @@ async function createOrUpdateService(tenantId, data) {
       ? Number(data.returnCycleDays)
       : null;
 
+  const availableLocationIdsJson =
+    Array.isArray(data.availableLocationIds) && data.availableLocationIds.length > 0
+      ? JSON.stringify(data.availableLocationIds)
+      : null;
+
   if (data.id) {
     const updated = await prisma.serviceItem.update({
       where: { id: data.id },
       data: {
+        sku: data.sku !== undefined ? (data.sku ? String(data.sku).trim() : null) : undefined,
         name: data.name,
         description: data.description || null,
+        unit: data.unit ? String(data.unit).trim() : undefined,
+        brand: data.brand !== undefined ? (data.brand ? String(data.brand).trim() : null) : undefined,
         durationMinutes: Number(data.durationMinutes || 30),
         price: Number(data.price || 0),
         category: data.category || 'Serviços',
+        imageUrl: data.imageUrl !== undefined ? (data.imageUrl ? String(data.imageUrl).trim() : null) : undefined,
+        videoUrl: data.videoUrl !== undefined ? (data.videoUrl ? String(data.videoUrl).trim() : null) : undefined,
         variants: variantsJson,
+        availableLocationIds: availableLocationIdsJson,
         returnCycleDays,
         active: typeof data.active === 'boolean' ? data.active : true
       }
@@ -506,12 +525,18 @@ async function createOrUpdateService(tenantId, data) {
   const created = await prisma.serviceItem.create({
     data: {
       tenantId,
+      sku: data.sku ? String(data.sku).trim() : null,
       name: data.name,
       description: data.description || null,
+      unit: data.unit ? String(data.unit).trim() : 'serviço',
+      brand: data.brand ? String(data.brand).trim() : null,
       durationMinutes: Number(data.durationMinutes || 30),
       price: Number(data.price || 0),
       category: data.category || 'Serviços',
+      imageUrl: data.imageUrl ? String(data.imageUrl).trim() : null,
+      videoUrl: data.videoUrl ? String(data.videoUrl).trim() : null,
       variants: variantsJson,
+      availableLocationIds: availableLocationIdsJson,
       returnCycleDays,
       active: true
     }

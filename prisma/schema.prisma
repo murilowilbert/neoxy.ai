@@ -112,6 +112,7 @@ model MissedDemand {
   id            String   @id @default(uuid())
   tenantId      String
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  itemType      String   @default("PRODUCT") // "PRODUCT" | "SERVICE"
   productName   String
   searchCount   Int      @default(1)
   occurrences   String?  // JSON array: [{ customerPhone, customerName, messageSnippet, requestedAt }]
@@ -122,29 +123,30 @@ model MissedDemand {
 }
 
 model CatalogItem {
-  id           String   @id @default(uuid())
-  tenantId     String
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code         String   // SKU ou Código interno
-  ean          String?  // Código de barras EAN / GTIN
-  name         String
-  description  String?
-  unit         String   @default("un") // un, cx, kg, m, lt, pct, par
-  price        Float    @default(0.0)
-  stockQty     Float    @default(0.0)
-  category     String?
-  brand        String?
-  weightKg     Float?   // Peso (kg)
-  lengthCm     Float?   // Comprimento (cm)
-  widthCm      Float?   // Largura (cm)
-  heightCm     Float?   // Altura (cm)
-  tags         String?  // tags separadas por vírgula
-  imageUrl     String?
-  videoUrl     String?  // Vídeo demonstrativo para envio pelo bot no WhatsApp
-  mediaGallery String?  // JSON array de URLs extras (imagens/vídeos)
-  hasPhoto     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  tenantId             String
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code                 String   // SKU ou Código interno
+  ean                  String?  // Código de barras EAN / GTIN
+  name                 String
+  description          String?
+  unit                 String   @default("un") // un, cx, kg, m, lt, pct, par
+  price                Float    @default(0.0)
+  stockQty             Float    @default(0.0)
+  category             String?
+  brand                String?
+  weightKg             Float?   // Peso (kg)
+  lengthCm             Float?   // Comprimento (cm)
+  widthCm              Float?   // Largura (cm)
+  heightCm             Float?   // Altura (cm)
+  tags                 String?  // tags separadas por vírgula
+  imageUrl             String?
+  videoUrl             String?  // Vídeo demonstrativo para envio pelo bot no WhatsApp
+  mediaGallery         String?  // JSON array de URLs extras (imagens/vídeos)
+  availableLocationIds String?  // JSON array de IDs das unidades onde está disponível (null = todas)
+  hasPhoto             Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@unique([tenantId, code])
   @@index([tenantId, name])
@@ -170,26 +172,27 @@ model Professional {
 }
 
 model ServiceItem {
-  id              String        @id @default(uuid())
-  tenantId        String
-  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sku             String?       // Código interno opcional do serviço
-  name            String
-  description     String?
-  unit            String        @default("serviço") // serviço, hora, metro, visita, diária
-  brand           String?       // Equipamento / Linha / Marca opcional
-  durationMinutes Int           @default(30)
-  price           Float         @default(0.0)
-  category        String?
-  imageUrl        String?       // Foto demonstrativa do serviço
-  videoUrl        String?       // Vídeo demonstrativo para o bot enviar no WhatsApp
-  variants        String?       // JSON array: [{"label":"Porte P","durationMinutes":45,"price":55}]
-  returnCycleDays Int?          // Ciclo de retorno sugerido em dias (ex: 15, 30, 180)
-  active          Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id                   String        @id @default(uuid())
+  tenantId             String
+  tenant               Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sku                  String?       // Código interno opcional do serviço
+  name                 String
+  description          String?
+  unit                 String        @default("serviço") // serviço, hora, metro, visita, diária
+  brand                String?       // Equipamento / Linha / Marca opcional
+  durationMinutes      Int           @default(30)
+  price                Float         @default(0.0)
+  category             String?
+  imageUrl             String?       // Foto demonstrativa do serviço
+  videoUrl             String?       // Vídeo demonstrativo para o bot enviar no WhatsApp
+  variants             String?       // JSON array: [{"label":"Porte P","durationMinutes":45,"price":55}]
+  availableLocationIds String?       // JSON array de IDs das unidades onde está disponível (null = todas)
+  returnCycleDays      Int?          // Ciclo de retorno sugerido em dias (ex: 15, 30, 180)
+  active               Boolean       @default(true)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
-  appointments    Appointment[]
+  appointments         Appointment[]
 
   @@index([tenantId])
 }

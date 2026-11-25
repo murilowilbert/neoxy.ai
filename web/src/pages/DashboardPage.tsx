@@ -45,7 +45,12 @@ import {
   Radio,
   Mic,
   MapPin,
-  ThumbsUp
+  ThumbsUp,
+  Check,
+  PhoneOff,
+  Eye,
+  MessageCircle,
+  Building2
 } from 'lucide-react';
 import { apiFetch, setToken } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
@@ -66,8 +71,10 @@ import { WhatsAppInboxTab } from '../components/dashboard/WhatsAppInboxTab';
 import {
   WhatsAppSyncTab,
   WhatsAppNotSyncedBanner,
-  WhatsAppSyncStatus
+  WhatsAppSyncStatus,
+  WhatsAppSyncPreferences
 } from '../components/dashboard/WhatsAppSyncTab';
+import { DemandInsightsTab } from '../components/dashboard/DemandInsightsTab';
 import { NumberField } from '../components/NumberField';
 import JellyRadio from '../components/reactbits/JellyRadio';
 import { CustomSelect } from '../components/CustomSelect';
@@ -262,6 +269,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     videoUrl: string;
     description: string;
     variants: ServiceVariant[];
+    availableLocationIds: string[];
   }>({
     sku: '',
     name: '',
@@ -274,7 +282,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     imageUrl: '',
     videoUrl: '',
     description: '',
-    variants: []
+    variants: [],
+    availableLocationIds: []
   });
   const [srvSidePanelOpen, setSrvSidePanelOpen] = useState(false);
 
@@ -366,7 +375,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     heightCm: '',
     imageUrl: '',
     videoUrl: '',
-    description: ''
+    description: '',
+    availableLocationIds: [] as string[]
   });
 
   // Upload de Planilha de Estoque (CSV / XLSX)
@@ -649,6 +659,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }
 
   const enabledModules: string[] = parseModules(selectedTenant?.enabledModules);
+  const storeLocations: Array<{ id: string; name: string; city?: string; isPrimary?: boolean }> =
+    Array.isArray((selectedTenant?.parsedSettings || selectedTenant?.settings)?.storeInfo?.locations)
+      ? (selectedTenant?.parsedSettings || selectedTenant?.settings).storeInfo.locations
+      : [];
+
+  async function handleToggleWhatsAppBehaviorPref(key: keyof WhatsAppSyncPreferences) {
+    if (!selectedTenant?.slug || !whatsappSyncStatus) return;
+    const prevPrefs = whatsappSyncStatus.preferences;
+    const nextPrefs = { ...prevPrefs, [key]: !prevPrefs[key] };
+    setWhatsappSyncStatus({ ...whatsappSyncStatus, preferences: nextPrefs });
+    try {
+      const res = await apiFetch(`/api/tenants/${selectedTenant.slug}/whatsapp/config`, {
+        method: 'PUT',
+        body: JSON.stringify({ preferences: nextPrefs })
+      });
+      if (res.whatsapp) {
+        setWhatsappSyncStatus(res.whatsapp);
+      }
+      showToast('Preferência da IA no WhatsApp salva.');
+    } catch (err: any) {
+      setWhatsappSyncStatus({ ...whatsappSyncStatus, preferences: prevPrefs });
+      showToast(err.message);
+    }
+  }
 
   function toggleSmartChipText(currentText: string, snippet: string): string {
     let next = currentText || '';
@@ -738,11 +772,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   // =========================================================================
   // CRUD DE SERVIÇOS + VARIAÇÕES POR PORTE + CICLO DE RETORNO (FEATURES 2 & 4)
   // =========================================================================
-  function openCreateService() {
+  function openCreateService(prefillName?: string) {
     setEditingService(null);
     setSrvForm({
       sku: '',
-      name: '',
+      name: typeof prefillName === 'string' ? prefillName : '',
       unit: 'serviço',
       brand: '',
       category: 'Estética & Banho',
@@ -756,7 +790,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         { label: 'Porte P (até 8kg)', durationMinutes: 45, price: 55 },
         { label: 'Porte M (8 a 20kg)', durationMinutes: 60, price: 75 },
         { label: 'Porte G (acima de 20kg)', durationMinutes: 90, price: 110 }
-      ]
+      ],
+      availableLocationIds: []
     });
     setSrvSidePanelOpen(false);
     setServiceModalOpen(true);
@@ -776,7 +811,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       imageUrl: srv.imageUrl || '',
       videoUrl: srv.videoUrl || '',
       description: srv.description || '',
-      variants: Array.isArray(srv.variants) ? srv.variants : []
+      variants: Array.isArray(srv.variants) ? srv.variants : [],
+      availableLocationIds: Array.isArray(srv.availableLocationIds) ? srv.availableLocationIds : []
     });
     setSrvSidePanelOpen(false);
     setServiceModalOpen(true);
@@ -809,6 +845,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           imageUrl: srvForm.imageUrl || null,
           videoUrl: srvForm.videoUrl || null,
           variants: cleanVariants,
+          availableLocationIds: srvForm.availableLocationIds,
           description: srvForm.description
         })
       });
@@ -1169,7 +1206,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       heightCm: '',
       imageUrl: '',
       videoUrl: '',
-      description: ''
+      description: '',
+      availableLocationIds: []
     });
     setCatModalOpen(true);
   }
@@ -1191,7 +1229,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       heightCm: item.heightCm !== undefined && item.heightCm !== null ? String(item.heightCm) : '',
       imageUrl: item.imageUrl || '',
       videoUrl: item.videoUrl || '',
-      description: item.description || ''
+      description: item.description || '',
+      availableLocationIds: Array.isArray(item.availableLocationIds) ? item.availableLocationIds : []
     });
     setCatModalOpen(true);
   }
@@ -2240,6 +2279,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
                   } rounded-lg text-xs font-medium transition-colors ${
                     activeTab === 'catalog' ||
+                    activeTab === 'catalog_popular' ||
+                    activeTab === 'catalog_opportunities' ||
                     (activeTab === 'promotions' && (expandedMenus.catalog || !expandedMenus.services))
                       ? sidebarCollapsed
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
@@ -2286,13 +2327,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                       }`}
                     >
-                      <span className="inline-flex items-center gap-1.5">
-                        <Tag className="w-3 h-3" />
-                        Promoções & Ofertas
-                      </span>
+                      <span>Promoções & Ofertas</span>
                       <span className="text-[10px] tabular-data opacity-80">
                         {promotions.filter((p) => p.active).length}
                       </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('catalog_popular')}
+                      data-testid="sidebar-catalog-popular"
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                        activeTab === 'catalog_popular'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
+                          : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      <span>Mais Procurados</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('catalog_opportunities')}
+                      data-testid="sidebar-catalog-opportunities"
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                        activeTab === 'catalog_opportunities'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
+                          : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      <span>Oportunidades</span>
                     </button>
                   </div>
                 )}
@@ -2317,6 +2379,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
                   } rounded-lg text-xs font-medium transition-colors ${
                     activeTab === 'services' ||
+                    activeTab === 'services_popular' ||
+                    activeTab === 'services_opportunities' ||
                     (activeTab === 'promotions' && (expandedMenus.services || !enabledModules.includes('stock')))
                       ? sidebarCollapsed
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
@@ -2363,13 +2427,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                       }`}
                     >
-                      <span className="inline-flex items-center gap-1.5">
-                        <Tag className="w-3 h-3" />
-                        Promoções & Ofertas
-                      </span>
+                      <span>Promoções & Ofertas</span>
                       <span className="text-[10px] tabular-data opacity-80">
                         {promotions.filter((p) => p.active).length}
                       </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('services_popular')}
+                      data-testid="sidebar-services-popular"
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                        activeTab === 'services_popular'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
+                          : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      <span>Mais Procurados</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('services_opportunities')}
+                      data-testid="sidebar-services-opportunities"
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                        activeTab === 'services_opportunities'
+                          ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
+                          : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                      }`}
+                    >
+                      <span>Oportunidades</span>
                     </button>
                   </div>
                 )}
@@ -2463,7 +2548,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 className={`w-full flex items-center ${
                   sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3 py-2.5'
                 } rounded-lg text-xs font-medium transition-colors ${
-                  ['settings', 'profile_hours', 'whatsapp_sync'].includes(activeTab)
+                  ['settings', 'ai_settings', 'profile_hours', 'whatsapp_sync'].includes(activeTab)
                     ? sidebarCollapsed
                       ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                       : 'bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] font-semibold'
@@ -2520,25 +2605,39 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </button>
                   <button
                     type="button"
+                    onClick={() => setActiveTab('ai_settings')}
+                    data-testid="sidebar-ai-settings-btn"
+                    className={`w-full text-left px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
+                      activeTab === 'ai_settings'
+                        ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
+                        : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
+                    }`}
+                  >
+                    Ajustes da IA
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setActiveTab('settings')}
+                    data-testid="sidebar-modules-btn"
                     className={`w-full text-left px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
                       activeTab === 'settings'
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                     }`}
                   >
-                    Módulos & IA
+                    Módulos
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab('profile_hours')}
+                    data-testid="sidebar-dados-comerciais-btn"
                     className={`w-full text-left px-2.5 py-2 rounded-md text-[11.5px] font-medium transition-colors ${
                       activeTab === 'profile_hours'
                         ? 'bg-[var(--nx-primary)] text-[var(--nx-primary-fg)]'
                         : 'text-[var(--nx-muted)] hover:bg-[var(--nx-surface-alt)] hover:text-[var(--nx-text)]'
                     }`}
                   >
-                    Empresa, Horários & Feriados
+                    Dados Comerciais
                   </button>
                 </div>
               )}
@@ -2640,8 +2739,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             'quickreplies',
             'radar',
             'catalog',
+            'catalog_popular',
+            'catalog_opportunities',
             'promotions',
             'services',
+            'services_popular',
+            'services_opportunities',
             'appointments',
             'documents'
           ].includes(activeTab) && (
@@ -2673,10 +2776,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 if (['inbox', 'contacts', 'quickreplies', 'radar'].includes(tab)) {
                   setExpandedMenus((p) => ({ ...p, whatsapp: true }));
                 }
-                if (['catalog', 'promotions'].includes(tab)) {
+                if (['catalog', 'catalog_popular', 'catalog_opportunities', 'promotions'].includes(tab)) {
                   setExpandedMenus((p) => ({ ...p, catalog: true, services: !enabledModules.includes('stock') }));
                 }
-                if (['settings', 'profile_hours', 'whatsapp_sync'].includes(tab)) {
+                if (['services', 'services_popular', 'services_opportunities'].includes(tab)) {
+                  setExpandedMenus((p) => ({ ...p, services: true }));
+                }
+                if (['settings', 'ai_settings', 'profile_hours', 'whatsapp_sync'].includes(tab)) {
                   setExpandedMenus((p) => ({ ...p, profile: true }));
                 }
                 setActiveTab(tab);
@@ -4416,6 +4522,62 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           />
         )}
 
+        {/* SUB-ABAS CATÁLOGO: MAIS PROCURADOS & OPORTUNIDADES (apenas se módulo stock ativo) */}
+        {activeTab === 'catalog_popular' && selectedTenant && enabledModules.includes('stock') && (
+          <DemandInsightsTab
+            tenantSlug={selectedTenant.slug}
+            scope="products"
+            mode="popular"
+            onQuickCreate={(name) => openCreateCatalog(name)}
+            onOpenConversation={(phone) => {
+              setHighlightedPhone(phone);
+              setExpandedMenus((p) => ({ ...p, whatsapp: true }));
+              setActiveTab('inbox');
+            }}
+          />
+        )}
+        {activeTab === 'catalog_opportunities' && selectedTenant && enabledModules.includes('stock') && (
+          <DemandInsightsTab
+            tenantSlug={selectedTenant.slug}
+            scope="products"
+            mode="opportunities"
+            onQuickCreate={(name) => openCreateCatalog(name)}
+            onOpenConversation={(phone) => {
+              setHighlightedPhone(phone);
+              setExpandedMenus((p) => ({ ...p, whatsapp: true }));
+              setActiveTab('inbox');
+            }}
+          />
+        )}
+
+        {/* SUB-ABAS SERVIÇOS: MAIS PROCURADOS & OPORTUNIDADES (apenas se módulo services ativo) */}
+        {activeTab === 'services_popular' && selectedTenant && enabledModules.includes('services') && (
+          <DemandInsightsTab
+            tenantSlug={selectedTenant.slug}
+            scope="services"
+            mode="popular"
+            onQuickCreate={(name) => openCreateService(name)}
+            onOpenConversation={(phone) => {
+              setHighlightedPhone(phone);
+              setExpandedMenus((p) => ({ ...p, whatsapp: true }));
+              setActiveTab('inbox');
+            }}
+          />
+        )}
+        {activeTab === 'services_opportunities' && selectedTenant && enabledModules.includes('services') && (
+          <DemandInsightsTab
+            tenantSlug={selectedTenant.slug}
+            scope="services"
+            mode="opportunities"
+            onQuickCreate={(name) => openCreateService(name)}
+            onOpenConversation={(phone) => {
+              setHighlightedPhone(phone);
+              setExpandedMenus((p) => ({ ...p, whatsapp: true }));
+              setActiveTab('inbox');
+            }}
+          />
+        )}
+
         {/* SUB-ABA CONFIGURAÇÕES: SINCRONIZAÇÃO WHATSAPP (QR CODE & PAREAMENTO) */}
         {activeTab === 'whatsapp_sync' && selectedTenant && (
           <WhatsAppSyncTab
@@ -4426,7 +4588,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           />
         )}
 
-        {/* SUB-ABA CONFIGURAÇÕES: EMPRESA, HORÁRIOS, REDES SOCIAIS & FERIADOS */}
+        {/* SUB-ABA CONFIGURAÇÕES: DADOS COMERCIAIS (UNIDADES, COMODIDADES, HORÁRIOS & FERIADOS) */}
         {activeTab === 'profile_hours' && selectedTenant && (
           <CompanyHoursTab
             tenant={selectedTenant}
@@ -4438,82 +4600,81 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           />
         )}
 
-        {/* ABA 9: PERFIL DO NEGÓCIO, MÓDULOS PERSONALIZÁVEIS & REGRAS IA */}
+        {/* SUB-ABA CONFIGURAÇÕES: MÓDULOS DO PAINEL */}
         {activeTab === 'settings' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-up">
-            {/* Coluna Esquerda: Personalização de Módulos e Perfil */}
-            <div className="lg:col-span-7 space-y-5">
-              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-6 space-y-5">
-                <div>
-                  <h2 className="text-base font-bold text-[var(--nx-text)]">
-                    Personalizar Módulos & Funções do Painel
-                  </h2>
-                  <p className="text-xs text-[var(--nx-muted)]">
-                    Ative ou desative as ferramentas que fazem sentido para a sua operação. O menu lateral é atualizado na hora.
-                  </p>
+          <div className="space-y-6 animate-fade-up" data-testid="modules-tab">
+            <div className="nx-spotlight-card p-6 space-y-6">
+              <div>
+                <h2 className="text-base font-bold text-[var(--nx-text)]">
+                  Personalizar Módulos & Funções do Painel
+                </h2>
+                <p className="text-xs text-[var(--nx-muted)] mt-0.5">
+                  Ative ou desative as ferramentas que fazem sentido para a sua operação. O menu lateral e as páginas de inteligência são atualizados na hora.
+                </p>
+              </div>
+
+              {/* Perfis Prontos (Presets em 1 clique) */}
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--nx-subtle)] mb-2.5">
+                  Aplicar perfil rápido
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { key: 'SERVICES' as const, label: 'Serviços', desc: 'Agenda + Equipe' },
+                    { key: 'RETAIL' as const, label: 'Comércio', desc: 'Catálogo + Estoque' },
+                    { key: 'OFFICE' as const, label: 'Escritório', desc: 'Agenda + Contas' },
+                    { key: 'HYBRID' as const, label: 'Completo', desc: 'Todos os módulos' }
+                  ].map((preset) => {
+                    const active = selectedTenant?.businessType === preset.key;
+                    return (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        onClick={() => handleApplyProfilePreset(preset.key)}
+                        className={`p-3.5 rounded-xl border text-left transition-all ${
+                          active
+                            ? 'border-[var(--nx-volt-border)] bg-[var(--nx-volt-surface)]'
+                            : 'border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)]'
+                        }`}
+                      >
+                        <div className="text-xs font-bold text-[var(--nx-text)]">{preset.label}</div>
+                        <div className="text-[11px] text-[var(--nx-muted)] mt-0.5">{preset.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Switches Individuais por Módulo */}
+              <div className="space-y-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--nx-subtle)]">
+                  Funções disponíveis para ativação
                 </div>
 
-                {/* Perfis Prontos (Presets em 1 clique) */}
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--nx-subtle)] mb-2">
-                    Aplicar perfil rápido
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { key: 'SERVICES' as const, label: 'Serviços', desc: 'Agenda + Equipe' },
-                      { key: 'RETAIL' as const, label: 'Comércio', desc: 'Catálogo + Estoque' },
-                      { key: 'OFFICE' as const, label: 'Escritório', desc: 'Agenda + Contas' },
-                      { key: 'HYBRID' as const, label: 'Completo', desc: 'Todos os módulos' }
-                    ].map((preset) => {
-                      const active = selectedTenant?.businessType === preset.key;
-                      return (
-                        <button
-                          key={preset.key}
-                          type="button"
-                          onClick={() => handleApplyProfilePreset(preset.key)}
-                          className={`p-2.5 rounded-lg border text-left transition-all ${
-                            active
-                              ? 'border-[var(--nx-primary)] bg-[var(--nx-primary-soft)]'
-                              : 'border-[var(--nx-border-strong)] bg-[var(--nx-bg)] hover:border-[var(--nx-primary)]'
-                          }`}
-                        >
-                          <div className="text-xs font-bold text-[var(--nx-text)]">{preset.label}</div>
-                          <div className="text-[10px] text-[var(--nx-muted)] mt-0.5">{preset.desc}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Switches Individuais por Módulo */}
-                <div className="space-y-2.5">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--nx-subtle)]">
-                    Funções disponíveis para ativação
-                  </div>
-
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {[
                     {
                       key: 'services',
                       title: 'Serviços, Portes & Equipe / Comissões',
-                      desc: 'Libera as abas "Serviços & Portes" (preço/tempo por porte) e "Equipe & Comissões".',
+                      desc: 'Libera Serviços (grade, mais procurados, oportunidades) e Equipe & Comissões.',
                       icon: Scissors
                     },
                     {
                       key: 'appointments',
                       title: 'Agenda, Rastreio OS (4 Etapas) & Retornos',
-                      desc: 'Libera "Agenda & Rastreio OS" (checklist, voucher PDF, aviso WhatsApp) e "Retornos & Recorrência".',
+                      desc: 'Libera Agenda & Rastreio OS (checklist, voucher PDF, aviso WhatsApp) e Retornos.',
                       icon: Calendar
                     },
                     {
                       key: 'stock',
                       title: 'Catálogo de Produtos, Peças & Insumos',
-                      desc: 'Libera "Catálogo & Insumos" com controle de estoque e consulta automática no WhatsApp.',
+                      desc: 'Libera Catálogo (estoque, promoções, mais procurados, oportunidades) e busca na IA.',
                       icon: Package
                     },
                     {
                       key: 'documents',
                       title: 'Recebimento de Contas, Boletos & Guias',
-                      desc: 'Libera "Contas & Documentos" para triagem de guias, notas fiscais e comprovantes.',
+                      desc: 'Libera Documentos para triagem automática de guias, notas fiscais e comprovantes.',
                       icon: FileText
                     }
                   ].map((mod) => {
@@ -4522,20 +4683,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     return (
                       <div
                         key={mod.key}
-                        className={`p-3.5 rounded-lg border transition-colors flex items-center justify-between gap-4 ${
+                        className={`p-4 rounded-xl border transition-colors flex items-center justify-between gap-4 ${
                           isEnabled
-                            ? 'border-[var(--nx-accent-border)] bg-[var(--nx-accent-bg)]'
+                            ? 'border-[var(--nx-volt-border)] bg-[var(--nx-volt-surface)]/45'
                             : 'border-[var(--nx-border)] bg-[var(--nx-bg)]'
                         }`}
                       >
                         <div className="flex items-start gap-3 min-w-0">
-                          <div
-                            className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                              isEnabled
-                                ? 'bg-[var(--nx-accent)] text-white'
-                                : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border border-[var(--nx-border)]'
-                            }`}
-                          >
+                          <div className="nx-icon-tile nx-icon-tile--sm shrink-0">
                             <Icon className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
@@ -4551,30 +4706,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         <button
                           type="button"
                           onClick={() => handleToggleSelfModule(mod.key)}
-                          role="switch"
+                          role="checkbox"
                           aria-checked={isEnabled}
-                          className={`px-3 py-1.5 rounded-md text-[11px] font-semibold border transition-colors shrink-0 ${
-                            isEnabled
-                              ? 'bg-[var(--nx-accent)] text-white border-[var(--nx-accent)]'
-                              : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border-[var(--nx-border-strong)] hover:text-[var(--nx-text)]'
-                          }`}
+                          aria-label={mod.title}
+                          className="nx-checkbox shrink-0"
                         >
-                          {isEnabled ? 'Ativado' : 'Ativar'}
+                          {isEnabled && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </button>
                       </div>
                     );
                   })}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
 
-              {/* Card de Chave API Gemini (IA & Visão de Fotos) */}
+        {/* SUB-ABA CONFIGURAÇÕES: AJUSTES DA IA (PERSONA, REGRAS, GEMINI, RECURSOS E COMPORTAMENTO NO WHATSAPP) */}
+        {activeTab === 'ai_settings' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-up" data-testid="ai-settings-tab">
+            {/* Coluna Esquerda (7 cols): Chave Gemini, Recursos Inteligentes e Comportamento no WhatsApp */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Card de Chave API Gemini */}
               <form
                 onSubmit={handleSaveAiKey}
-                className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-6 space-y-4"
+                className="nx-spotlight-card p-6 space-y-4"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-[var(--nx-primary-soft)] text-[var(--nx-primary)] flex items-center justify-center shrink-0">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className="nx-icon-tile nx-icon-tile--sm">
                       <Key className="w-4 h-4" />
                     </div>
                     <div>
@@ -4590,8 +4750,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <span
                     className={`px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0 ${
                       aiKeyStatus.configured
-                        ? 'bg-[var(--nx-accent-bg)] text-[var(--nx-accent)] border border-[var(--nx-accent-border)]'
-                        : 'bg-[var(--nx-error-bg)] text-[var(--nx-error)] border border-[var(--nx-error)]/30'
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30'
+                        : 'bg-rose-500/15 text-rose-600 dark:text-rose-300 border border-rose-500/30'
                     }`}
                   >
                     {aiKeyStatus.configured ? `Ativa (${aiKeyStatus.masked})` : 'Não configurada'}
@@ -4604,7 +4764,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     value={aiKeyInput}
                     onChange={(e) => setAiKeyInput(e.target.value)}
                     placeholder="Cole sua chave AIzaSy..."
-                    className="flex-1 px-3.5 py-2.5 rounded-lg bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border-strong)] text-xs text-[var(--nx-text)] focus:outline-none focus:border-[var(--nx-primary)]"
                   />
                   <button
                     type="submit"
@@ -4616,19 +4776,98 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
               </form>
 
+              {/* Comportamento do Atendente no WhatsApp (movido de Sincronização para Ajustes da IA) */}
+              <div className="nx-spotlight-card p-6 space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--nx-text)]">
+                    Comportamento & Proteção no WhatsApp
+                  </h3>
+                  <p className="text-[11px] text-[var(--nx-muted)] mt-0.5">
+                    Controle como o atendente NEO interage com grupos, ligações, recibos de leitura e ritmo humanizado.
+                  </p>
+                </div>
+
+                <div className="divide-y divide-[var(--nx-border)]">
+                  {[
+                    {
+                      key: 'ignoreGroups' as const,
+                      title: 'Ignorar mensagens de grupos',
+                      desc: 'Evita que o atendente NEO responda conversas de grupos familiares ou internos.',
+                      icon: <Users className="w-4 h-4" />
+                    },
+                    {
+                      key: 'rejectCalls' as const,
+                      title: 'Rejeitar chamadas automaticamente',
+                      desc: 'Recusa ligações de voz/vídeo no WhatsApp comercial para manter o fluxo por texto e áudio.',
+                      icon: <PhoneOff className="w-4 h-4" />
+                    },
+                    {
+                      key: 'typingIndicator' as const,
+                      title: 'Indicador "digitando..." humanizado',
+                      desc: 'Simula digitação proporcional ao tamanho da resposta (proteção anti-banimento).',
+                      icon: <MessageCircle className="w-4 h-4" />
+                    },
+                    {
+                      key: 'readReceipts' as const,
+                      title: 'Confirmar leitura (dois riscos azuis)',
+                      desc: 'Marca mensagens recebidas como lidas com atraso natural antes de responder.',
+                      icon: <Eye className="w-4 h-4" />
+                    },
+                    {
+                      key: 'alwaysOnline' as const,
+                      title: 'Manter status "Online"',
+                      desc: 'Exibe a conta como disponível continuamente no WhatsApp dos clientes.',
+                      icon: <Radio className="w-4 h-4" />
+                    }
+                  ].map((item) => {
+                    const checked = Boolean(whatsappSyncStatus?.preferences?.[item.key]);
+                    return (
+                      <div
+                        key={item.key}
+                        className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-[var(--nx-surface-alt)] border border-[var(--nx-border)] flex items-center justify-center text-[var(--nx-muted)] shrink-0 mt-0.5">
+                            {item.icon}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-[var(--nx-text)]">
+                              {item.title}
+                            </div>
+                            <p className="text-[11px] text-[var(--nx-muted)] leading-relaxed mt-0.5">
+                              {item.desc}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={checked}
+                          aria-label={item.title}
+                          onClick={() => handleToggleWhatsAppBehaviorPref(item.key)}
+                          className="nx-checkbox shrink-0"
+                        >
+                          {checked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Card de Recursos Inteligentes do Bot WhatsApp (7 Funções Configuráveis) */}
-              <div className="bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-6 space-y-4">
+              <div className="nx-spotlight-card p-6 space-y-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-bold text-[var(--nx-text)]">
-                      Recursos Inteligentes do Bot WhatsApp
+                      Recursos Inteligentes da IA
                     </h3>
                     <p className="text-[11px] text-[var(--nx-muted)]">
                       Ative ou desative cada recurso de voz, PDF, anti-banimento, localização, avaliação e sentimento.
                     </p>
                   </div>
                   {savingBotFeatures && (
-                    <span className="text-[11px] text-[var(--nx-primary)] font-semibold">
+                    <span className="text-[11px] text-[var(--nx-volt-ink)] font-semibold">
                       Salvando...
                     </span>
                   )}
@@ -4645,7 +4884,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     {
                       key: 'pdfReadingEnabled' as const,
                       title: 'Leitura de PDF & PIX',
-                      desc: 'Lê boletos/comprovantes e registra em Contas & Documentos.',
+                      desc: 'Lê boletos/comprovantes e registra em Documentos.',
                       icon: FileText
                     },
                     {
@@ -4684,16 +4923,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     return (
                       <div
                         key={feat.key}
-                        className={`p-3 rounded-lg border flex items-center justify-between gap-3 transition-colors ${
+                        className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
                           active
-                            ? 'border-[var(--nx-accent-border)] bg-[var(--nx-accent-bg)]'
+                            ? 'border-[var(--nx-volt-border)] bg-[var(--nx-volt-surface)]/45'
                             : 'border-[var(--nx-border)] bg-[var(--nx-bg)]'
                         }`}
                       >
                         <div className="flex items-start gap-2.5 min-w-0">
                           <Icon
                             className={`w-4 h-4 mt-0.5 shrink-0 ${
-                              active ? 'text-[var(--nx-accent)]' : 'text-[var(--nx-muted)]'
+                              active ? 'text-[var(--nx-volt-ink)]' : 'text-[var(--nx-muted)]'
                             }`}
                           />
                           <div className="min-w-0">
@@ -4707,30 +4946,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
                         <button
                           type="button"
-                          role="switch"
+                          role="checkbox"
                           aria-checked={active}
+                          aria-label={feat.title}
                           onClick={() => handleUpdateBotFeatures({ [feat.key]: !active })}
-                          className={`px-2.5 py-1 rounded text-[11px] font-semibold border shrink-0 transition-colors ${
-                            active
-                              ? 'bg-[var(--nx-accent)] text-white border-[var(--nx-accent)]'
-                              : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border-[var(--nx-border-strong)]'
-                          }`}
+                          className="nx-checkbox shrink-0"
                         >
-                          {active ? 'Ativo' : 'Off'}
+                          {active && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </button>
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Modo de Avaliação Pós-Atendimento (Google Meu Negócio vs Enquete CSAT) */}
+                {/* Modo de Avaliação Pós-Atendimento */}
                 <div className="pt-3 border-t border-[var(--nx-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="text-xs font-bold text-[var(--nx-text)]">
                       Avaliação Pós-Atendimento
                     </div>
                     <p className="text-[11px] text-[var(--nx-muted)]">
-                      Escolha enviar o link direto do Google Meu Negócio (configurado em Empresa & Horários) ou uma enquete nativa no WhatsApp.
+                      Escolha enviar o link direto do Google Meu Negócio (configurado em Dados Comerciais) ou uma enquete nativa no WhatsApp.
                     </p>
                   </div>
                   <CustomSelect
@@ -4752,16 +4988,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             </div>
 
-            {/* Coluna Direita: Parâmetros de Atendimento, Regras & Expediente */}
+            {/* Coluna Direita (5 cols): Persona, Tom de Voz & Políticas da IA */}
             <form
               onSubmit={handleSaveSettings}
-              className="lg:col-span-5 bg-[var(--nx-surface)] border border-[var(--nx-border)] rounded-lg p-6 space-y-5 h-fit"
+              className="lg:col-span-5 nx-spotlight-card p-6 space-y-5 h-fit"
             >
               <div>
                 <h2 className="text-base font-bold text-[var(--nx-text)]">
-                  Expediente & Regras da IA
+                  Persona & Regras da IA
                 </h2>
-                <p className="text-xs text-[var(--nx-muted)]">
+                <p className="text-xs text-[var(--nx-muted)] mt-0.5">
                   Defina como o assistente se apresenta e quais políticas comerciais ele deve aplicar.
                 </p>
               </div>
@@ -4806,8 +5042,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <label>Meios de pagamento aceitos</label>
               </div>
 
-              <button type="submit" className="nx-btn-primary w-full py-2.5 text-xs">
-                Salvar configurações de atendimento
+              <button type="submit" className="nx-btn-primary w-full py-2.5 text-xs justify-center">
+                Salvar ajustes da IA
               </button>
             </form>
           </div>
@@ -5253,11 +5489,54 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </div>
                 </div>
 
+                {storeLocations.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)] space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-[var(--nx-text)] inline-flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-[var(--nx-volt-ink)]" />
+                        Disponível nas unidades
+                      </span>
+                      <span className="text-[10px] text-[var(--nx-subtle)]">
+                        {srvForm.availableLocationIds.length === 0
+                          ? 'Todas as unidades'
+                          : `${srvForm.availableLocationIds.length} selecionada(s)`}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {storeLocations.map((loc) => {
+                        const checked = srvForm.availableLocationIds.includes(loc.id);
+                        return (
+                          <button
+                            key={loc.id}
+                            type="button"
+                            onClick={() =>
+                              setSrvForm((prev) => ({
+                                ...prev,
+                                availableLocationIds: checked
+                                  ? prev.availableLocationIds.filter((id) => id !== loc.id)
+                                  : [...prev.availableLocationIds, loc.id]
+                              }))
+                            }
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-colors ${
+                              checked
+                                ? 'bg-[var(--nx-volt-surface)] text-[var(--nx-volt-ink)] border-[var(--nx-volt-border)] font-semibold'
+                                : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border-[var(--nx-border-strong)] hover:text-[var(--nx-text)]'
+                            }`}
+                          >
+                            {checked && <Check className="w-3 h-3" />}
+                            <span>{loc.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-end gap-2 pt-4 border-t border-[var(--nx-border)]">
                   <button
                     type="button"
                     onClick={() => setServiceModalOpen(false)}
-                    className="px-4 py-2 text-xs font-medium text-[var(--nx-muted)] border border-[var(--nx-border-strong)] rounded-md"
+                    className="px-4 py-2 text-xs font-medium text-[var(--nx-muted)] border border-[var(--nx-border-strong)] rounded-full"
                   >
                     Cancelar
                   </button>
@@ -6109,11 +6388,54 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <label>Observações</label>
               </div>
 
+              {storeLocations.length > 0 && (
+                <div className="p-3.5 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)] space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-[var(--nx-text)] inline-flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-[var(--nx-volt-ink)]" />
+                      Disponível nas unidades
+                    </span>
+                    <span className="text-[10px] text-[var(--nx-subtle)]">
+                      {newCatalog.availableLocationIds.length === 0
+                        ? 'Todas as unidades'
+                        : `${newCatalog.availableLocationIds.length} selecionada(s)`}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {storeLocations.map((loc) => {
+                      const checked = newCatalog.availableLocationIds.includes(loc.id);
+                      return (
+                        <button
+                          key={loc.id}
+                          type="button"
+                          onClick={() =>
+                            setNewCatalog((prev) => ({
+                              ...prev,
+                              availableLocationIds: checked
+                                ? prev.availableLocationIds.filter((id) => id !== loc.id)
+                                : [...prev.availableLocationIds, loc.id]
+                            }))
+                          }
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-colors ${
+                            checked
+                              ? 'bg-[var(--nx-volt-surface)] text-[var(--nx-volt-ink)] border-[var(--nx-volt-border)] font-semibold'
+                              : 'bg-[var(--nx-surface)] text-[var(--nx-muted)] border-[var(--nx-border-strong)] hover:text-[var(--nx-text)]'
+                          }`}
+                        >
+                          {checked && <Check className="w-3 h-3" />}
+                          <span>{loc.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-3 border-t border-[var(--nx-border)]">
                 <button
                   type="button"
                   onClick={() => setCatModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-[var(--nx-muted)] border border-[var(--nx-border-strong)] rounded-md"
+                  className="px-4 py-2 text-xs font-medium text-[var(--nx-muted)] border border-[var(--nx-border-strong)] rounded-full"
                 >
                   Cancelar
                 </button>
@@ -6373,7 +6695,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       )}
 
       {/* =================================================================== */}
-      {/* MODAL 7: CONFIRMAÇÃO DE EXCLUSÃO (PADRÃO MEDPET DELETE DIALOG)      */}
+      {/* MODAL 7: CONFIRMAÇÃO DE EXCLUSÃO (ESTILO NEO)                       */}
       {/* =================================================================== */}
       {deleteTarget && (
         <div
@@ -6382,37 +6704,54 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             if (e.target === e.currentTarget) setDeleteTarget(null);
           }}
         >
-          <div className="nx-modal-main p-6 max-w-sm" role="dialog" aria-modal="true">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-bold text-[var(--nx-text)]">Confirmar exclusão</h2>
+          <div
+            className="nx-spotlight-card w-full max-w-md p-6 rounded-2xl shadow-2xl animate-fade-up"
+            role="dialog"
+            aria-modal="true"
+            data-testid="modal-confirm-delete"
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="nx-icon-tile nx-icon-tile--sm bg-rose-500/15 text-rose-500 border-rose-500/30">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-[var(--nx-text)]">Confirmar exclusão</h2>
+                  <p className="text-[11px] text-[var(--nx-muted)]">
+                    Esta remoção é permanente e não pode ser desfeita.
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
-                className="p-1 rounded-md text-[var(--nx-subtle)] hover:text-[var(--nx-text)]"
+                className="p-1.5 rounded-full text-[var(--nx-subtle)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
+                aria-label="Fechar"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs text-[var(--nx-muted)] leading-relaxed mb-5">
+            <p className="text-xs text-[var(--nx-muted)] leading-relaxed mb-6">
               Tem certeza que deseja excluir{' '}
               <strong className="text-[var(--nx-text)]">
                 "{deleteTarget.item.name || deleteTarget.item.customerName || deleteTarget.item.title}"
               </strong>
               ? Esta ação não pode ser desfeita.
             </p>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 text-xs font-medium text-[var(--nx-muted)] border border-[var(--nx-border-strong)] rounded-md"
+                className="px-4 py-2 rounded-full text-xs font-medium text-[var(--nx-text)] border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:bg-[var(--nx-surface-alt)] transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 text-xs font-medium bg-[var(--nx-error)] text-white rounded-md hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition-colors"
               >
+                <Trash2 className="w-3.5 h-3.5" />
                 Excluir definitivamente
               </button>
             </div>

@@ -969,6 +969,7 @@ async function recordMissedDemand(tenantId, productName, occurrence = null) {
     },
     create: {
       tenantId,
+      itemType: occurrence?.itemType === 'SERVICE' ? 'SERVICE' : 'PRODUCT',
       productName: cleanName,
       searchCount: 1,
       occurrences: JSON.stringify(trimmed)
@@ -976,8 +977,160 @@ async function recordMissedDemand(tenantId, productName, occurrence = null) {
   });
 }
 
+/**
+ * Inteligência de Demanda filtrável por escopo (products | services), período (7, 30, 90, all) e busca.
+ */
+async function getDemandInsights(tenantId, { scope = 'products', days = '30', q = '' } = {}) {
+  const normalizedScope = scope === 'services' ? 'services' : 'products';
+  const targetItemType = normalizedScope === 'services' ? 'SERVICE' : 'PRODUCT';
+  const daysNum = days === 'all' ? null : Math.max(1, Number(days) || 30);
+  const cutoffDate = daysNum ? new Date(Date.now() - daysNum * 24 * 60 * 60 * 1000) : null;
+  const searchNorm = String(q || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  const matchesSearch = (text) => {
+    if (!searchNorm) return true;
+    const hay = String(text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    return hay.includes(searchNorm);
+  };
+
+  const [tenant, existingDemands, missedDemands, catalogItems, serviceItems] = await Promise.all([
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { enabledModules: true } }),
+    prisma.demandTracker.findMany({
+      where: {
+        tenantId,
+        ...(cutoffDate ? { lastRequested: { gte: cutoffDate } } : {})
+      },
+      orderBy: [{ searchCount: 'desc' }, { lastRequested: 'desc' }],
+      take: 100
+    }),
+    prisma.missedDemand.findMany({
+      where: {
+        tenantId,
+        ...(cutoffDate ? { lastRequested: { gte: cutoffDate } } : {})
+      },
+      orderBy: [{ searchCount: 'desc' }, { lastRequested: 'desc' }],
+      take: 100
+    }),
+    prisma.catalogItem.findMany({ where: { tenantId } }),
+    prisma.serviceItem.findMany({ where: { tenantId } })
+  ]);
+
+  let enabledModules = [];
+  try {
+    enabledModules = JSON.parse(tenant?.enabledModules || '[]');
+  } catch {
+    enabledModules = [];
+  }
+  const hasStock = enabledModules.includes('stock');
+  const hasServices = enabledModules.includes('services');
+
+  const catalogById = new Map(catalogItems.map((c) => [c.id, c]));
+  const catalogByName = new Map(catalogItems.map((c) => [c.name.toLowerCase().trim(), c]));
+  const serviceById = new Map(serviceItems.map((s) => [s.id, s]));
+  const serviceByName = new Map(serviceItems.map((s) => [s.name.toLowerCase().trim(), s]));
+
+  const SERVICE_HINTS = /\b(banho|tosa|consulta|vacina|desentup|limpeza|manutencao|instalacao|revisao|corte|massagem|exame|cirurgia|atendimento|orcamento|visita|hidraulica|eletrica|conserto|reparo)\b/i;
+
+  const popular = existingDemands
+    .map((d) => {
+      const key = String(d.itemName || '').toLowerCase().trim();
+      const matchedCatalog =
+        (d.catalogItemId && catalogById.get(d.catalogItemId)) ||
+        catalogByName.get(key) ||
+        catalogItems.find((c) => c.name.toLowerCase().includes(key) || key.includes(c.name.toLowerCase())) ||
+        null;
+      const matchedService =
+        (d.serviceItemId && serviceById.get(d.serviceItemId)) ||
+        serviceByName.get(key) ||
+        serviceItems.find((s) => s.name.toLowerCase().includes(key) || key.includes(s.name.toLowerCase())) ||
+        null;
+
+      const resolvedType =
+        d.itemType === 'SERVICE' || (matchedService && !matchedCatalog)
+          ? 'SERVICE'
+          : 'PRODUCT';
+
+      if (resolvedType !== targetItemType) return null;
+
+      const matched = resolvedType === 'SERVICE' ? matchedService : matchedCatalog;
+      if (!matchesSearch(`${d.itemName} ${matched?.category || ''} ${matched?.code || matched?.sku || ''}`)) {
+        return null;
+      }
+
+      return {
+        id: d.id,
+        itemType: resolvedType,
+        name: d.itemName,
+        searchCount: d.searchCount,
+        lastRequested: d.lastRequested,
+        imageUrl: matched?.imageUrl || null,
+        category: matched?.category || null,
+        sku: matched?.code || matched?.sku || null,
+        price: matched?.price ?? null,
+        inCatalog: true
+      };
+    })
+    .filter(Boolean);
+
+  const opportunities = missedDemands
+    .map((m) => {
+      let resolvedType = m.itemType || 'PRODUCT';
+      if (hasServices && !hasStock) {
+        resolvedType = 'SERVICE';
+      } else if (hasStock && hasServices && resolvedType === 'PRODUCT') {
+        const normName = String(m.productName || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        if (SERVICE_HINTS.test(normName)) resolvedType = 'SERVICE';
+      }
+
+      if (resolvedType !== targetItemType) return null;
+      if (!matchesSearch(m.productName)) return null;
+
+      const allOcc = parseJsonSafe(m.occurrences, []);
+      const filteredOcc = cutoffDate
+        ? allOcc.filter((o) => !o.requestedAt || new Date(o.requestedAt) >= cutoffDate)
+        : allOcc;
+
+      return {
+        id: m.id,
+        itemType: resolvedType,
+        name: m.productName,
+        searchCount: cutoffDate && filteredOcc.length > 0 ? Math.min(m.searchCount, Math.max(filteredOcc.length, 1)) : m.searchCount,
+        totalSearchCount: m.searchCount,
+        occurrences: filteredOcc.length > 0 ? filteredOcc : allOcc,
+        lastRequested: m.lastRequested,
+        inCatalog: false
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    scope: normalizedScope,
+    days: daysNum || 'all',
+    query: q || '',
+    popular,
+    opportunities,
+    summary: {
+      popularCount: popular.length,
+      popularTotalSearches: popular.reduce((acc, i) => acc + (i.searchCount || 0), 0),
+      opportunitiesCount: opportunities.length,
+      opportunitiesTotalSearches: opportunities.reduce((acc, i) => acc + (i.searchCount || 0), 0)
+    }
+  };
+}
+
 module.exports = {
   getTenantAnalytics,
+  getDemandInsights,
   listContacts,
   upsertContact,
   toggleContactAiBlock,

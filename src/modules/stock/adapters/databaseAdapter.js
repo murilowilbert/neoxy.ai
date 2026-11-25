@@ -25,25 +25,49 @@ class DatabaseStockAdapter extends StockAdapterInterface {
     const annotatedProducts = crmExtensions.annotateCatalogWithPromotions(items, activePromotions);
     const annotatedServices = crmExtensions.annotateServicesWithPromotions(services, activePromotions);
 
-    const normalizedProducts = annotatedProducts.map(item => ({
-      tipo: 'produto',
-      código: item.code,
-      'modelo/produto': item.name,
-      ...(item.description ? { descrição: item.description } : {}),
-      preço: item.price ? `R$${item.price.toFixed(2).replace('.', ',')}` : '',
-      ...(item.activePromotion
-        ? {
-            preço_promocional: `R$${item.effectivePrice.toFixed(2).replace('.', ',')}`,
-            promoção_ativa: `${item.activePromotion.name} (${item.discountPct}% OFF)`
-          }
-        : {}),
-      estoque: item.stockQty,
-      categoria_geral: item.category || 'Geral',
-      marca: item.brand || '',
-      _temFoto: Boolean(item.hasPhoto || item.imageUrl)
-    }));
+    const tenantLocations = Array.isArray(tenant?.parsedSettings?.storeInfo?.locations)
+      ? tenant.parsedSettings.storeInfo.locations
+      : [];
+    const locNameById = new Map(tenantLocations.map((l) => [l.id, l.name || l.city || 'Unidade']));
 
-    const normalizedServices = annotatedServices.map(srv => {
+    const resolveLocationNames = (rawIds) => {
+      if (!rawIds || tenantLocations.length <= 1) return null;
+      let ids = rawIds;
+      if (typeof rawIds === 'string') {
+        try {
+          ids = JSON.parse(rawIds);
+        } catch {
+          ids = [];
+        }
+      }
+      if (!Array.isArray(ids) || ids.length === 0) return null;
+      const names = ids.map((id) => locNameById.get(id)).filter(Boolean);
+      return names.length > 0 ? names : null;
+    };
+
+    const normalizedProducts = annotatedProducts.map((item) => {
+      const unidades = resolveLocationNames(item.availableLocationIds);
+      return {
+        tipo: 'produto',
+        código: item.code,
+        'modelo/produto': item.name,
+        ...(item.description ? { descrição: item.description } : {}),
+        preço: item.price ? `R$${item.price.toFixed(2).replace('.', ',')}` : '',
+        ...(item.activePromotion
+          ? {
+              preço_promocional: `R$${item.effectivePrice.toFixed(2).replace('.', ',')}`,
+              promoção_ativa: `${item.activePromotion.name} (${item.discountPct}% OFF)`
+            }
+          : {}),
+        ...(unidades ? { disponível_em: unidades.join(', ') } : {}),
+        estoque: item.stockQty,
+        categoria_geral: item.category || 'Geral',
+        marca: item.brand || '',
+        _temFoto: Boolean(item.hasPhoto || item.imageUrl)
+      };
+    });
+
+    const normalizedServices = annotatedServices.map((srv) => {
       let parsedTiers = null;
       if (srv.priceTiers) {
         try {
@@ -56,6 +80,7 @@ class DatabaseStockAdapter extends StockAdapterInterface {
           }
         } catch {}
       }
+      const unidades = resolveLocationNames(srv.availableLocationIds);
       return {
         tipo: 'serviço',
         código: srv.sku || srv.id.slice(0, 8),
@@ -69,6 +94,7 @@ class DatabaseStockAdapter extends StockAdapterInterface {
               promoção_ativa: `${srv.activePromotion.name} (${srv.discountPct}% OFF)`
             }
           : {}),
+        ...(unidades ? { disponível_em: unidades.join(', ') } : {}),
         duração_min: srv.durationMinutes,
         categoria_geral: srv.category || 'Serviços',
         marca: srv.brand || '',

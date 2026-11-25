@@ -416,6 +416,85 @@ app.get('/api/tenants/:slug/analytics', requireAuth, requireTenantAccess, async 
   }
 });
 
+// Inteligência de Demanda por Escopo (products | services), Período (7, 30, 90, all) e Busca
+app.get('/api/tenants/:slug/demand-insights', requireAuth, requireTenantAccess, async (req, res) => {
+  try {
+    const { scope = 'products', days = '30', q = '' } = req.query || {};
+    const insights = await crmExtensionsService.getDemandInsights(req.tenant.id, {
+      scope: String(scope),
+      days: String(days),
+      q: String(q)
+    });
+    res.json({ success: true, insights });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Geocodificação automática de endereço comercial (gera Google Maps URL, Review search e lat/lng ocultos)
+app.get('/api/utils/geocode', requireAuth, async (req, res) => {
+  try {
+    const { q = '', companyName = '' } = req.query || {};
+    const addressQuery = String(q || '').trim();
+    if (!addressQuery || addressQuery.length < 4) {
+      return res.status(400).json({ success: false, error: 'Informe rua, cidade ou endereço para localizar.' });
+    }
+
+    const fullQuery = companyName ? `${companyName}, ${addressQuery}` : addressQuery;
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullQuery)}`;
+    const reviewSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+      `${companyName || addressQuery} avaliar google`
+    )}`;
+
+    let latitude = null;
+    let longitude = null;
+    let displayName = addressQuery;
+
+    try {
+      const axios = require('axios');
+      const geoRes = await axios.get('https://nominatim.openstreetmap.org/search', {
+        params: {
+          q: `${addressQuery}, Brasil`,
+          format: 'json',
+          limit: 1,
+          addressdetails: 1
+        },
+        headers: {
+          'User-Agent': 'NEO-SaaS-Platform/2.0 (https://neoxy.ai)'
+        },
+        timeout: 4500
+      });
+
+      const first = Array.isArray(geoRes.data) ? geoRes.data[0] : null;
+      if (first && first.lat && first.lon) {
+        latitude = Number(first.lat);
+        longitude = Number(first.lon);
+        displayName = first.display_name || addressQuery;
+      }
+    } catch {
+      // Offline ou limite Nominatim — mantém mapsUrl exato baseado no endereço estruturado
+    }
+
+    const preciseMapsUrl =
+      latitude !== null && longitude !== null
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullQuery)}&center=${latitude},${longitude}`
+        : mapsUrl;
+
+    res.json({
+      success: true,
+      result: {
+        mapsUrl: preciseMapsUrl,
+        reviewSearchUrl,
+        latitude,
+        longitude,
+        displayName
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Contatos WhatsApp & Filtro de Bloqueio de IA
 app.get('/api/tenants/:slug/contacts', requireAuth, requireTenantAccess, async (req, res) => {
   try {

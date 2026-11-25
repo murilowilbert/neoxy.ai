@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   QrCode,
   Smartphone,
@@ -7,7 +8,6 @@ import {
   WifiOff,
   CheckCircle2,
   AlertTriangle,
-  ShieldCheck,
   RotateCcw,
   Unplug,
   Send,
@@ -18,14 +18,10 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  PhoneOff,
-  Users,
-  Eye,
-  MessageCircle,
-  Radio,
   Zap,
   ArrowRight,
-  Clock
+  Clock,
+  X
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
@@ -479,46 +475,16 @@ export const WhatsAppSyncTab: React.FC<WhatsAppSyncTabProps> = ({
       icon: <RefreshCw className="w-4 h-4" />
     },
     {
-      key: 'ignoreGroups',
-      title: 'Ignorar mensagens de grupos',
-      desc: 'Evita que o atendente NEO responda conversas de grupos familiares ou internos.',
-      icon: <Users className="w-4 h-4" />
-    },
-    {
-      key: 'rejectCalls',
-      title: 'Rejeitar chamadas automaticamente',
-      desc: 'Recusa ligações de voz/vídeo no WhatsApp comercial para manter o fluxo por texto e áudio.',
-      icon: <PhoneOff className="w-4 h-4" />
-    },
-    {
-      key: 'typingIndicator',
-      title: 'Indicador "digitando..." humanizado',
-      desc: 'Simula digitação proporcional ao tamanho da resposta (proteção anti-banimento).',
-      icon: <MessageCircle className="w-4 h-4" />
-    },
-    {
-      key: 'readReceipts',
-      title: 'Confirmar leitura (dois riscos azuis)',
-      desc: 'Marca mensagens recebidas como lidas com atraso natural antes de responder.',
-      icon: <Eye className="w-4 h-4" />
-    },
-    {
       key: 'syncContactsOnConnect',
       title: 'Sincronizar contatos ao conectar',
       desc: 'Importa automaticamente clientes para a aba Contatos & Filtro IA logo após parear.',
       icon: <Sparkles className="w-4 h-4" />
-    },
-    {
-      key: 'alwaysOnline',
-      title: 'Manter status "Online"',
-      desc: 'Exibe a conta como disponível continuamente no WhatsApp dos clientes.',
-      icon: <Radio className="w-4 h-4" />
     }
   ];
 
   return (
     <div className="space-y-6 animate-fade-up" data-testid="whatsapp-sync-tab">
-      {/* Cabeçalho da Central de Sincronização */}
+      {/* Cabeçalho enxuto da Central de Sincronização (apenas barra superior de status) */}
       <div className="nx-spotlight-card p-5 sm:p-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start gap-4 min-w-0">
@@ -568,7 +534,7 @@ export const WhatsAppSyncTab: React.FC<WhatsAppSyncTabProps> = ({
                     ? 'Sincronizado e Online'
                     : isWaitingQr
                     ? 'Aguardando leitura do QR Code'
-                    : 'Não sincronizado'}
+                    : 'WhatsApp ainda não sincronizado'}
                 </span>
 
                 {status?.gateway && (
@@ -582,7 +548,7 @@ export const WhatsAppSyncTab: React.FC<WhatsAppSyncTabProps> = ({
               </div>
 
               <p className="text-xs text-[var(--nx-muted)] mt-1 leading-relaxed">
-                Conecte o WhatsApp comercial da <strong className="text-[var(--nx-text)]">{tenant?.name}</strong> com QR Code ou código de pareamento, gerencie a sessão ativa e ajuste as proteções anti-banimento.
+                Conecte o WhatsApp comercial da <strong className="text-[var(--nx-text)]">{tenant?.name}</strong> com QR Code ou código de pareamento de 8 dígitos.
               </p>
             </div>
           </div>
@@ -623,65 +589,74 @@ export const WhatsAppSyncTab: React.FC<WhatsAppSyncTabProps> = ({
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Barra de confirmação de redefinição */}
-        {confirmReset && (
-          <div className="mt-4 p-3.5 rounded-xl border border-amber-500/35 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-2.5">
-              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-              <div className="text-xs text-[var(--nx-text)]">
-                <strong>Redefinir sincronização?</strong> Isso encerra a sessão atual no gateway, limpa as credenciais vinculadas e gera um novo QR Code limpo. Suas conversas e contatos no NEO não serão apagados.
+      {/* Modal NEO de Confirmação: Redefinir Sincronização (via Portal em tela cheia) */}
+      {confirmReset &&
+        createPortal(
+          <div
+            className="nx-modal-backdrop"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setConfirmReset(false);
+            }}
+          >
+            <div
+              className="nx-spotlight-card w-full max-w-md p-6 rounded-2xl shadow-2xl animate-fade-up"
+              role="dialog"
+              aria-modal="true"
+              data-testid="modal-confirm-reset-sync"
+            >
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="nx-icon-tile nx-icon-tile--sm bg-amber-500/15 text-amber-500 border-amber-500/30">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--nx-text)]">
+                      Redefinir sincronização
+                    </h3>
+                    <p className="text-[11px] text-[var(--nx-muted)]">
+                      Sessão atual será encerrada e um novo QR Code será gerado.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setConfirmReset(false)}
+                  className="p-1.5 rounded-full text-[var(--nx-subtle)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)] transition-colors"
+                  aria-label="Fechar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className="text-xs text-[var(--nx-muted)] leading-relaxed mb-6">
+                Tem certeza que deseja redefinir a sincronização de{' '}
+                <strong className="text-[var(--nx-text)]">"{tenant?.name}"</strong>? Isso limpa as credenciais vinculadas no gateway e gera um novo QR Code limpo. Suas conversas e contatos no NEO serão preservados.
+              </p>
+
+              <div className="flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setConfirmReset(false)}
+                  className="px-4 py-2 rounded-full text-xs font-medium text-[var(--nx-text)] border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] hover:bg-[var(--nx-surface-alt)] transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetSync}
+                  data-testid="btn-confirm-reset-sync"
+                  className="nx-btn-primary px-5 py-2 text-xs"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Confirmar e gerar novo QR
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setConfirmReset(false)}
-                className="px-3 py-1.5 rounded-full text-xs font-medium border border-[var(--nx-border-strong)] bg-[var(--nx-surface)] text-[var(--nx-text)] hover:bg-[var(--nx-surface-alt)]"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleResetSync}
-                data-testid="btn-confirm-reset-sync"
-                className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-black transition-colors"
-              >
-                Confirmar e gerar novo QR
-              </button>
-            </div>
-          </div>
+          </div>,
+          document.body
         )}
-
-        {/* Métricas rápidas da conexão */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5 pt-5 border-t border-[var(--nx-border)]">
-          <div className="p-3 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)]">
-            <div className="text-[11px] text-[var(--nx-subtle)] font-medium">Número Vinculado</div>
-            <div className="text-xs sm:text-sm font-bold text-[var(--nx-text)] mt-1 tabular-data truncate">
-              {formatPhoneDisplay(status?.phoneNumber)}
-            </div>
-          </div>
-          <div className="p-3 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)]">
-            <div className="text-[11px] text-[var(--nx-subtle)] font-medium">Instância</div>
-            <div className="text-xs sm:text-sm font-bold text-[var(--nx-text)] mt-1 font-mono truncate">
-              {status?.instanceName || `neo-${tenant?.slug}`}
-            </div>
-          </div>
-          <div className="p-3 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)]">
-            <div className="text-[11px] text-[var(--nx-subtle)] font-medium">Mensagens (24h)</div>
-            <div className="text-xs sm:text-sm font-bold text-[var(--nx-text)] mt-1 tabular-data">
-              {status?.health?.messagesLast24h ?? 0} · {status?.health?.totalSessions ?? 0} chats
-            </div>
-          </div>
-          <div className="p-3 rounded-xl bg-[var(--nx-bg)] border border-[var(--nx-border)]">
-            <div className="text-[11px] text-[var(--nx-subtle)] font-medium">Proteção Anti-Ban</div>
-            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-              <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>{status?.health?.antiBanActive !== false ? 'Ativa' : 'Desativada'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Grid Principal: Pareamento (Esquerda) + Preferências & Testes (Direita) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
